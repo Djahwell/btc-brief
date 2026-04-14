@@ -1,0 +1,551 @@
+#!/usr/bin/env node
+// ─────────────────────────────────────────────────────────────────────────────
+// brief-worker.js  —  BTC Morning Brief · Market Data + Claude Brief Generator
+// ─────────────────────────────────────────────────────────────────────────────
+// Runs AFTER dune-worker.js has written public/dune_cache.json.
+// Fetches: BTC market data, macro (DXY/VIX/TNX), CME basis, CoinMetrics,
+//          options skew, QQQ correlation, SMAs.
+// Calls Anthropic Claude to synthesise the morning brief.
+// Writes: public/all_data.json  (dune_cache.json + new fields + brief)
+//
+// Usage:
+//   node brief-worker.js
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
+import { join, dirname }                                       from 'path';
+import { fileURLToPath }                                       from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = dirname(__filename);
+
+const DUNE_CACHE_FILE  = join(__dirname, 'public', 'dune_cache.json');
+const ALL_DATA_FILE    = join(__dirname, 'public', 'all_data.json');
+const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+
+// ── Load .env ─────────────────────────────────────────────────────────────────
+function loadEnv() {
+  const envPath = join(__dirname, '.env');
+  if (!existsSync(envPath)) return {};
+  const env = {};
+  for (const line of readFileSync(envPath, 'utf8').split('\n')) {
+    const t = line.trim();
+    if (!t || t.startsWith('#')) continue;
+    const eq = t.indexOf('=');
+    if (eq === -1) continue;
+    env[t.slice(0, eq).trim()] = t.slice(eq + 1).trim();
+  }
+  return env;
+}
+
+const ENV           = loadEnv();
+const ANTHROPIC_KEY = ENV.VITE_ANTHROPIC_API_KEY || process.env.VITE_ANTHROPIC_API_KEY;
+if (!ANTHROPIC_KEY) {
+  console.error('[Brief] VITE_ANTHROPIC_API_KEY missing — Claude brief will not be generated');
+}
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+// ── Load existing dune_cache.json ─────────────────────────────────────────────
+function loadDuneCache() {
+  try {
+    if (existsSync(DUNE_CACHE_FILE)) {
+      return JSON.parse(readFileSync(DUNE_CACHE_FILE, 'utf8'));
+    }
+  } catch (e) {
+    console.warn('[Brief] Could not load dune_cache.json:', e.message);
+  }
+  return {};
+}
+
+// ── Yahoo Finance helper ───────────────────────────────────────────────────────
+async function yfetch(ticker, range = '5d') {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=${range}`;
+  const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(12000) });
+  if (!res.ok) throw new Error(`Yahoo ${ticker}: HTTP ${res.status}`);
+  return res.json();
+}
+
+function yfExtract(json) {
+  const meta   = json?.chart?.result?.[0]?.meta;
+  const qdata  = json?.chart?.result?.[0]?.indicators?.quote?.[0];
+  const closes = (qdata?.close || []).filter(v => v != null);
+  const price  = meta?.regularMarketPrice ?? meta?.previousClose ?? null;
+  const prev   = closes.length >= 2 ? closes[closes.length - 2] : null;
+  const change = (price && prev && prev !== 0)
+    ? parseFloat(((price - prev) / prev * 100).toFixed(2)) : null;
+  return { price, change, meta, closes };
+}
+
+// ── Fetch live BTC market snapshot ───────────────────────────────────────────
+async function fetchMarketSnapshot() {
+  const out = {};
+
+  // BTC price (Binance)
+  try {
+    const r = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT',
+      { signal: AbortSignal.timeout(8000) });
+    const s = await r.json();
+    out.price        = parseFloat(s.lastPrice);
+    out.change24h    = parseFloat(s.priceChangePercent);
+    out.volume24hUSD = parseFloat(s.quoteVolume) * 2.6;
+    out.marketCap    = out.price * 20000000;
+    out.priceSource  = 'Binance';
+    console.log(`[Market] BTC: $${out.price.toLocaleString()} (${out.change24h > 0 ? '+' : ''}${out.change24h.toFixed(2)}% 24h)`);
+  } catch (e) {
+    console.warn('[Market] Binance failed:', e.message);
+    try {
+      const r2 = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true&include_market_cap=true',
+        { signal: AbortSignal.timeout(10000) });
+      const d = await r2.json();
+      out.price = d.bitcoin.usd; out.change24h = d.bitcoin.usd_24h_change;
+      out.volume24hUSD = d.bitcoin.usd_24h_vol; out.marketCap = d.bitcoin.usd_market_cap;
+      out.priceSource = 'CoinGecko';
+    } catch (e2) { console.warn('[Market] CoinGecko fallback failed:', e2.message); }
+  }
+
+  // Fear & Greed (Alternative.me)
+  try {
+    const r = await fetch('https://api.alternative.me/fng/?limit=7', { signal: AbortSignal.timeout(8000) });
+    const d = await r.json();
+    out.fearGreedValue = parseInt(d.data[0].value, 10);
+    out.fearGreedLabel = d.data[0].value_classification;
+    out.fearGreed7d    = d.data.map(x => parseInt(x.value, 10));
+    console.log(`[Market] Fear & Greed: ${out.fearGreedValue} (${out.fearGreedLabel})`);
+  } catch (e) { console.warn('[Market] F&G failed:', e.message); }
+
+  // Funding rate (Binance fapi)
+  try {
+    const r = await fetch('https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&limit=8',
+      { signal: AbortSignal.timeout(8000) });
+    const d = await r.json();
+    out.fundingRate = parseFloat(d[d.length - 1].fundingRate);
+    out.fundingSource = 'Binance';
+    console.log(`[Market] Funding: ${(out.fundingRate * 100).toFixed(4)}% per 8h`);
+  } catch (e) { console.warn('[Market] Funding failed:', e.message); }
+
+  // Open Interest (Binance fapi)
+  try {
+    const r = await fetch('https://fapi.binance.com/fapi/v1/openInterest?symbol=BTCUSDT',
+      { signal: AbortSignal.timeout(8000) });
+    const d = await r.json();
+    out.openInterest    = parseFloat(d.openInterest);
+    out.openInterestUSD = out.openInterest * (out.price || 80000);
+  } catch (e) { console.warn('[Market] OI failed:', e.message); }
+
+  // Gold (Binance PAXG)
+  try {
+    const r = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=PAXGUSDT',
+      { signal: AbortSignal.timeout(8000) });
+    const d = await r.json();
+    out.goldPrice     = parseFloat(d.lastPrice);
+    out.goldChange24h = parseFloat(d.priceChangePercent);
+    if (out.price && out.goldPrice) out.btcGoldRatio = out.price / out.goldPrice;
+  } catch (e) { console.warn('[Market] Gold failed:', e.message); }
+
+  // BTC dominance (CoinGecko)
+  try {
+    const r = await fetch('https://api.coingecko.com/api/v3/global', { signal: AbortSignal.timeout(10000) });
+    const d = await r.json();
+    const pct = d?.data?.market_cap_percentage?.btc;
+    if (pct) out.btcDominance = parseFloat(pct.toFixed(1));
+  } catch (e) { console.warn('[Market] Dominance failed:', e.message); }
+
+  return out;
+}
+
+// ── Fetch 200-day candles → SMAs + QQQ correlation ────────────────────────────
+async function fetchTechnicalData() {
+  let closes = null, volumes = null;
+  try {
+    const r = await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=200',
+      { signal: AbortSignal.timeout(12000) });
+    const d = await r.json();
+    closes  = d.map(row => parseFloat(row[4])).filter(Boolean);
+    volumes = d.map(row => parseFloat(row[5])).filter(Boolean);
+  } catch (e) { console.warn('[Tech] Binance candles failed:', e.message); return null; }
+
+  const sma = (arr, n) => { const sl = arr.slice(-n); return sl.length < n ? null : sl.reduce((a,b) => a+b, 0)/n; };
+  const sma200 = sma(closes, 200), sma50 = sma(closes, 50), sma20 = sma(closes, 20);
+
+  // QQQ correlation
+  let btcQqqCorr = null, corrWindow = 0;
+  try {
+    const qqqRes = await yfetch('QQQ', '90d');
+    const qqqCloses = (qqqRes?.chart?.result?.[0]?.indicators?.quote?.[0]?.close || []).filter(v => v != null && !isNaN(v));
+    const CORR_DAYS = 60;
+    const btcSlice = closes.slice(-CORR_DAYS), qqqSlice = qqqCloses.slice(-CORR_DAYS);
+    const corrN = Math.min(btcSlice.length, qqqSlice.length);
+    if (corrN >= 20) {
+      const btc60 = btcSlice.slice(-corrN), qqq60 = qqqSlice.slice(-corrN);
+      const mean = arr => arr.reduce((a,b) => a+b, 0) / arr.length;
+      const mB = mean(btc60), mQ = mean(qqq60);
+      let num = 0, dB = 0, dQ = 0;
+      for (let i = 0; i < corrN; i++) { const db = btc60[i]-mB, dq = qqq60[i]-mQ; num += db*dq; dB += db*db; dQ += dq*dq; }
+      btcQqqCorr = (dB > 0 && dQ > 0) ? parseFloat((num / Math.sqrt(dB*dQ)).toFixed(2)) : null;
+      corrWindow = corrN;
+    }
+  } catch (e) { console.warn('[Tech] QQQ corr failed:', e.message); }
+
+  // Volume trend
+  const avgVol5d  = volumes.slice(-5).reduce((a,b)  => a+b, 0) / 5;
+  const avgVol20d = volumes.slice(-20).reduce((a,b) => a+b, 0) / 20;
+  const volTrendRatio = avgVol20d > 0 ? avgVol5d / avgVol20d : null;
+  const volTrend = !volTrendRatio ? 'UNKNOWN' : volTrendRatio > 1.2 ? 'RISING' : volTrendRatio < 0.8 ? 'FALLING' : 'STABLE';
+
+  console.log(`[Tech] 200d SMA: $${sma200 ? Math.round(sma200).toLocaleString() : 'n/a'} | BTC-QQQ: ${btcQqqCorr} | VolTrend: ${volTrend}`);
+  return {
+    sma200: sma200 ? Math.round(sma200) : null,
+    sma50:  sma50  ? Math.round(sma50)  : null,
+    sma20:  sma20  ? Math.round(sma20)  : null,
+    candleCount: closes.length,
+    avgVol5d: Math.round(avgVol5d), avgVol20d: Math.round(avgVol20d),
+    volTrendRatio: volTrendRatio ? parseFloat(volTrendRatio.toFixed(2)) : null,
+    volTrend, btcQqqCorr, corrWindow,
+  };
+}
+
+// ── Fetch options skew (Deribit) ───────────────────────────────────────────────
+async function fetchOptionsSkew(spotPrice) {
+  try {
+    const r = await fetch('https://www.deribit.com/api/v2/public/get_book_summary_by_currency?currency=BTC&kind=option',
+      { signal: AbortSignal.timeout(12000) });
+    const d = await r.json();
+    if (!d?.result?.length) throw new Error('no options data');
+    const now = Date.now(), spot = spotPrice || 80000;
+    let near = d.result.filter(o => { const t = o.expiration_timestamp - now; return t > 3*24*3600*1000 && t < 30*24*3600*1000 && o.volume > 0 && o.mark_iv > 0; });
+    if (near.length < 4) near = d.result.filter(o => { const t = o.expiration_timestamp - now; return t > 0 && t < 7*24*3600*1000 && o.volume > 0 && o.mark_iv > 0; });
+    if (!near.length) near = d.result.filter(o => o.volume > 0 && o.mark_iv > 0).slice(0, 30);
+    const gs = name => { const p = name?.split('-') || []; return p.length >= 3 ? parseFloat(p[2]) : null; };
+    const puts  = near.filter(o => o.instrument_name.slice(-1) === 'P' && (s => s && s >= spot*0.80 && s <= spot*0.95)(gs(o.instrument_name)));
+    const calls = near.filter(o => o.instrument_name.slice(-1) === 'C' && (s => s && s >= spot*1.05 && s <= spot*1.20)(gs(o.instrument_name)));
+    const pF = puts.length >= 2 ? puts : near.filter(o => o.instrument_name.slice(-1) === 'P');
+    const cF = calls.length >= 2 ? calls : near.filter(o => o.instrument_name.slice(-1) === 'C');
+    if (!pF.length || !cF.length) throw new Error('insufficient options');
+    const wAvg = arr => { const w = arr.reduce((s,o) => s+(o.volume||1),0); return arr.reduce((s,o) => s+o.mark_iv*(o.volume||1),0)/w; };
+    const pIV = wAvg(pF), cIV = wAvg(cF);
+    const skew = parseFloat((pIV - cIV).toFixed(1));
+    console.log(`[Options] Skew: ${skew} | PutIV: ${Math.round(pIV)} | CallIV: ${Math.round(cIV)}`);
+    return { optionsSkew: skew, optionsPCRatio: parseFloat((pF.length/Math.max(cF.length,1)).toFixed(2)), optionsPutIV: Math.round(pIV), optionsCallIV: Math.round(cIV) };
+  } catch (e) { console.warn('[Options] Failed:', e.message); return null; }
+}
+
+// ── Fetch macro data (DXY, VIX, TNX) ─────────────────────────────────────────
+async function fetchMacros() {
+  const out = { dxy: null, dxyChange: null, vix: null, vixChange: null, tnxYield: null, tnxChange: null };
+  try { const d = yfExtract(await yfetch('DX-Y.NYB')); if (d.price) { out.dxy = parseFloat(d.price.toFixed(2)); out.dxyChange = d.change; } console.log(`[Macro] DXY: ${out.dxy}`); } catch (e) { console.warn('[Macro] DXY failed:', e.message); }
+  await sleep(300);
+  try { const d = yfExtract(await yfetch('%5EVIX')); if (d.price) { out.vix = parseFloat(d.price.toFixed(1)); out.vixChange = d.change; } console.log(`[Macro] VIX: ${out.vix}`); } catch (e) { console.warn('[Macro] VIX failed:', e.message); }
+  await sleep(300);
+  try { const d = yfExtract(await yfetch('%5ETNX')); if (d.price) { out.tnxYield = parseFloat((d.price > 20 ? d.price/10 : d.price).toFixed(2)); out.tnxChange = d.change; } console.log(`[Macro] TNX: ${out.tnxYield}%`); } catch (e) { console.warn('[Macro] TNX failed:', e.message); }
+  return out;
+}
+
+// ── Fetch CME futures basis ───────────────────────────────────────────────────
+async function fetchCME() {
+  try {
+    await sleep(300);
+    const [futJson, spotJson] = await Promise.all([yfetch('BTC%3DF', '5d'), yfetch('BTC-USD', '1d')]);
+    const futMeta = futJson?.chart?.result?.[0]?.meta, spotMeta = spotJson?.chart?.result?.[0]?.meta;
+    const futPrice = futMeta?.regularMarketPrice ?? futMeta?.previousClose ?? null;
+    const spotPrice = spotMeta?.regularMarketPrice ?? spotMeta?.previousClose ?? null;
+    if (!futPrice || !spotPrice || spotPrice <= 0) throw new Error('price data missing');
+    const expireTs = futMeta?.expireDate;
+    const daysToExp = expireTs ? Math.max(1, Math.round((expireTs*1000-Date.now())/86400000)) : 30;
+    const annualized = parseFloat(((futPrice-spotPrice)/spotPrice*100*(365/daysToExp)).toFixed(2));
+    console.log(`[CME] Basis: ${annualized > 0 ? '+' : ''}${annualized}% ann | daysToExpiry: ${daysToExp}`);
+    return { cmeBasisPct: annualized, cmeDaysToExpiry: daysToExp, cmeNearExpiry: daysToExp < 14,
+             cmeBasisSource: `Yahoo Finance BTC=F (${daysToExp}d to expiry, annualized)` };
+  } catch (e) { console.warn('[CME] Failed:', e.message); return null; }
+}
+
+// ── Fetch CoinMetrics community API ───────────────────────────────────────────
+async function fetchCoinMetrics() {
+  try {
+    const metrics = ['AdrActCnt','TxCnt','HashRate','FeeTotNtv','PriceUSD'].join(',');
+    const url = `https://community-api.coinmetrics.io/v4/timeseries/asset-metrics?assets=btc&metrics=${metrics}&frequency=1d&limit_per_asset=2&sort=time`;
+    const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(15000) });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const raw = await r.json();
+    const rows = raw?.data;
+    if (!rows?.length) throw new Error('no data');
+    const latest = rows[rows.length - 1];
+    const n = k => latest[k] != null ? parseFloat(latest[k]) : null;
+    const out = { date: latest.time?.slice(0,10) ?? null, activeAddresses: n('AdrActCnt'),
+                  txCount: n('TxCnt'), hashRate: n('HashRate'), totalFeesBTC: n('FeeTotNtv'),
+                  refPrice: n('PriceUSD'), source: 'CoinMetrics Community API' };
+    console.log(`[CoinMetrics] ActiveAddr: ${Math.round(out.activeAddresses||0).toLocaleString()}`);
+    return out;
+  } catch (e) { console.warn('[CoinMetrics] Failed:', e.message); return null; }
+}
+
+// ── Trading phase ─────────────────────────────────────────────────────────────
+const PHASES = [
+  { id: 'A', label: 'ACCUMULATION', low: 60000, high: 68000 },
+  { id: 'B', label: 'BREAKOUT',     low: 68000, high: 79000 },
+  { id: 'C', label: 'MOMENTUM',     low: 79000, high: 98000 },
+  { id: 'D', label: 'BULL RUN',     low: 98000, high: 200000 },
+];
+function computePhase(price) {
+  if (!price) return null;
+  if (price < 58500) return { id: 'STOP', label: 'STOP TRIGGERED', action: 'Hard stop — exit per mandate', pctToNext: null, progress: 0 };
+  for (const ph of PHASES) {
+    if (price >= ph.low && price < ph.high) {
+      const progress = ((price - ph.low) / (ph.high - ph.low)) * 100;
+      const pctToNext = ((ph.high - price) / price * 100).toFixed(1);
+      return { ...ph, progress, pctToNext, nextPhaseAt: ph.high };
+    }
+  }
+  return { id: 'D+', label: 'EXTENDED BULL RUN', progress: 100, pctToNext: null };
+}
+
+// ── Build Claude user message ──────────────────────────────────────────────────
+function buildUserMessage(d) {
+  const { market, tech, coinMetrics, macros, cme, duneCache, options } = d;
+  const p = market?.price;
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const LIQUID = 4_200_000, CIRC = 20_000_000;
+  const vol24hUSD = market?.volume24hUSD, mcap = market?.marketCap;
+  const volBTC = (p && vol24hUSD) ? Math.round(vol24hUSD / p) : null;
+  const fmt = (n, dec = 2) => n != null ? n.toFixed(dec) : 'N/A';
+  const fundingAnn = market?.fundingRate != null ? `${(market.fundingRate*3*365*100).toFixed(1)}% annualized` : 'unavailable';
+  const normRef = (p && mcap && volBTC) ? `\nNORMALIZATION REFERENCE:\n  1,000 BTC = ${(1000/LIQUID*100).toFixed(3)}% of liquid supply\n  1,000 BTC = ${(1000/volBTC*100).toFixed(3)}% of volume\n  Liquid: ${LIQUID.toLocaleString()} BTC | Daily vol: ~${volBTC.toLocaleString()} BTC` : '';
+
+  const marketBlock = `TODAY: ${today}
+BTC Price:      ${p ? '$'+p.toLocaleString()+' ('+fmt(market.change24h)+'% 24h)' : 'unavailable'}
+Market Cap:     ${mcap ? '$'+(mcap/1e12).toFixed(2)+'T' : 'unavailable'}
+24h Volume:     ${vol24hUSD ? '$'+(vol24hUSD/1e9).toFixed(1)+'B (~'+volBTC?.toLocaleString()+' BTC)' : 'unavailable'}
+Fear & Greed:   ${market?.fearGreedValue != null ? market.fearGreedValue+'/100 ('+market.fearGreedLabel+')' : 'unavailable'}
+Funding Rate:   ${market?.fundingRate != null ? (market.fundingRate*100).toFixed(4)+'% per 8h | '+fundingAnn : 'unavailable'}
+Open Interest:  ${market?.openInterest ? market.openInterest.toFixed(0)+' BTC (~$'+(market.openInterestUSD/1e9).toFixed(1)+'B)' : 'unavailable'}
+Gold (XAU):     ${market?.goldPrice ? '$'+market.goldPrice.toLocaleString()+' ('+fmt(market.goldChange24h)+'% 24h)' : 'unavailable'}
+BTC/Gold ratio: ${market?.btcGoldRatio ? market.btcGoldRatio.toFixed(2) : 'unavailable'}
+BTC Dominance:  ${market?.btcDominance != null ? market.btcDominance+'%' : 'unavailable'}
+Options Skew:   ${options?.optionsSkew != null ? options.optionsSkew+' (put IV '+options.optionsPutIV+'% vs call IV '+options.optionsCallIV+'%)' : 'unavailable'}
+${normRef}`;
+
+  const phase = computePhase(p);
+  const phaseBlock = phase ? `\n\nLIVE PHASE STATUS:\n  Active Phase: ${phase.id} - ${phase.label}${phase.pctToNext ? '\n  Distance to next phase ($'+phase.nextPhaseAt?.toLocaleString()+'): +'+phase.pctToNext+'%' : ''}\n  Phase progress: ${phase.progress.toFixed(0)}% through range` : '';
+
+  const corrStr = tech?.btcQqqCorr != null ? `\n  BTC-QQQ Correlation (${tech.corrWindow}d Pearson): ${tech.btcQqqCorr} → ${Math.abs(tech.btcQqqCorr)>0.7?'HIGH — macro regime dominant':Math.abs(tech.btcQqqCorr)>0.4?'MODERATE — mixed signals':'LOW — on-chain signals dominate'}` : '\n  BTC-QQQ Correlation: unavailable';
+  const smaBlock = tech ? `\n\nLIVE TECHNICAL LEVELS (Binance ${tech.candleCount}-day):\n  200d SMA: $${tech.sma200?.toLocaleString()||'n/a'}${p?` (${((p-tech.sma200)/tech.sma200*100).toFixed(1)}% from price)`:''}\n  50d SMA:  $${tech.sma50?.toLocaleString()||'n/a'}\n  20d SMA:  $${tech.sma20?.toLocaleString()||'n/a'}${corrStr}\n  OVERRIDE: Use these live values. Ignore Section 2 hardcoded figures.` : '\n\nTECHNICAL LEVELS: Unavailable.';
+
+  const cmBlock = coinMetrics ? `\n\nCOINMETRICS NETWORK HEALTH (${coinMetrics.date||'recent'}):\n  Active Addresses: ${coinMetrics.activeAddresses!=null?Math.round(coinMetrics.activeAddresses).toLocaleString():'n/a'}\n  Tx Count (24h):   ${coinMetrics.txCount!=null?Math.round(coinMetrics.txCount).toLocaleString():'n/a'}\n  Hash Rate:        ${coinMetrics.hashRate!=null?(coinMetrics.hashRate>1e15?(coinMetrics.hashRate/1e18).toFixed(1):(coinMetrics.hashRate/1e6).toFixed(1))+' EH/s':'n/a'}\n  INSTRUCTION: Use active addresses and tx count as network adoption signals.` : '\n\nCOINMETRICS: Unavailable.';
+
+  const macroBlock = (macros?.dxy!=null||macros?.vix!=null||macros?.tnxYield!=null) ? (() => {
+    let b = '\n\nLIVE MACRO DATA (Yahoo Finance — overrides training estimates):';
+    if (macros.dxy!=null) b+=`\n  DXY: ${macros.dxy}${macros.dxyChange!=null?' ('+(macros.dxyChange>0?'+':'')+macros.dxyChange+'% 1d)':''} → ${macros.dxy>104?'BEARISH for BTC':macros.dxy<100?'BULLISH for BTC':'NEUTRAL'}`;
+    if (macros.vix!=null) b+=`\n  VIX: ${macros.vix}${macros.vixChange!=null?' ('+(macros.vixChange>0?'+':'')+macros.vixChange+'% 1d)':''} → ${macros.vix>30?'HIGH FEAR':macros.vix>20?'ELEVATED':'NORMAL'}`;
+    if (macros.tnxYield!=null) b+=`\n  10Y Yield: ${macros.tnxYield}%${macros.tnxChange!=null?' ('+(macros.tnxChange>0?'+':'')+macros.tnxChange+'% 1d)':''} → ${macros.tnxYield>4.5?'BEARISH for BTC':macros.tnxYield<3.5?'BULLISH for BTC':'NEUTRAL'}`;
+    b+='\n  INSTRUCTION: LIVE readings — override training-knowledge estimates.';
+    return b;
+  })() : '\n\nLIVE MACRO DATA: Unavailable — use training knowledge.';
+
+  const dc = duneCache;
+  let duneBlock = '';
+  if (dc?.mvrv || dc?.exchangeFlow) {
+    duneBlock = '\n\nDUNE ANALYTICS — BTC ON-CHAIN DATA:';
+    const ef = dc.exchangeFlow;
+    if (ef?.netflow_btc!=null) {
+      duneBlock+=`\n  Exchange Netflow: ${ef.netflow_btc.toFixed(0)} BTC\n  Exchange Inflow:  ${(ef.inflow_btc||0).toFixed(0)} BTC\n  Exchange Outflow: ${(ef.outflow_btc||0).toFixed(0)} BTC`;
+      const gross = (ef.inflow_btc||0)+(ef.outflow_btc||0);
+      duneBlock += gross < 5000 ? '\n  ⚠ PARTIAL DATA: cold/custody wallets only.' : '\n  INSTRUCTION: Negative = BTC leaving exchanges (accumulation). Apply quad-normalization.';
+    }
+    if (dc?.mvrv?.mvrv) {
+      const mv = dc.mvrv;
+      const zone = mv.mvrv<1?'UNDERVALUED (<1)':mv.mvrv<2?'FAIR VALUE (1-2)':mv.mvrv<3.5?'FAIR-HIGH (2-3.5)':mv.mvrv<5?'OVERVALUED (3.5-5)':'EXTREME (>5)';
+      duneBlock+=`\n\n  LIVE MVRV: ${mv.mvrv.toFixed(3)} → ${zone}${mv.realizedPrice?'\n  Realized Price: $'+Math.round(mv.realizedPrice).toLocaleString():''}\n  INSTRUCTION: LIVE MVRV — overrides training-knowledge estimates.`;
+    }
+  } else { duneBlock = '\n\nDUNE ANALYTICS: Unavailable. Use training knowledge.'; }
+
+  const cmeBlock = cme?.cmeBasisPct!=null ? `\n\nCME FUTURES BASIS:\n  Basis (annualized): ${cme.cmeBasisPct>0?'+':''}${cme.cmeBasisPct}% → ${cme.cmeBasisPct>15?'STRONG CONTANGO':cme.cmeBasisPct>5?'HEALTHY CONTANGO':cme.cmeBasisPct>-5?'FLAT':'BACKWARDATION'}\n  Days to expiry: ${cme.cmeDaysToExpiry}d${cme.cmeNearExpiry?' ⚠ NEAR EXPIRY':''}\n  INSTRUCTION: CME basis is UNCORRELATED from perp funding — score independently.` : '\n\nCME FUTURES BASIS: Unavailable.';
+
+  const etf = dc?.etfFlow;
+  const etfBlock = etf?.total_million_usd!=null ? (() => {
+    const net = etf.total_million_usd*1e6, netBTC = p?Math.round(net/p):null, pctLiq = netBTC?((netBTC/LIQUID)*100).toFixed(3):null;
+    return `\n\nLIVE ETF FLOWS (Farside — ${etf.date||'today'}):\n  Total Net: ${net>=0?'+':''}$${(net/1e6).toFixed(0)}M${netBTC?'\n  Net BTC: '+(netBTC>=0?'+':'')+netBTC.toLocaleString()+' BTC':''}\n  % Liquid: ${pctLiq?(netBTC>=0?'+':'')+pctLiq+'%':'n/a'}\n  INSTRUCTION: LIVE ETF data — use as primary ETF signal.`;
+  })() : '\n\nETF FLOWS: Unavailable. Do not report an ETF figure.';
+
+  const lth = dc?.lthData;
+  const lthBlock = lth?.lth_net_btc!=null ? `\n\nLIVE LTH NET POSITION (Bitcoin Magazine Pro — ${lth.date}):\n  LTH Net: ${lth.lth_net_btc>=0?'+':''}${lth.lth_net_btc.toLocaleString()} BTC/day\n  % Liquid: ${((lth.lth_net_btc/LIQUID)*100).toFixed(3)}%\n  Regime: ${lth.lth_net_btc>=5000?'ACCUMULATING':lth.lth_net_btc<=-5000?'DISTRIBUTING':'NEUTRAL'}\n  INSTRUCTION: LIVE data — populate lthSellingBTC field.` : '\n\nLTH NET POSITION: Unavailable. Set lthSellingBTC = \'N/A\'.';
+
+  const st = dc?.stablecoinSupply;
+  const stableBlock = st?.total_usd!=null ? `\n\nLIVE STABLECOIN SUPPLY (${st.date}):\n  USDT+USDC: $${(st.total_usd/1e9).toFixed(1)}B\n  7d delta: ${st.delta_7d_usd!=null?(st.delta_7d_usd>=0?'+':'')+( st.delta_7d_usd/1e9).toFixed(1)+'B':'N/A'}\n  Regime: ${st.regime||'STABLE'}\n  INSTRUCTION: EXPANDING = +1 stablecoin score. CONTRACTING = -1.` : '\n\nSTABLECOIN SUPPLY: Unavailable.';
+
+  const volBlock = tech?.volTrend&&tech.volTrend!=='UNKNOWN' ? `\n\nLIVE VOLUME TREND:\n  5d/20d ratio: ${tech.volTrendRatio} → ${tech.volTrend}\n  INSTRUCTION: Use for volumeTrend field.` : '';
+
+  const qualitySummary = `\n\nDATA SOURCE QUALITY:\n- LIVE: price, funding, OI, F&G, options skew, gold, dominance, SMAs, CME basis${macros?.dxy!=null?', DXY':''}${macros?.vix!=null?', VIX':''}${macros?.tnxYield!=null?', 10Y yield':''}${tech?.btcQqqCorr!=null?', BTC-QQQ corr':''}${dc?.mvrv?.mvrv!=null?', MVRV':''}${etf?.total_million_usd!=null?', ETF flows':''}${lth?.lth_net_btc!=null?', LTH position':''}${st?.total_usd!=null?', stablecoin supply':''}\n- ESTIMATED: whale netflows, STH SOPR${dc?.mvrv?.mvrv==null?', MVRV (use ~1.5 est.)':''}${etf?.total_million_usd==null?', ETF flows':''}\n\nGenerate the full morning brief JSON now. Apply quad-normalization to all flows. Score each axis INDEPENDENTLY per Section F — do NOT double-count funding + F&G. Return ONLY valid JSON. No markdown. No preamble.`;
+
+  return marketBlock + phaseBlock + smaBlock + cmBlock + macroBlock + duneBlock + cmeBlock + etfBlock + lthBlock + stableBlock + volBlock + qualitySummary;
+}
+
+// ── Call Anthropic Claude ─────────────────────────────────────────────────────
+async function callClaude(systemPrompt, userMessage) {
+  if (!ANTHROPIC_KEY) throw new Error('No ANTHROPIC_API_KEY');
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 7000, system: systemPrompt, messages: [{ role: 'user', content: userMessage }] }),
+    signal: AbortSignal.timeout(180000),
+  });
+  if (!r.ok) { const e = await r.text(); throw new Error(`Anthropic HTTP ${r.status}: ${e.slice(0,200)}`); }
+  const data = await r.json();
+  if (data.error) throw new Error(`Anthropic: ${data.error.type} — ${data.error.message}`);
+  return data.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+}
+
+function parseClaudeJSON(raw) {
+  const cleaned = raw.replace(/```json\s*|```\s*/g, '').trim();
+  const repair = s => {
+    s = s.replace(/,\s*([\}\]])/g, '$1');
+    let br = 0, bk = 0, inS = false, esc = false;
+    for (const c of s) {
+      if (esc) { esc=false; continue; } if (c==='\\'&&inS) { esc=true; continue; }
+      if (c==='"'&&!esc) { inS=!inS; continue; } if (inS) continue;
+      if (c==='{') br++; else if (c==='}') br--; else if (c==='[') bk++; else if (c===']') bk--;
+    }
+    if (inS) s+='"'; while(bk-->0) s+=']'; while(br-->0) s+='}';
+    return s;
+  };
+  try { return JSON.parse(cleaned); } catch (_) {}
+  const match = cleaned.match(/\{[\s\S]*/);
+  if (!match) throw new Error('no JSON in Claude response');
+  return JSON.parse(repair(match[0]));
+}
+
+// ── SYSTEM PROMPT ─────────────────────────────────────────────────────────────
+const SYSTEM_PROMPT = `You are a senior Bitcoin strategist at Maison Toé's Digital Assets Division.
+Every morning you produce the definitive institutional daily intelligence brief for a firm with a 1-2 year BTC horizon.
+You reason with precision. You cite numbers. You are contrarian when data warrants it.
+
+SECTION 1 - PORTFOLIO MANDATE
+Allocation: 50% IBIT/FBTC ETFs | 20% COIN + BTC infrastructure equities | 20% cash/stables DCA reserve | 10% put options hedge
+Phase system:
+  Phase A ACCUMULATION: $60K-$68K - max conviction buy zone
+  Phase B BREAKOUT: $68K-$79K - add 25% on confirmed daily close + ETF >$500M/day
+  Phase C MOMENTUM: $79K-$98K - hold 55%, take 15% off at $95K
+  Phase D BULL RUN: $98K+ - scale out 10% every $15K above $100K
+Hard stop: daily close below $58,500
+
+SECTION 2 - BACKGROUND CONTEXT (as of April 2026)
+NOTE: Live data in user message ALWAYS overrides this.
+- BTC ATH: $126,073 (Oct 2025) | Bear phase: Oct 2025–Feb 2026 | Recovery: Mar–Apr 2026
+- ETF AUM: IBIT ~$115B+ | Combined ~$130B+ | Baseline inflow: ~$264M/day
+- Realized Price: ~$45K | STH cost basis: ~$75K | LTH cost basis: ~$30K
+- CLARITY Act: BTC classified as commodity under CFTC - Senate vote pending
+
+SECTION 3 - QUAD-NORMALIZED SIGNAL KNOWLEDGE BASE
+METHODOLOGY: Four normalization axes required.
+  AXIS 1 - % Liquid Supply  = BTC_flow / 4,200,000 x 100  [PRIMARY]
+  AXIS 2 - % Daily Volume   = BTC_flow / daily_vol_BTC x 100
+  AXIS 3 - % Market Cap     = (BTC x price) / mcap x 100
+  AXIS 4 - % Circ Supply    = BTC_flow / 20,000,000 x 100
+
+F. COMPOSITE SIGNAL SCORING (-10 to +10):
+  onChain (whale netflow + MVRV + LTH):  max ±3 points
+  etfInstitutional (ETF flows vs baseline): max ±2 points
+  derivatives (funding OR F&G — stronger only, NOT both): max ±1 point
+  cmeBasis (institutional demand — uncorrelated with perp): max ±1 point
+  macro (DXY / real yields / VIX): max ±1 point
+  sentiment (Fear&Greed if not already used): max ±1 point
+  stablecoin (USDT+USDC supply growth): max ±1 point
+
+  CRITICAL: Funding rate and Fear/Greed are CORRELATED. Score on SHARED "derivatives" axis (max ±1 total).
+  CME basis is INDEPENDENT — always score separately.
+  SCORE TRANSPARENCY: Populate scoreDecomposition in output JSON.
+
+SECTION 4 - OUTPUT RULES
+Return ONLY valid JSON. No markdown fences. No preamble.
+
+{
+  "date": "Day, Month DD YYYY",
+  "compositeScore": 0,
+  "scoreDecomposition": {
+    "onChain": { "score": 0, "signal": "" },
+    "etfInstitutional": { "score": 0, "signal": "" },
+    "derivatives": { "score": 0, "signal": "" },
+    "cmeBasis": { "score": 0, "signal": "" },
+    "macro": { "score": 0, "signal": "" },
+    "sentiment": { "score": 0, "signal": "" },
+    "stablecoin": { "score": 0, "signal": "" },
+    "scaleNote": "Range -10 to +10."
+  },
+  "overallBias": "STRONG BUY | BUY | NEUTRAL | CAUTION | SELL",
+  "biasReason": "<=20 words",
+  "headline": "<=15 words",
+  "marketStatus": "ACCUMULATION PHASE | BREAKOUT WATCH | MOMENTUM | BULL RUN | DISTRIBUTION | DANGER ZONE",
+  "correlationRegime": { "btcQqqCorrelation": "", "regime": "HIGH | MODERATE | LOW", "implication": "" },
+  "priceAnalysis": { "trend": "", "keyLevel": "", "realizedPriceContext": "", "signal": "BULLISH | BEARISH | NEUTRAL | MIXED" },
+  "whaleSignal": { "status": "ACCUMULATING | DISTRIBUTING | NEUTRAL | MIXED", "netflowBTC": "", "netflowUSD": "", "netflowPctLiquid": "", "netflowPctVolume": "", "netflowPctMcap": "", "historicalContext": "", "detail": "", "actionable": "" },
+  "fundingRates": { "rate8h": "", "annualized": "", "regime": "CAPITULATION | BEARISH | NEUTRAL | ELEVATED | EXTREME_LONG", "signal": "", "detail": "", "squeeze_risk": "LOW | MEDIUM | HIGH" },
+  "openInterest": { "trend": "RISING | FALLING | STABLE", "regime": "", "detail": "", "leverageRisk": "LOW | MEDIUM | HIGH" },
+  "mvrvSignal": { "estimatedZone": "", "implication": "", "cycleContext": "" },
+  "etfFlows": { "status": "INFLOW | OUTFLOW | NEUTRAL", "totalNetUSD": "", "totalNetBTC": "", "totalNetPctLiquid": "", "ibitFlow": "", "streakDays": "", "vsBaseline": "", "detail": "", "trend": "IMPROVING | DETERIORATING | STABLE" },
+  "stablecoinSignal": { "status": "INFLOW | OUTFLOW | NEUTRAL", "detail": "", "signal": "" },
+  "macroContext": { "riskLevel": "HIGH | MEDIUM | LOW", "dxy": "", "dxySignal": "", "realYield": "", "realYieldSignal": "", "gold": "", "fedWatch": "", "detail": "" },
+  "todayAction": { "recommendation": "ACCUMULATE | ADD | HOLD | REDUCE | HEDGE | WAIT", "size": "", "trigger": "", "stopAlert": "ACTIVE | MONITORING | CLEAR", "dynamicStop": "", "scoreJustification": "" },
+  "cmeBasis": { "basisPct": "", "regime": "STRONG CONTANGO | HEALTHY | FLAT | BACKWARDATION", "signal": "", "detail": "", "cmeOIvsPerp": "" },
+  "catalystWatch": [{"event": "", "timing": "", "impact": "BULLISH | BEARISH | BINARY", "note": ""}],
+  "analystNote": "4-5 sentences.",
+  "riskWarning": "the ONE risk that could invalidate today thesis",
+  "normalization": { "currentPrice": "", "marketCap": "", "dailyVolumeBTC": "", "volumeTrend": "", "lthSellingBTC": "N/A or live value", "lthSellingPctLiquid": null }
+}`;
+
+// ── Main run ──────────────────────────────────────────────────────────────────
+async function runBriefWorker() {
+  console.log(`\n${'─'.repeat(60)}`);
+  console.log(`[Brief] Run started — ${new Date().toISOString()}`);
+
+  const duneCache = loadDuneCache();
+  console.log(`[Brief] Dune cache loaded — cachedAt: ${duneCache.cachedAt || 'unknown'}`);
+
+  console.log('[Brief] Fetching market snapshot...');
+  const market = await fetchMarketSnapshot();
+
+  console.log('[Brief] Fetching technical data (SMAs + QQQ)...');
+  const tech = await fetchTechnicalData();
+
+  console.log('[Brief] Fetching options skew (Deribit)...');
+  const options = await fetchOptionsSkew(market?.price);
+
+  console.log('[Brief] Fetching macro (DXY/VIX/TNX)...');
+  const macros = await fetchMacros();
+
+  console.log('[Brief] Fetching CME basis...');
+  const cme = await fetchCME();
+
+  console.log('[Brief] Fetching CoinMetrics...');
+  const coinMetrics = await fetchCoinMetrics();
+
+  const allData = { ...duneCache, market, tech, options, macros, cme, coinMetrics, briefCachedAt: new Date().toISOString() };
+
+  mkdirSync(join(__dirname, 'public'), { recursive: true });
+  writeFileSync(ALL_DATA_FILE, JSON.stringify(allData, null, 2));
+  console.log('[Brief] all_data.json written (market data, no brief yet)');
+
+  if (!ANTHROPIC_KEY) {
+    console.warn('[Brief] Skipping Claude — no ANTHROPIC_API_KEY');
+  } else {
+    try {
+      console.log('[Brief] Building user message...');
+      const userMessage = buildUserMessage({ market, tech, coinMetrics, macros, cme, duneCache, options });
+      console.log('[Brief] Calling Claude...');
+      const t0 = Date.now();
+      const rawBrief = await callClaude(SYSTEM_PROMPT, userMessage);
+      console.log(`[Brief] Claude responded in ${((Date.now()-t0)/1000).toFixed(1)}s`);
+      const parsedBrief = parseClaudeJSON(rawBrief);
+      allData.brief = parsedBrief;
+      console.log(`[Brief] ✓ Brief — bias: ${parsedBrief.overallBias} | score: ${parsedBrief.compositeScore}`);
+    } catch (e) {
+      console.error('[Brief] Claude failed:', e.message);
+      allData.brief_error = e.message;
+    }
+  }
+
+  writeFileSync(ALL_DATA_FILE, JSON.stringify(allData, null, 2));
+  console.log(`[Brief] ✓ all_data.json complete — ${ALL_DATA_FILE}`);
+}
+
+runBriefWorker()
+  .then(() => { console.log('[Brief] Done.'); process.exit(0); })
+  .catch(e  => { console.error('[Brief] Fatal:', e.message); process.exit(1); });
