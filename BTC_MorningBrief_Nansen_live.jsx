@@ -8,8 +8,10 @@ import { useState, useEffect, useCallback, useRef } from "react";
 //
 // Vite exposes only vars prefixed with VITE_ to the browser bundle.
 
-const TIINGO_TOKEN   = import.meta.env.VITE_TIINGO_TOKEN;
 const ANTHROPIC_KEY  = import.meta.env.VITE_ANTHROPIC_API_KEY;
+
+// ─── ALL-DATA CACHE URL (GitHub Pages — updated every 6h by brief-worker.js) ──
+const ALL_DATA_URL = 'https://djahwell.github.io/btc-brief/all_data.json';
 
 // FREE APIs: CoinGecko, Binance, Deribit, Alternative.me, CoinMetrics, Dune Analytics, Yahoo Finance, Claude Sonnet
 
@@ -434,11 +436,29 @@ export default function MorningBrief() {
   const [stablecoinData, setStablecoinData] = useState(null);
   const [macroData, setMacroData] = useState(null);
   const intervalRef = useRef(null);
+  const allDataRef  = useRef(null); // caches all_data.json for the current generateBrief() run
   const isMounted = { current: true };
   useEffect(function() { isMounted.current = true; return function() { isMounted.current = false; }; }, []);
 
 
   const safeSet = function(setter) { return function(val) { if (isMounted.current) setter(val); }; };
+
+  // ── Load all_data.json from GitHub Pages ──────────────────────────────────────
+  // Contains pre-generated brief + all market data. Works in both APK and local dev.
+  const loadAllData = async function() {
+    try {
+      var r = await fetch(ALL_DATA_URL, { signal: AbortSignal.timeout(15000) });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      var d = await r.json();
+      if (d && (d.briefCachedAt || d.cachedAt)) {
+        allDataRef.current = d;
+        return d;
+      }
+    } catch (e) {
+      console.warn("[AllData] Load failed:", e.message);
+    }
+    return null;
+  };
 
   const addLog = (msg) => {
     const ts = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -1775,6 +1795,42 @@ FROM realized r, spot s`;
   };
 
   const callClaude = async (systemPrompt, userMessage, useSearch, maxTokens) => {
+    // Step 1: use cached brief from this run's allDataRef
+    var ad = allDataRef.current;
+    if (ad && ad.brief) {
+      var ageMs = Date.now() - new Date(ad.briefCachedAt || ad.cachedAt).getTime();
+      if (ageMs < 20 * 3_600_000) {
+        console.info("[Claude] ✓ Using pre-generated brief (age: " + Math.round(ageMs / 3_600_000) + "h)");
+        return JSON.stringify(ad.brief);
+      }
+    }
+
+    // Step 2: allDataRef was null or stale — fetch all_data.json directly one more time
+    // This handles CORS failures or timing issues during the initial loadAllData() call.
+    try {
+      console.info("[Claude] Retrying all_data.json fetch...");
+      var retry = await fetch(ALL_DATA_URL, { signal: AbortSignal.timeout(15000) });
+      if (retry.ok) {
+        var retryJson = await retry.json();
+        if (retryJson && retryJson.brief) {
+          allDataRef.current = retryJson;
+          console.info("[Claude] ✓ Retry succeeded — using pre-generated brief");
+          return JSON.stringify(retryJson.brief);
+        }
+        if (retryJson && retryJson.brief_error) {
+          throw new Error("Server-side brief failed: " + retryJson.brief_error + " — re-run GitHub Actions after adding VITE_ANTHROPIC_API_KEY to GitHub Secrets.");
+        }
+      }
+    } catch (retryErr) {
+      if (retryErr.message && retryErr.message.includes("GitHub Actions")) throw retryErr;
+      console.warn("[Claude] Retry failed:", retryErr.message);
+    }
+
+    // Step 3: local dev fallback — call Anthropic via Vite proxy
+    // (This will NOT work in the APK — we should never reach here in production)
+    if (!ANTHROPIC_KEY) {
+      throw new Error("Brief unavailable: no cached brief found and no API key configured.");
+    }
     const body = {
       model: "claude-sonnet-4-6",
       max_tokens: maxTokens || 1200,
@@ -1814,8 +1870,20 @@ FROM realized r, spot s`;
     setError(null);
     setBrief(null);
     setDebugLog([]);
+    allDataRef.current = null;
     setStage("fetching-market");
-    addLog("Starting — fetching market data...");
+    addLog("Loading cached data from GitHub Pages...");
+
+    // Load all_data.json first — gives callClaude() the pre-generated brief
+    try {
+      var cachedAll = await loadAllData();
+      if (cachedAll) {
+        var cacheAgeH = Math.round((Date.now() - new Date(cachedAll.briefCachedAt || cachedAll.cachedAt).getTime()) / 3_600_000);
+        addLog("Cache loaded ✓ — age: " + cacheAgeH + "h | brief: " + (cachedAll.brief ? "ready" : "missing"));
+      } else {
+        addLog("Cache unavailable — will retry when generating brief");
+      }
+    } catch (_ce) { addLog("Cache load error (non-fatal)"); }
 
     var market = {};
     try {
