@@ -350,6 +350,13 @@ function parseFarsideHTML(html) {
     if (!totalRaw || totalRaw === '-') continue;
     const parsed = parseFloat(totalRaw.replace(/,/g, '').replace(/\(([^)]+)\)/, '-$1'));
     if (!isNaN(parsed)) {
+      // Skip $0 rows — Farside posts 0 as a placeholder while the trading day
+      // is still in progress (or on weekends/holidays when markets are closed).
+      // Genuine net-zero ETF flow days are essentially impossible with 11+ active ETFs.
+      if (parsed === 0) {
+        console.log(`[Farside] Skipping zero-flow row: "${dateText}" — likely placeholder or non-trading day`);
+        continue;
+      }
       console.log(`[Farside] Row found: date="${dateText}" total=${parsed}M`);
       return { total_million_usd: parsed, date: dateText };
     }
@@ -427,7 +434,7 @@ async function fetchFarsidePlaywright() {
         );
         if (totalIdx < 0) continue;
 
-        // Walk data rows bottom-to-top for most recent valid entry
+        // Walk data rows bottom-to-top for most recent valid weekday entry
         const rows = Array.from(table.querySelectorAll('tr'));
         const SKIP = ['total', 'average', 'maximum', 'minimum', 'fee', 'ytd'];
         for (let i = rows.length - 1; i >= 1; i--) {
@@ -438,12 +445,15 @@ async function fetchFarsidePlaywright() {
           // Skip summary rows (Total, Average, Maximum, Minimum) — they have no digit in the date cell
           if (SKIP.includes(dateText.toLowerCase())) continue;
           if (!/\d/.test(dateText)) continue;  // real dates always contain a digit
-          const totalText = cells[totalIdx]?.textContent.trim();
+              const totalText = cells[totalIdx]?.textContent.trim();
           if (!totalText || totalText === '-' || totalText === '') continue;
           // Convert (123.4) → -123.4, strip commas/spaces
           const cleaned = totalText.replace(/,/g, '').replace(/\s/g, '').replace(/\(([^)]+)\)/, '-$1');
           const parsed = parseFloat(cleaned);
           if (!isNaN(parsed)) {
+            // Skip $0 rows — Farside posts 0 as a placeholder while the trading
+            // day is still open, or on weekends/holidays. Skip and walk back further.
+            if (parsed === 0) continue;
             return { total_million_usd: parsed, date: dateText };
           }
         }
