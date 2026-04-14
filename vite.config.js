@@ -14,12 +14,6 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
-    // Capacitor requires absolute asset paths (base: './') so the WebView can load them
-    base: './',
-    build: {
-      // Output to dist/ — Capacitor copies this into the Android assets
-      outDir: 'dist',
-    },
     server: {
       port: 5173,
       proxy: {
