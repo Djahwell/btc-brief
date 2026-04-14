@@ -1528,7 +1528,7 @@ FROM realized r, spot s`;
     // Max cache age: 20h (same as exchange flow).
     try {
       var etfCache = await safeFetch('/dune_cache.json', { timeout: 4000 });
-      if (etfCache && etfCache.etfFlow && etfCache.etfFlow.total_million_usd != null) {
+      if (etfCache && etfCache.etfFlow && etfCache.etfFlow.total_million_usd != null && etfCache.etfFlow.total_million_usd !== 0) {
         var ageMs = Date.now() - new Date(etfCache.cachedAt).getTime();
         if (ageMs < 20 * 3_600_000) {
           var ef = etfCache.etfFlow;

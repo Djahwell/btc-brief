@@ -1,40 +1,23 @@
 {
-  "etfFlow": {
-    "total_million_usd": 0,
-    "date": "13 Apr 2026"
-  },
   "lthData": {
-    "lth_supply_btc": 15059535,
-    "lth_net_btc": 7329,
-    "date": "2026-04-12",
-    "prev_date": "2026-04-11",
+    "lth_supply_btc": 15057620,
+    "lth_net_btc": -1916,
+    "date": "2026-04-13",
+    "prev_date": "2026-04-12",
     "source_url": "https://www.bitcoinmagazinepro.com/charts/long-term-holder-supply/"
   },
   "stablecoinSupply": {
-    "usdt_supply_usd": 184436319167.1982,
-    "usdc_supply_usd": 78755290559.91306,
-    "total_usd": 263191609727.11127,
+    "usdt_supply_usd": 184674430497.4122,
+    "usdc_supply_usd": 78651911565.32898,
+    "total_usd": 263326342062.74118,
     "delta_7d_usd": null,
     "delta_7d_pct": null,
     "regime": "STABLE",
-    "date": "2026-04-13",
+    "date": "2026-04-14",
     "prev_date": null
   },
-  "mvrv": {
-    "mvrv": 1.3113127567290983,
-    "realizedPrice": 54206.48292046245,
-    "marketCap": 1422721884067.7961,
-    "realizedCap": 1084959996588.9095,
-    "date": "2026-04-13"
-  },
-  "exchangeFlow": {
-    "inflow_btc": 11843.686771690001,
-    "outflow_btc": 11710.40042479,
-    "netflow_btc": 133.28634690000217,
-    "exchange_addr_count": 20,
-    "day": "2026-04-12"
-  },
+  "mvrv_error": "HTTP 402 POST /api/v1/query/6985599/execute",
   "mvrv_query_id": "6985599",
   "exflow_query_id": "6985606",
-  "cachedAt": "2026-04-13T16:36:30.681Z"
+  "cachedAt": "2026-04-14T16:30:43.490Z"
 }
