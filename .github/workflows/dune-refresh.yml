@@ -1,4 +1,4 @@
-name: Refresh Dune Cache
+name: Refresh All Data + Generate Brief
 
 # ─── Triggers ──────────────────────────────────────────────────────────────────
 on:
@@ -15,7 +15,7 @@ permissions:
 jobs:
   refresh-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 30       # Dune MVRV query can take ~10 min; Playwright adds more
+    timeout-minutes: 45       # Dune MVRV ~10min + Playwright ~2min + Claude ~3min
 
     steps:
       # 1. Get the code
@@ -33,27 +33,33 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
-      # 4. Install Chromium for Playwright
-      #    --with-deps installs the OS-level libraries Chromium needs on Ubuntu
+      # 4. Install Chromium for Playwright (Farside + BMP LTH scraping)
       - name: Install Playwright Chromium
         run: npx playwright install chromium --with-deps
 
-      # 5. Write .env so dune-worker.js can find the key
+      # 5. Write .env so workers can find all secrets
       - name: Create .env from secrets
         run: |
           echo "VITE_DUNE_API_KEY=${{ secrets.VITE_DUNE_API_KEY }}" > .env
+          echo "VITE_ANTHROPIC_API_KEY=${{ secrets.VITE_ANTHROPIC_API_KEY }}" >> .env
 
-      # 6. Run the worker — writes public/dune_cache.json
+      # 6. Run Dune worker — writes public/dune_cache.json
+      #    (MVRV, exchange flows, ETF flows via Farside/Playwright, LTH via BMP/Playwright, stablecoins)
       - name: Run Dune worker
         run: node dune-worker.js
 
-      # 7. Deploy the public/ folder to GitHub Pages
-      #    After first run, the cache will be live at:
-      #    https://djahwell.github.io/btc-brief/dune_cache.json
+      # 7. Run Brief worker — reads dune_cache.json, fetches market data, calls Claude
+      #    Writes public/all_data.json (complete data + pre-generated brief)
+      - name: Run Brief worker (market data + Claude brief)
+        run: node brief-worker.js
+
+      # 8. Deploy the public/ folder to GitHub Pages
+      #    Both dune_cache.json and all_data.json will be live at:
+      #    https://djahwell.github.io/btc-brief/all_data.json
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: gh-pages          # Pages will serve from this branch
           folder: public            # contents of public/ become the site root
-          commit-message: 'chore: refresh dune cache [skip ci]'
+          commit-message: 'chore: refresh all data + brief [skip ci]'
           single-commit: true       # keeps gh-pages lean (no history buildup)

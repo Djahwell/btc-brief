@@ -1,15 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
 // ─── API TOKENS ───────────────────────────────────────────────────────────────
-// All keys loaded from .env — create a .env file in your project root with:
-//
-//   VITE_TIINGO_TOKEN=your_tiingo_token
-//   VITE_ANTHROPIC_API_KEY=sk-ant-...
-//
-// Vite exposes only vars prefixed with VITE_ to the browser bundle.
-
-const TIINGO_TOKEN   = import.meta.env.VITE_TIINGO_TOKEN;
+// Keys are only needed for local dev (via Vite proxy). In production (APK) the
+// brief is pre-generated server-side and loaded from all_data.json on GitHub Pages.
 const ANTHROPIC_KEY  = import.meta.env.VITE_ANTHROPIC_API_KEY;
+
+// ─── ALL-DATA CACHE URL ───────────────────────────────────────────────────────
+// Server-generated JSON containing all market data + pre-built Claude brief.
+// Updated every 6 hours by GitHub Actions (brief-worker.js).
+const ALL_DATA_URL = 'https://djahwell.github.io/btc-brief/all_data.json';
 
 // FREE APIs: CoinGecko, Binance, Deribit, Alternative.me, CoinMetrics, Dune Analytics, Yahoo Finance, Claude Sonnet
 
@@ -433,12 +432,28 @@ export default function MorningBrief() {
   const [lthData, setLthData] = useState(null);
   const [stablecoinData, setStablecoinData] = useState(null);
   const [macroData, setMacroData] = useState(null);
-  const intervalRef = useRef(null);
+  const intervalRef   = useRef(null);
+  const allDataRef    = useRef(null); // caches all_data.json for the current generateBrief() run
   const isMounted = { current: true };
   useEffect(function() { isMounted.current = true; return function() { isMounted.current = false; }; }, []);
 
 
   const safeSet = function(setter) { return function(val) { if (isMounted.current) setter(val); }; };
+
+  // ── Load all_data.json from GitHub Pages (pre-generated brief + market data) ─
+  // In APK: this is the primary data source — no Vite proxy needed.
+  // In local dev: this supplements/overrides the proxy calls when fresh.
+  const loadAllData = async function() {
+    try {
+      const r = await fetch(ALL_DATA_URL, { signal: AbortSignal.timeout(12000) });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const d = await r.json();
+      if (d && d.briefCachedAt) { allDataRef.current = d; return d; }
+    } catch (e) {
+      console.warn("[AllData] GitHub Pages load failed:", e.message);
+    }
+    return null;
+  };
 
   const addLog = (msg) => {
     const ts = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -927,6 +942,15 @@ export default function MorningBrief() {
   // ─── COINMETRICS COMMUNITY ON-CHAIN DATA (free, no API key) ──────────────────
   // Docs: https://docs.coinmetrics.io/api/v4
   const fetchCoinMetricsData = async () => {
+    // APK / production path: read from all_data.json (pre-fetched server-side)
+    const ad = allDataRef.current;
+    if (ad && ad.coinMetrics) {
+      const ageMs = Date.now() - new Date(ad.briefCachedAt).getTime();
+      if (ageMs < 20 * 3_600_000) {
+        console.info("[CoinMetrics] ✓ From all_data.json cache");
+        return ad.coinMetrics;
+      }
+    }
     // Community-tier free metrics only (Pro metrics like MVRV, SOPR, exchange flows return 403)
     const metrics = [
       "AdrActCnt",   // Active addresses — network health
@@ -936,7 +960,7 @@ export default function MorningBrief() {
       "PriceUSD",    // Reference price for cross-check
     ].join(",");
 
-    const url = "/api/coinmetrics/v4/timeseries/asset-metrics"
+    const url = "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics"
       + "?assets=btc&metrics=" + metrics
       + "&frequency=1d&limit_per_asset=2&sort=time";
 
@@ -1100,7 +1124,7 @@ FROM realized r, spot s`;
       // or older than 20 hours (e.g. worker wasn't started yet today).
       const CACHE_STALE_HOURS = 20;
       try {
-        var cacheRes = await safeFetch('/dune_cache.json', { timeout: 5000 });
+        var cacheRes = allDataRef.current || await safeFetch(ALL_DATA_URL, { timeout: 5000 }).catch(function() { return safeFetch('/dune_cache.json', { timeout: 5000 }); });
         if (cacheRes && cacheRes.mvrv && cacheRes.cachedAt) {
           var ageMs = Date.now() - new Date(cacheRes.cachedAt).getTime();
           if (ageMs < CACHE_STALE_HOURS * 3_600_000) {
@@ -1274,7 +1298,7 @@ FROM realized r, spot s`;
     // ── 0. Dune worker cache — exchange flows (if worker computed them) ────────
     // dune-worker.js may write exchangeFlow data alongside MVRV. Check first.
     try {
-      var cacheCheck = await safeFetch('/dune_cache.json', { timeout: 4000 });
+      var cacheCheck = allDataRef.current || await safeFetch(ALL_DATA_URL, { timeout: 4000 }).catch(function() { return safeFetch('/dune_cache.json', { timeout: 4000 }); });
       if (cacheCheck && cacheCheck.exchangeFlow && cacheCheck.exchangeFlow.inflow_btc != null) {
         const ef = cacheCheck.exchangeFlow;
         const ageMs = Date.now() - new Date(cacheCheck.cachedAt).getTime();
@@ -1397,11 +1421,19 @@ FROM realized r, spot s`;
     return out;
   };
 
-  // ── CME FUTURES BASIS (Yahoo Finance BTC=F vs BTC-USD spot) ─────────────────
-  // Free public API, no auth required.
-  // Proxy at /api/yahoo → https://query1.finance.yahoo.com
-  // BTC=F is the CME front-month Bitcoin futures contract ticker on Yahoo Finance.
+  // ── CME FUTURES BASIS (all_data.json cache / Yahoo Finance BTC=F fallback) ───
+  // In APK mode: reads from all_data.json (pre-fetched by brief-worker.js).
+  // In local dev: falls through to Yahoo Finance via Vite proxy (/api/yahoo).
   const fetchCMEData = async () => {
+    // APK / production path: read from all_data.json cache
+    const ad = allDataRef.current;
+    if (ad && ad.cme && ad.cme.cmeBasisPct != null) {
+      const ageMs = Date.now() - new Date(ad.briefCachedAt).getTime();
+      if (ageMs < 20 * 3_600_000) {
+        console.info("[CME] ✓ From all_data.json cache — basis:", ad.cme.cmeBasisPct + "%");
+        return ad.cme;
+      }
+    }
     const out = {
       cmeBasisPct: null,
       cmeOIusd: null,
@@ -1507,9 +1539,9 @@ FROM realized r, spot s`;
     // Cached in public/dune_cache.json as { etfFlow: { total_million_usd, date, source } }.
     // Max cache age: 20h (same as exchange flow).
     try {
-      var etfCache = await safeFetch('/dune_cache.json', { timeout: 4000 });
+      var etfCache = allDataRef.current || await safeFetch(ALL_DATA_URL, { timeout: 4000 }).catch(function() { return safeFetch('/dune_cache.json', { timeout: 4000 }); });
       if (etfCache && etfCache.etfFlow && etfCache.etfFlow.total_million_usd != null) {
-        var ageMs = Date.now() - new Date(etfCache.cachedAt).getTime();
+        var ageMs = Date.now() - new Date(etfCache.cachedAt || etfCache.briefCachedAt).getTime();
         if (ageMs < 20 * 3_600_000) {
           var ef = etfCache.etfFlow;
           var totalUSD = ef.total_million_usd * 1e6;
@@ -1684,7 +1716,7 @@ FROM realized r, spot s`;
   // Cache key: lthData = { lth_net_btc, date, source_url }
   const fetchLTHData = async () => {
     try {
-      var cacheRes = await safeFetch('/dune_cache.json', { timeout: 5000 });
+      var cacheRes = allDataRef.current || await safeFetch(ALL_DATA_URL, { timeout: 5000 }).catch(function() { return safeFetch('/dune_cache.json', { timeout: 5000 }); });
       if (cacheRes && cacheRes.lthData && cacheRes.cachedAt) {
         var ageMs = Date.now() - new Date(cacheRes.cachedAt).getTime();
         if (ageMs < 20 * 3_600_000 && cacheRes.lthData.lth_net_btc != null) {
@@ -1703,7 +1735,7 @@ FROM realized r, spot s`;
   // Cache key: stablecoinSupply = { total_usd, delta_7d_usd, delta_7d_pct, regime, date }
   const fetchStablecoinData = async () => {
     try {
-      var cacheRes = await safeFetch('/dune_cache.json', { timeout: 5000 });
+      var cacheRes = allDataRef.current || await safeFetch(ALL_DATA_URL, { timeout: 5000 }).catch(function() { return safeFetch('/dune_cache.json', { timeout: 5000 }); });
       if (cacheRes && cacheRes.stablecoinSupply && cacheRes.cachedAt) {
         var ageMs = Date.now() - new Date(cacheRes.cachedAt).getTime();
         if (ageMs < 20 * 3_600_000 && cacheRes.stablecoinSupply.total_usd != null) {
@@ -1717,13 +1749,22 @@ FROM realized r, spot s`;
     return null;
   };
 
-  // ── LIVE MACRO DATA (Yahoo Finance via existing proxy) ───────────────────────
+  // ── LIVE MACRO DATA (Yahoo Finance / all_data.json cache) ───────────────────
   // DXY  = US Dollar Index  (^DX-Y.NYB)
   // VIX  = CBOE Volatility Index (^VIX)
   // TNX  = 10-Year Treasury Yield (^TNX, value × 0.1 = % yield)
-  // Previously all three were estimated from Claude's training knowledge;
-  // now fetched live for accurate daily macro context.
+  // In APK mode: reads from all_data.json (pre-fetched by brief-worker.js)
+  // In local dev: falls through to Yahoo Finance via Vite proxy (/api/yahoo)
   const fetchMacroData = async () => {
+    // APK / production path: read from all_data.json cache
+    const ad = allDataRef.current;
+    if (ad && ad.macros) {
+      const ageMs = Date.now() - new Date(ad.briefCachedAt).getTime();
+      if (ageMs < 20 * 3_600_000 && (ad.macros.dxy != null || ad.macros.vix != null)) {
+        console.info("[Macro] ✓ From all_data.json cache — DXY:", ad.macros.dxy, "VIX:", ad.macros.vix);
+        return ad.macros;
+      }
+    }
     const out = {
       dxy: null, dxyChange: null,
       vix: null, vixChange: null,
@@ -1775,6 +1816,18 @@ FROM realized r, spot s`;
   };
 
   const callClaude = async (systemPrompt, userMessage, useSearch, maxTokens) => {
+    // APK / production path: return the pre-generated brief from all_data.json
+    // This avoids calling the Anthropic API from the WebView (no CORS, no key exposure).
+    var ad = allDataRef.current;
+    if (ad && ad.brief) {
+      var ageMs = Date.now() - new Date(ad.briefCachedAt || ad.cachedAt).getTime();
+      if (ageMs < 20 * 3_600_000) {
+        console.info("[Claude] ✓ Using pre-generated brief from all_data.json (age: " + Math.round(ageMs / 3_600_000) + "h)");
+        return JSON.stringify(ad.brief);
+      }
+      console.info("[Claude] all_data.json brief is stale (" + Math.round(ageMs / 3_600_000) + "h) — falling through to API call");
+    }
+    // Local dev / fallback: call Anthropic API via Vite proxy
     const body = {
       model: "claude-sonnet-4-6",
       max_tokens: maxTokens || 1200,
@@ -1814,8 +1867,22 @@ FROM realized r, spot s`;
     setError(null);
     setBrief(null);
     setDebugLog([]);
+    allDataRef.current = null; // reset cache for this run
     setStage("fetching-market");
-    addLog("Starting — fetching market data...");
+    addLog("Starting — loading cached data from GitHub Pages...");
+
+    // Load all_data.json first so sub-fetchers can use the cache
+    try {
+      var cachedAll = await loadAllData();
+      if (cachedAll) {
+        var cacheAgeH = Math.round((Date.now() - new Date(cachedAll.briefCachedAt || cachedAll.cachedAt).getTime()) / 3_600_000);
+        addLog("Cache loaded ✓ — age: " + cacheAgeH + "h | brief: " + (cachedAll.brief ? "available" : "missing"));
+      } else {
+        addLog("Cache unavailable — using live APIs");
+      }
+    } catch (cacheLoadErr) {
+      addLog("Cache load error: " + cacheLoadErr.message);
+    }
 
     var market = {};
     try {

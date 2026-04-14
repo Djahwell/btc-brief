@@ -10,13 +10,21 @@
     "dune": "node dune-worker.js",
     "dune:watch": "node dune-worker.js --watch",
     "dune:schema": "node dune-worker.js --schema",
-    "dune:schema-exflow": "node dune-worker.js --schema-exflow"
+    "dune:schema-exflow": "node dune-worker.js --schema-exflow",
+    "brief": "node brief-worker.js",
+    "cap:init": "npx cap init 'BTC Brief' com.maisontoe.btcbrief --web-dir dist",
+    "cap:add-android": "npx cap add android",
+    "cap:sync": "vite build && npx cap sync android",
+    "cap:open": "npx cap open android"
   },
   "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/core": "^6.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "^6.0.0",
     "@vitejs/plugin-react": "^4.3.4",
     "vite": "^5.4.11",
     "playwright": "^1.44.0"
