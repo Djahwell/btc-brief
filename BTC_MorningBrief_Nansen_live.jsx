@@ -1812,19 +1812,27 @@ FROM realized r, spot s`;
   };
 
   const callClaude = async (systemPrompt, userMessage, useSearch, maxTokens) => {
-    // Step 1: use cached brief from this run's allDataRef — but only if market data is present.
-    // If brief-worker ran without price (GitHub Actions IP blocked by Binance/CoinGecko),
-    // the cached brief says "price unavailable" throughout. Reject it and regenerate with
-    // live client-side data instead.
+    // Step 1: use cached brief only if it was generated with LIVE data quality.
+    // Reject the cache and regenerate if key fields are null — the Mac browser
+    // can fetch these live via Vite proxy even when GitHub Actions IPs are blocked.
     var ad = allDataRef.current;
     if (ad && ad.brief) {
       var ageMs = Date.now() - new Date(ad.briefCachedAt || ad.cachedAt).getTime();
-      var hasPrice = ad.market && ad.market.price != null;
-      if (ageMs < 20 * 3_600_000 && hasPrice) {
-        console.info("[Claude] ✓ Using pre-generated brief (age: " + Math.round(ageMs / 3_600_000) + "h)");
+      var hasPrice   = ad.market && ad.market.price != null;
+      var hasMacros  = ad.macros && ad.macros.dxy != null;       // DXY from Yahoo/Stooq
+      var hasTech    = ad.tech   && ad.tech.sma200 != null;      // SMAs from Binance/Kraken
+      var hasCME     = ad.cme    && ad.cme.cmeBasisPct != null;  // CME basis from Yahoo/OKX
+      var dataQuality = hasMacros && hasTech;  // minimum: live macros + live SMAs
+      if (ageMs < 20 * 3_600_000 && hasPrice && dataQuality) {
+        console.info("[Claude] ✓ Using pre-generated brief (age: " + Math.round(ageMs / 3_600_000) + "h, macros:" + hasMacros + " tech:" + hasTech + " cme:" + hasCME + ")");
         return JSON.stringify(ad.brief);
-      } else if (!hasPrice) {
-        console.warn("[Claude] Cached brief has no price data — regenerating with live client-side data");
+      } else {
+        var reasons = [];
+        if (!hasPrice)    reasons.push("no price");
+        if (!hasMacros)   reasons.push("no macros (DXY null)");
+        if (!hasTech)     reasons.push("no tech (SMA null)");
+        if (ageMs >= 20 * 3_600_000) reasons.push("stale (" + Math.round(ageMs / 3_600_000) + "h)");
+        console.warn("[Claude] Cached brief rejected — " + reasons.join(", ") + " — regenerating with live data");
       }
     }
 
@@ -1838,11 +1846,15 @@ FROM realized r, spot s`;
         if (!retry.ok) continue;
         var retryJson = await retry.json();
         if (retryJson && retryJson.brief) {
-          var _rHasPrice = retryJson.market && retryJson.market.price != null;
-          if (_rHasPrice) {
+          var _rHasPrice  = retryJson.market && retryJson.market.price != null;
+          var _rHasMacros = retryJson.macros && retryJson.macros.dxy != null;
+          var _rHasTech   = retryJson.tech   && retryJson.tech.sma200 != null;
+          if (_rHasPrice && _rHasMacros && _rHasTech) {
             allDataRef.current = retryJson;
-            console.info("[Claude] ✓ Retry from", _rUrl, "— using pre-generated brief");
+            console.info("[Claude] ✓ Retry from", _rUrl, "— using pre-generated brief (full data quality)");
             return JSON.stringify(retryJson.brief);
+          } else if (_rHasPrice) {
+            console.warn("[Claude] Retry from", _rUrl, "— brief has nulls (macros:" + _rHasMacros + " tech:" + _rHasTech + ") — will regenerate live");
           }
         }
         if (retryJson && retryJson.brief_error) {
