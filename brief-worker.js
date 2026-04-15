@@ -60,10 +60,18 @@ function loadDuneCache() {
 
 // ── Yahoo Finance helper ───────────────────────────────────────────────────────
 async function yfetch(ticker, range = '5d') {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=${range}`;
-  const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(12000) });
-  if (!res.ok) throw new Error(`Yahoo ${ticker}: HTTP ${res.status}`);
-  return res.json();
+  // query1 is sometimes blocked on GitHub Actions IPs — try query2 as fallback.
+  const hosts = ['query1.finance.yahoo.com', 'query2.finance.yahoo.com'];
+  let lastErr;
+  for (const host of hosts) {
+    try {
+      const url = `https://${host}/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=${range}`;
+      const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(12000) });
+      if (!res.ok) throw new Error(`Yahoo ${ticker} (${host}): HTTP ${res.status}`);
+      return res.json();
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr;
 }
 
 function yfExtract(json) {
@@ -119,6 +127,12 @@ async function fetchMarketSnapshot() {
   for (const src of priceSources) {
     try {
       const result = await src();
+      // Validate price is a real positive number — Binance can return HTTP 200
+      // with null/undefined lastPrice on rate-limit or geo-block, giving NaN.
+      if (!result.price || isNaN(result.price) || result.price <= 0) {
+        console.warn(`[Market] ${result.priceSource} returned invalid price (${result.price}) — trying next source`);
+        continue;
+      }
       Object.assign(out, result);
       console.log(`[Market] BTC: $${out.price.toLocaleString()} via ${out.priceSource} (${out.change24h != null ? (out.change24h > 0 ? '+' : '') + out.change24h.toFixed(2) + '% 24h' : 'change n/a'})`);
       break;
