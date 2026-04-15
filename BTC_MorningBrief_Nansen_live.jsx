@@ -13,7 +13,7 @@ const ANTHROPIC_KEY  = import.meta.env.VITE_ANTHROPIC_API_KEY;
 // ─── ALL-DATA CACHE URL (GitHub Pages — updated every 6h by brief-worker.js) ──
 const ALL_DATA_URL = 'https://djahwell.github.io/btc-brief/all_data.json';
 
-// FREE APIs: CoinGecko, Binance, Deribit, Alternative.me, CoinMetrics, Dune Analytics, Yahoo Finance, Claude Sonnet
+// Data: Binance · Deribit · Alternative.me · CoinGecko · CoinMetrics · Dune Analytics · Farside Investors · Yahoo Finance · Claude Sonnet
 
 const SYSTEM_PROMPT = `You are a senior Bitcoin strategist at Maison Toé's Digital Assets Division.
 Every morning you produce the definitive institutional daily intelligence brief for a firm with a 1-2 year BTC horizon.
@@ -408,7 +408,7 @@ const GLOBAL_CSS = "* { box-sizing: border-box; margin: 0; padding: 0; } " +
   ".fade-up { animation: fadeUp 0.35s ease forwards; }";
 
 const STAGES = {
-  "fetching-market": ["FETCHING LIVE MARKET DATA", "CoinGecko · Binance · Deribit · Alternative.me · CoinMetrics · Dune MVRV · Yahoo Finance (DXY · VIX · TNX · QQQ · CME 2nd month)"],
+  "fetching-market": ["FETCHING LIVE MARKET DATA", "Binance · Deribit · Alternative.me · CoinGecko · CoinMetrics · Dune · Farside Investors · Yahoo Finance (DXY · VIX · TNX · CME Basis)"],
   "generating":      ["SYNTHESISING BRIEF", "Quad-normalization · 6-axis convergence · CME basis (2 contracts) · BTC-QQQ correlation · live macro · Claude Sonnet"],
 };
 
@@ -1429,6 +1429,13 @@ FROM realized r, spot s`;
       oiByExchange: null,
       cmeBasisSource: null,
     };
+    // CME is closed Saturday and Sunday — BTC=F returns a stale Friday close while
+    // BTC-USD is live, producing a meaningless basis. Skip on weekends.
+    const dow = new Date().getDay(); // 0=Sun, 6=Sat
+    if (dow === 0 || dow === 6) {
+      console.info('[CME] Weekend — CME closed, skipping basis calculation');
+      return out;
+    }
     try {
       // Fetch CME front-month futures and BTC spot in parallel
       var [futRes, spotRes] = await Promise.all([
@@ -3578,7 +3585,7 @@ FROM realized r, spot s`;
                 MAISON TOÉ DIGITAL ASSETS — FOR PROFESSIONAL INVESTORS — NOT FINANCIAL ADVICE
               </span>
               <span style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace" }}>
-                Live: CoinGecko · Binance · Deribit · Alternative.me · CoinMetrics · Dune · Yahoo Finance (BTC=F, IBIT) · Claude Sonnet Synthesis
+                Live: Binance · Deribit · Alternative.me · CoinGecko · CoinMetrics · Dune · Farside Investors · Yahoo Finance (BTC=F, DXY, VIX, TNX) · Claude Sonnet
               </span>
             </div>
 

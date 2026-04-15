@@ -243,6 +243,13 @@ async function fetchMacros() {
 
 // ── Fetch CME futures basis ───────────────────────────────────────────────────
 async function fetchCME() {
+  // CME is closed Saturday and Sunday — BTC=F returns a stale Friday close while
+  // BTC-USD is live, producing a meaningless basis. Skip on weekends.
+  const dow = new Date().getDay(); // 0=Sun, 6=Sat
+  if (dow === 0 || dow === 6) {
+    console.log('[CME] Weekend — CME closed, skipping basis calculation');
+    return null;
+  }
   try {
     await sleep(300);
     const [futJson, spotJson] = await Promise.all([yfetch('BTC%3DF', '5d'), yfetch('BTC-USD', '1d')]);
