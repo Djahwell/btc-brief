@@ -74,6 +74,39 @@ async function yfetch(ticker, range = '5d') {
   throw lastErr;
 }
 
+// ── Stooq.com helper — free CSV price feed, works from GitHub Actions IPs ─────
+// Returns { price, prevClose, change } for a given Stooq symbol.
+// Single-row endpoint: https://stooq.com/q/l/?s=SYMBOL&f=sd2t2ohlcv&e=csv
+// CSV: Symbol,Date,Time,Open,High,Low,Close,Volume
+async function stooqFetch(symbol) {
+  const url = `https://stooq.com/q/l/?s=${encodeURIComponent(symbol)}&f=sd2t2ohlcv&e=csv`;
+  const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(10000) });
+  if (!res.ok) throw new Error(`Stooq ${symbol}: HTTP ${res.status}`);
+  const text = await res.text();
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) throw new Error(`Stooq ${symbol}: no data rows`);
+  const parts = lines[1].split(',');
+  // cols: Symbol, Date, Time, Open, High, Low, Close, Volume
+  const close = parseFloat(parts[6]);
+  const open  = parseFloat(parts[3]);
+  if (!close || isNaN(close) || close <= 0) throw new Error(`Stooq ${symbol}: invalid price ${close}`);
+  const change = (open > 0) ? parseFloat(((close - open) / open * 100).toFixed(2)) : null;
+  return { price: close, change };
+}
+
+// ── Stooq historical CSV (for QQQ correlation) ─────────────────────────────────
+// Returns array of daily closes (ascending), up to 90 days.
+async function stooqHistory(symbol, days = 90) {
+  const to   = new Date(); const from = new Date(Date.now() - days * 86400000);
+  const fmt  = d => `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  const url  = `https://stooq.com/q/d/l/?s=${encodeURIComponent(symbol)}&d1=${fmt(from)}&d2=${fmt(to)}&i=d`;
+  const res  = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(12000) });
+  if (!res.ok) throw new Error(`Stooq history ${symbol}: HTTP ${res.status}`);
+  const text = await res.text();
+  const lines = text.trim().split('\n').slice(1); // skip header
+  return lines.map(l => parseFloat(l.split(',')[4])).filter(v => v > 0); // close = col 4
+}
+
 function yfExtract(json) {
   const meta   = json?.chart?.result?.[0]?.meta;
   const qdata  = json?.chart?.result?.[0]?.indicators?.quote?.[0];
@@ -103,9 +136,14 @@ async function fetchMarketSnapshot() {
       const r = await fetch('https://api.kraken.com/0/public/Ticker?pair=XBTUSD', { signal: AbortSignal.timeout(8000) });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const d = await r.json();
-      const price = parseFloat(d.result?.XXBTZUSD?.c?.[0]);
+      const t = d.result?.XXBTZUSD;
+      const price = parseFloat(t?.c?.[0]);
       if (!price) throw new Error('no price');
-      return { price, change24h: null, volume24hUSD: null, marketCap: price * 20000000, priceSource: 'Kraken' };
+      const open24h   = parseFloat(t?.o);  // 24h open price
+      const vol24hBTC = parseFloat(t?.v?.[1]); // v[1] = 24h volume in BTC
+      const change24h = (open24h > 0) ? parseFloat(((price - open24h) / open24h * 100).toFixed(2)) : null;
+      const volume24hUSD = (vol24hBTC > 0) ? vol24hBTC * price : null;
+      return { price, change24h, volume24hUSD, marketCap: price * 20000000, priceSource: 'Kraken' };
     },
     async () => {
       const r = await fetch('https://api.coincap.io/v2/assets/bitcoin', { signal: AbortSignal.timeout(8000) });
@@ -191,10 +229,23 @@ async function fetchMarketSnapshot() {
       const d2 = await r2.json();
       const oi = d2?.result?.list?.[0]?.openInterest;
       if (oi) { out.openInterest = parseFloat(oi); out.openInterestUSD = out.openInterest * (out.price || 80000); console.log(`[Market] OI (Bybit): ${out.openInterest.toFixed(0)} BTC`); }
-    } catch (e2) { console.warn('[Market] All OI sources failed'); }
+    } catch (e2) {
+      // OKX fallback for OI
+      try {
+        const r3 = await fetch('https://www.okx.com/api/v5/public/open-interest?instType=SWAP&instId=BTC-USDT-SWAP',
+          { signal: AbortSignal.timeout(8000) });
+        const d3 = await r3.json();
+        const oi = d3?.data?.[0]?.oi;
+        if (oi) {
+          out.openInterest    = parseFloat(oi);
+          out.openInterestUSD = out.openInterest * (out.price || 80000);
+          console.log(`[Market] OI (OKX): ${out.openInterest.toFixed(0)} BTC`);
+        }
+      } catch (e3) { console.warn('[Market] All OI sources failed'); }
+    }
   }
 
-  // Gold (Binance PAXG)
+  // Gold — Binance PAXG → Kraken XAU/USD fallback
   try {
     const r = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=PAXGUSDT',
       { signal: AbortSignal.timeout(8000) });
@@ -202,7 +253,24 @@ async function fetchMarketSnapshot() {
     out.goldPrice     = parseFloat(d.lastPrice);
     out.goldChange24h = parseFloat(d.priceChangePercent);
     if (out.price && out.goldPrice) out.btcGoldRatio = out.price / out.goldPrice;
-  } catch (e) { console.warn('[Market] Gold failed:', e.message); }
+    console.log(`[Market] Gold (Binance PAXG): $${out.goldPrice?.toLocaleString()}`);
+  } catch (e) {
+    console.warn('[Market] Gold (Binance) failed:', e.message);
+    // Kraken XAU/USD
+    try {
+      const r2 = await fetch('https://api.kraken.com/0/public/Ticker?pair=XAUUSD', { signal: AbortSignal.timeout(8000) });
+      const d2 = await r2.json();
+      const t2 = d2.result?.XXAUCZUSD || d2.result?.XAUUSD || Object.values(d2.result || {})[0];
+      const gp = parseFloat(t2?.c?.[0]);
+      if (gp > 0) {
+        out.goldPrice = gp;
+        const gOpen = parseFloat(t2?.o);
+        out.goldChange24h = gOpen > 0 ? parseFloat(((gp - gOpen) / gOpen * 100).toFixed(2)) : null;
+        if (out.price) out.btcGoldRatio = out.price / gp;
+        console.log(`[Market] Gold (Kraken XAU/USD): $${gp.toLocaleString()}`);
+      }
+    } catch (e2) { console.warn('[Market] Gold (Kraken) failed:', e2.message); }
+  }
 
   // BTC dominance (CoinGecko)
   try {
@@ -218,35 +286,68 @@ async function fetchMarketSnapshot() {
 // ── Fetch 200-day candles → SMAs + QQQ correlation ────────────────────────────
 async function fetchTechnicalData() {
   let closes = null, volumes = null;
+
+  // Primary: Binance klines
   try {
     const r = await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=200',
       { signal: AbortSignal.timeout(12000) });
     const d = await r.json();
     closes  = d.map(row => parseFloat(row[4])).filter(Boolean);
     volumes = d.map(row => parseFloat(row[5])).filter(Boolean);
-  } catch (e) { console.warn('[Tech] Binance candles failed:', e.message); return null; }
+    console.log(`[Tech] Binance candles: ${closes.length} days`);
+  } catch (e) {
+    console.warn('[Tech] Binance candles failed:', e.message);
+    // Fallback: Kraken OHLC (interval 1440 = daily, up to 720 bars)
+    try {
+      const since = Math.floor((Date.now() - 210 * 86400 * 1000) / 1000); // 210 days back
+      const r2 = await fetch(`https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=1440&since=${since}`,
+        { signal: AbortSignal.timeout(12000) });
+      const d2 = await r2.json();
+      const rows = d2.result?.XXBTZUSD || d2.result?.XBTUSD || [];
+      if (!rows.length) throw new Error('no Kraken candles');
+      closes  = rows.map(row => parseFloat(row[4])).filter(Boolean); // close = index 4
+      volumes = rows.map(row => parseFloat(row[6])).filter(Boolean); // volume = index 6
+      console.log(`[Tech] Kraken candles: ${closes.length} days`);
+    } catch (e2) {
+      console.warn('[Tech] Kraken candles failed:', e2.message);
+      return null;
+    }
+  }
+  if (!closes || closes.length < 20) { console.warn('[Tech] Not enough candles'); return null; }
 
   const sma = (arr, n) => { const sl = arr.slice(-n); return sl.length < n ? null : sl.reduce((a,b) => a+b, 0)/n; };
   const sma200 = sma(closes, 200), sma50 = sma(closes, 50), sma20 = sma(closes, 20);
 
-  // QQQ correlation
+  // QQQ correlation — Yahoo Finance → Stooq fallback
   let btcQqqCorr = null, corrWindow = 0;
+  const computeCorr = (btcArr, qqqArr) => {
+    const CORR_DAYS = 60;
+    const btcSlice = btcArr.slice(-CORR_DAYS), qqqSlice = qqqArr.slice(-CORR_DAYS);
+    const corrN = Math.min(btcSlice.length, qqqSlice.length);
+    if (corrN < 20) return { corr: null, n: 0 };
+    const b = btcSlice.slice(-corrN), q = qqqSlice.slice(-corrN);
+    const mean = arr => arr.reduce((a,x) => a+x, 0) / arr.length;
+    const mB = mean(b), mQ = mean(q);
+    let num = 0, dB = 0, dQ = 0;
+    for (let i = 0; i < corrN; i++) { const db = b[i]-mB, dq = q[i]-mQ; num += db*dq; dB += db*db; dQ += dq*dq; }
+    return { corr: (dB > 0 && dQ > 0) ? parseFloat((num / Math.sqrt(dB*dQ)).toFixed(2)) : null, n: corrN };
+  };
   try {
     const qqqRes = await yfetch('QQQ', '90d');
     const qqqCloses = (qqqRes?.chart?.result?.[0]?.indicators?.quote?.[0]?.close || []).filter(v => v != null && !isNaN(v));
-    const CORR_DAYS = 60;
-    const btcSlice = closes.slice(-CORR_DAYS), qqqSlice = qqqCloses.slice(-CORR_DAYS);
-    const corrN = Math.min(btcSlice.length, qqqSlice.length);
-    if (corrN >= 20) {
-      const btc60 = btcSlice.slice(-corrN), qqq60 = qqqSlice.slice(-corrN);
-      const mean = arr => arr.reduce((a,b) => a+b, 0) / arr.length;
-      const mB = mean(btc60), mQ = mean(qqq60);
-      let num = 0, dB = 0, dQ = 0;
-      for (let i = 0; i < corrN; i++) { const db = btc60[i]-mB, dq = qqq60[i]-mQ; num += db*dq; dB += db*db; dQ += dq*dq; }
-      btcQqqCorr = (dB > 0 && dQ > 0) ? parseFloat((num / Math.sqrt(dB*dQ)).toFixed(2)) : null;
-      corrWindow = corrN;
-    }
-  } catch (e) { console.warn('[Tech] QQQ corr failed:', e.message); }
+    const { corr, n } = computeCorr(closes, qqqCloses);
+    btcQqqCorr = corr; corrWindow = n;
+    if (corr != null) console.log(`[Tech] BTC-QQQ corr (Yahoo): ${corr} over ${n}d`);
+  } catch (e) {
+    console.warn('[Tech] QQQ corr (Yahoo) failed:', e.message);
+    // Fallback: Stooq qqq.us historical CSV
+    try {
+      const qqqCloses = await stooqHistory('qqq.us', 90);
+      const { corr, n } = computeCorr(closes, qqqCloses);
+      btcQqqCorr = corr; corrWindow = n;
+      if (corr != null) console.log(`[Tech] BTC-QQQ corr (Stooq): ${corr} over ${n}d`);
+    } catch (e2) { console.warn('[Tech] QQQ corr (Stooq) failed:', e2.message); }
+  }
 
   // Volume trend
   const avgVol5d  = volumes.slice(-5).reduce((a,b)  => a+b, 0) / 5;
@@ -291,14 +392,54 @@ async function fetchOptionsSkew(spotPrice) {
   } catch (e) { console.warn('[Options] Failed:', e.message); return null; }
 }
 
-// ── Fetch macro data (DXY, VIX, TNX) ─────────────────────────────────────────
+// ── Fetch macro data (DXY, VIX, TNX) — Yahoo → Stooq fallback ────────────────
 async function fetchMacros() {
   const out = { dxy: null, dxyChange: null, vix: null, vixChange: null, tnxYield: null, tnxChange: null };
-  try { const d = yfExtract(await yfetch('DX-Y.NYB')); if (d.price) { out.dxy = parseFloat(d.price.toFixed(2)); out.dxyChange = d.change; } console.log(`[Macro] DXY: ${out.dxy}`); } catch (e) { console.warn('[Macro] DXY failed:', e.message); }
+
+  // DXY
+  try {
+    const d = yfExtract(await yfetch('DX-Y.NYB'));
+    if (d.price) { out.dxy = parseFloat(d.price.toFixed(2)); out.dxyChange = d.change; console.log(`[Macro] DXY (Yahoo): ${out.dxy}`); }
+  } catch (e) {
+    console.warn('[Macro] DXY (Yahoo) failed:', e.message);
+    try {
+      const s = await stooqFetch('$dxy');
+      out.dxy = parseFloat(s.price.toFixed(2)); out.dxyChange = s.change;
+      console.log(`[Macro] DXY (Stooq): ${out.dxy}`);
+    } catch (e2) { console.warn('[Macro] DXY (Stooq) failed:', e2.message); }
+  }
+
   await sleep(300);
-  try { const d = yfExtract(await yfetch('%5EVIX')); if (d.price) { out.vix = parseFloat(d.price.toFixed(1)); out.vixChange = d.change; } console.log(`[Macro] VIX: ${out.vix}`); } catch (e) { console.warn('[Macro] VIX failed:', e.message); }
+
+  // VIX
+  try {
+    const d = yfExtract(await yfetch('%5EVIX'));
+    if (d.price) { out.vix = parseFloat(d.price.toFixed(1)); out.vixChange = d.change; console.log(`[Macro] VIX (Yahoo): ${out.vix}`); }
+  } catch (e) {
+    console.warn('[Macro] VIX (Yahoo) failed:', e.message);
+    try {
+      const s = await stooqFetch('^vix');
+      out.vix = parseFloat(s.price.toFixed(1)); out.vixChange = s.change;
+      console.log(`[Macro] VIX (Stooq): ${out.vix}`);
+    } catch (e2) { console.warn('[Macro] VIX (Stooq) failed:', e2.message); }
+  }
+
   await sleep(300);
-  try { const d = yfExtract(await yfetch('%5ETNX')); if (d.price) { out.tnxYield = parseFloat((d.price > 20 ? d.price/10 : d.price).toFixed(2)); out.tnxChange = d.change; } console.log(`[Macro] TNX: ${out.tnxYield}%`); } catch (e) { console.warn('[Macro] TNX failed:', e.message); }
+
+  // TNX (10Y Treasury yield)
+  try {
+    const d = yfExtract(await yfetch('%5ETNX'));
+    if (d.price) { out.tnxYield = parseFloat((d.price > 20 ? d.price/10 : d.price).toFixed(2)); out.tnxChange = d.change; console.log(`[Macro] TNX (Yahoo): ${out.tnxYield}%`); }
+  } catch (e) {
+    console.warn('[Macro] TNX (Yahoo) failed:', e.message);
+    try {
+      const s = await stooqFetch('^tnx');
+      const raw = s.price;
+      out.tnxYield = parseFloat((raw > 20 ? raw/10 : raw).toFixed(2)); out.tnxChange = s.change;
+      console.log(`[Macro] TNX (Stooq): ${out.tnxYield}%`);
+    } catch (e2) { console.warn('[Macro] TNX (Stooq) failed:', e2.message); }
+  }
+
   return out;
 }
 
@@ -311,6 +452,7 @@ async function fetchCME() {
     console.log('[CME] Weekend — CME closed, skipping basis calculation');
     return null;
   }
+  // Primary: Yahoo Finance BTC=F
   try {
     await sleep(300);
     const [futJson, spotJson] = await Promise.all([yfetch('BTC%3DF', '5d'), yfetch('BTC-USD', '1d')]);
@@ -321,10 +463,42 @@ async function fetchCME() {
     const expireTs = futMeta?.expireDate;
     const daysToExp = expireTs ? Math.max(1, Math.round((expireTs*1000-Date.now())/86400000)) : 30;
     const annualized = parseFloat(((futPrice-spotPrice)/spotPrice*100*(365/daysToExp)).toFixed(2));
-    console.log(`[CME] Basis: ${annualized > 0 ? '+' : ''}${annualized}% ann | daysToExpiry: ${daysToExp}`);
+    console.log(`[CME] Basis (Yahoo): ${annualized > 0 ? '+' : ''}${annualized}% ann | ${daysToExp}d to expiry`);
     return { cmeBasisPct: annualized, cmeDaysToExpiry: daysToExp, cmeNearExpiry: daysToExp < 14,
              cmeBasisSource: `Yahoo Finance BTC=F (${daysToExp}d to expiry, annualized)` };
-  } catch (e) { console.warn('[CME] Failed:', e.message); return null; }
+  } catch (e) {
+    console.warn('[CME] Yahoo BTC=F failed:', e.message);
+    // Fallback: OKX quarterly futures (nearest expiry BTC-USD-YYMMDD contract)
+    // Find nearest quarterly expiry by listing OKX BTC-USD futures instruments
+    try {
+      const instrRes = await fetch('https://www.okx.com/api/v5/public/instruments?instType=FUTURES&uly=BTC-USD',
+        { signal: AbortSignal.timeout(10000) });
+      const instrData = await instrRes.json();
+      const instruments = instrData?.data || [];
+      const now = Date.now();
+      // Find nearest expiry that's > 0 days away
+      const nearest = instruments
+        .map(i => ({ id: i.instId, expMs: parseInt(i.expTime) }))
+        .filter(i => i.expMs > now)
+        .sort((a, b) => a.expMs - b.expMs)[0];
+      if (!nearest) throw new Error('no OKX futures found');
+      const tickRes = await fetch(`https://www.okx.com/api/v5/market/ticker?instId=${nearest.id}`,
+        { signal: AbortSignal.timeout(8000) });
+      const tickData = await tickRes.json();
+      const futPrice = parseFloat(tickData?.data?.[0]?.last);
+      // Get OKX BTC spot for comparison
+      const spotRes = await fetch('https://www.okx.com/api/v5/market/ticker?instId=BTC-USD-SWAP',
+        { signal: AbortSignal.timeout(8000) });
+      const spotData = await spotRes.json();
+      const spotPrice = parseFloat(spotData?.data?.[0]?.last);
+      if (!futPrice || !spotPrice || spotPrice <= 0) throw new Error('OKX price missing');
+      const daysToExp = Math.max(1, Math.round((nearest.expMs - now) / 86400000));
+      const annualized = parseFloat(((futPrice - spotPrice) / spotPrice * 100 * (365 / daysToExp)).toFixed(2));
+      console.log(`[CME] Basis (OKX ${nearest.id}): ${annualized > 0 ? '+' : ''}${annualized}% ann | ${daysToExp}d to expiry`);
+      return { cmeBasisPct: annualized, cmeDaysToExpiry: daysToExp, cmeNearExpiry: daysToExp < 14,
+               cmeBasisSource: `OKX ${nearest.id} futures basis (annualized, proxy for CME)` };
+    } catch (e2) { console.warn('[CME] OKX futures fallback failed:', e2.message); return null; }
+  }
 }
 
 // ── Fetch CoinMetrics community API ───────────────────────────────────────────
