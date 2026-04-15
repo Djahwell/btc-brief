@@ -1802,13 +1802,19 @@ FROM realized r, spot s`;
   };
 
   const callClaude = async (systemPrompt, userMessage, useSearch, maxTokens) => {
-    // Step 1: use cached brief from this run's allDataRef
+    // Step 1: use cached brief from this run's allDataRef — but only if market data is present.
+    // If brief-worker ran without price (GitHub Actions IP blocked by Binance/CoinGecko),
+    // the cached brief says "price unavailable" throughout. Reject it and regenerate with
+    // live client-side data instead.
     var ad = allDataRef.current;
     if (ad && ad.brief) {
       var ageMs = Date.now() - new Date(ad.briefCachedAt || ad.cachedAt).getTime();
-      if (ageMs < 20 * 3_600_000) {
+      var hasPrice = ad.market && ad.market.price != null;
+      if (ageMs < 20 * 3_600_000 && hasPrice) {
         console.info("[Claude] ✓ Using pre-generated brief (age: " + Math.round(ageMs / 3_600_000) + "h)");
         return JSON.stringify(ad.brief);
+      } else if (!hasPrice) {
+        console.warn("[Claude] Cached brief has no price data — regenerating with live client-side data");
       }
     }
 

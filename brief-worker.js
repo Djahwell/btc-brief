@@ -81,28 +81,50 @@ function yfExtract(json) {
 async function fetchMarketSnapshot() {
   const out = {};
 
-  // BTC price (Binance)
-  try {
-    const r = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT',
-      { signal: AbortSignal.timeout(8000) });
-    const s = await r.json();
-    out.price        = parseFloat(s.lastPrice);
-    out.change24h    = parseFloat(s.priceChangePercent);
-    out.volume24hUSD = parseFloat(s.quoteVolume) * 2.6;
-    out.marketCap    = out.price * 20000000;
-    out.priceSource  = 'Binance';
-    console.log(`[Market] BTC: $${out.price.toLocaleString()} (${out.change24h > 0 ? '+' : ''}${out.change24h.toFixed(2)}% 24h)`);
-  } catch (e) {
-    console.warn('[Market] Binance failed:', e.message);
+  // BTC price — try 4 sources in sequence until one succeeds.
+  // GitHub Actions IPs are sometimes blocked by Binance/CoinGecko, so we cast a wide net.
+  const priceSources = [
+    async () => {
+      const r = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT', { signal: AbortSignal.timeout(8000) });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const s = await r.json();
+      return { price: parseFloat(s.lastPrice), change24h: parseFloat(s.priceChangePercent),
+               volume24hUSD: parseFloat(s.quoteVolume) * 2.6, marketCap: parseFloat(s.lastPrice) * 20000000, priceSource: 'Binance' };
+    },
+    async () => {
+      const r = await fetch('https://api.kraken.com/0/public/Ticker?pair=XBTUSD', { signal: AbortSignal.timeout(8000) });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const d = await r.json();
+      const price = parseFloat(d.result?.XXBTZUSD?.c?.[0]);
+      if (!price) throw new Error('no price');
+      return { price, change24h: null, volume24hUSD: null, marketCap: price * 20000000, priceSource: 'Kraken' };
+    },
+    async () => {
+      const r = await fetch('https://api.coincap.io/v2/assets/bitcoin', { signal: AbortSignal.timeout(8000) });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const d = await r.json();
+      const price = parseFloat(d.data?.priceUsd);
+      if (!price) throw new Error('no price');
+      return { price, change24h: parseFloat(d.data?.changePercent24Hr), volume24hUSD: parseFloat(d.data?.volumeUsd24Hr),
+               marketCap: parseFloat(d.data?.marketCapUsd), priceSource: 'CoinCap' };
+    },
+    async () => {
+      const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true&include_market_cap=true', { signal: AbortSignal.timeout(10000) });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const d = await r.json();
+      return { price: d.bitcoin.usd, change24h: d.bitcoin.usd_24h_change,
+               volume24hUSD: d.bitcoin.usd_24h_vol, marketCap: d.bitcoin.usd_market_cap, priceSource: 'CoinGecko' };
+    },
+  ];
+  for (const src of priceSources) {
     try {
-      const r2 = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true&include_market_cap=true',
-        { signal: AbortSignal.timeout(10000) });
-      const d = await r2.json();
-      out.price = d.bitcoin.usd; out.change24h = d.bitcoin.usd_24h_change;
-      out.volume24hUSD = d.bitcoin.usd_24h_vol; out.marketCap = d.bitcoin.usd_market_cap;
-      out.priceSource = 'CoinGecko';
-    } catch (e2) { console.warn('[Market] CoinGecko fallback failed:', e2.message); }
+      const result = await src();
+      Object.assign(out, result);
+      console.log(`[Market] BTC: $${out.price.toLocaleString()} via ${out.priceSource} (${out.change24h != null ? (out.change24h > 0 ? '+' : '') + out.change24h.toFixed(2) + '% 24h' : 'change n/a'})`);
+      break;
+    } catch (e) { console.warn(`[Market] ${e.message} — trying next source`); }
   }
+  if (!out.price) console.warn('[Market] All price sources failed');
 
   // Fear & Greed (Alternative.me)
   try {
@@ -122,16 +144,41 @@ async function fetchMarketSnapshot() {
     out.fundingRate = parseFloat(d[d.length - 1].fundingRate);
     out.fundingSource = 'Binance';
     console.log(`[Market] Funding: ${(out.fundingRate * 100).toFixed(4)}% per 8h`);
-  } catch (e) { console.warn('[Market] Funding failed:', e.message); }
+  } catch (e) {
+    console.warn('[Market] Binance funding failed:', e.message);
+    // Bybit fallback
+    try {
+      const r2 = await fetch('https://api.bybit.com/v5/market/tickers?category=linear&symbol=BTCUSDT', { signal: AbortSignal.timeout(8000) });
+      const d2 = await r2.json();
+      const t = d2?.result?.list?.[0];
+      if (t?.fundingRate) { out.fundingRate = parseFloat(t.fundingRate); out.fundingSource = 'Bybit'; console.log(`[Market] Funding (Bybit): ${(out.fundingRate*100).toFixed(4)}%`); }
+    } catch (e2) {
+      // OKX fallback
+      try {
+        const r3 = await fetch('https://www.okx.com/api/v5/public/funding-rate?instId=BTC-USDT-SWAP', { signal: AbortSignal.timeout(8000) });
+        const d3 = await r3.json();
+        const fr = d3?.data?.[0]?.fundingRate;
+        if (fr) { out.fundingRate = parseFloat(fr); out.fundingSource = 'OKX'; console.log(`[Market] Funding (OKX): ${(out.fundingRate*100).toFixed(4)}%`); }
+      } catch (e3) { console.warn('[Market] All funding sources failed'); }
+    }
+  }
 
-  // Open Interest (Binance fapi)
+  // Open Interest (Binance fapi → Bybit fallback)
   try {
     const r = await fetch('https://fapi.binance.com/fapi/v1/openInterest?symbol=BTCUSDT',
       { signal: AbortSignal.timeout(8000) });
     const d = await r.json();
     out.openInterest    = parseFloat(d.openInterest);
     out.openInterestUSD = out.openInterest * (out.price || 80000);
-  } catch (e) { console.warn('[Market] OI failed:', e.message); }
+  } catch (e) {
+    console.warn('[Market] Binance OI failed:', e.message);
+    try {
+      const r2 = await fetch('https://api.bybit.com/v5/market/open-interest?category=linear&symbol=BTCUSDT&intervalTime=1h&limit=1', { signal: AbortSignal.timeout(8000) });
+      const d2 = await r2.json();
+      const oi = d2?.result?.list?.[0]?.openInterest;
+      if (oi) { out.openInterest = parseFloat(oi); out.openInterestUSD = out.openInterest * (out.price || 80000); console.log(`[Market] OI (Bybit): ${out.openInterest.toFixed(0)} BTC`); }
+    } catch (e2) { console.warn('[Market] All OI sources failed'); }
+  }
 
   // Gold (Binance PAXG)
   try {
