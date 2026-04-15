@@ -22,6 +22,7 @@ const __dirname  = dirname(__filename);
 const DUNE_CACHE_FILE  = join(__dirname, 'public', 'dune_cache.json');
 const ALL_DATA_FILE    = join(__dirname, 'public', 'all_data.json');
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+const WORKER_VERSION = '2.1.0'; // Kraken+CoinGecko+FRED+OKX fallbacks
 
 // ── Load .env ─────────────────────────────────────────────────────────────────
 function loadEnv() {
@@ -139,9 +140,9 @@ async function fetchMarketSnapshot() {
       const t = d.result?.XXBTZUSD;
       const price = parseFloat(t?.c?.[0]);
       if (!price) throw new Error('no price');
-      const open24h   = parseFloat(t?.o);  // 24h open price
-      const vol24hBTC = parseFloat(t?.v?.[1]); // v[1] = 24h volume in BTC
-      const change24h = (open24h > 0) ? parseFloat(((price - open24h) / open24h * 100).toFixed(2)) : null;
+      const open24h    = parseFloat(t?.o);   // today's opening price (UTC midnight)
+      const vol24hBTC  = parseFloat(t?.v?.[1]); // 24h volume in BTC
+      const change24h  = (open24h > 0) ? parseFloat(((price - open24h) / open24h * 100).toFixed(2)) : null;
       const volume24hUSD = (vol24hBTC > 0) ? vol24hBTC * price : null;
       return { price, change24h, volume24hUSD, marketCap: price * 20000000, priceSource: 'Kraken' };
     },
@@ -245,31 +246,49 @@ async function fetchMarketSnapshot() {
     }
   }
 
-  // Gold — Binance PAXG → Kraken XAU/USD fallback
+  // Gold — CoinGecko PAXG (primary, works from GitHub Actions) → Kraken XAU/USD → Binance PAXG
   try {
-    const r = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=PAXGUSDT',
-      { signal: AbortSignal.timeout(8000) });
+    const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=usd&include_24hr_change=true',
+      { signal: AbortSignal.timeout(10000) });
     const d = await r.json();
-    out.goldPrice     = parseFloat(d.lastPrice);
-    out.goldChange24h = parseFloat(d.priceChangePercent);
-    if (out.price && out.goldPrice) out.btcGoldRatio = out.price / out.goldPrice;
-    console.log(`[Market] Gold (Binance PAXG): $${out.goldPrice?.toLocaleString()}`);
+    const gp = d?.['pax-gold']?.usd;
+    if (gp && gp > 0) {
+      out.goldPrice     = gp;
+      out.goldChange24h = d?.['pax-gold']?.usd_24h_change ?? null;
+      if (out.price) out.btcGoldRatio = parseFloat((out.price / gp).toFixed(2));
+      console.log(`[Market] Gold (CoinGecko PAXG): $${gp.toLocaleString()}`);
+    } else throw new Error('no price');
   } catch (e) {
-    console.warn('[Market] Gold (Binance) failed:', e.message);
-    // Kraken XAU/USD
+    console.warn('[Market] Gold (CoinGecko) failed:', e.message);
+    // Fallback 1: Kraken XAU/USD
     try {
       const r2 = await fetch('https://api.kraken.com/0/public/Ticker?pair=XAUUSD', { signal: AbortSignal.timeout(8000) });
       const d2 = await r2.json();
-      const t2 = d2.result?.XXAUCZUSD || d2.result?.XAUUSD || Object.values(d2.result || {})[0];
-      const gp = parseFloat(t2?.c?.[0]);
+      // Kraken XAU/USD result key is XXAUZUSD
+      const t2 = d2.result?.XXAUZUSD || d2.result?.XAUUSD || Object.values(d2.result || {}).find(v => typeof v === 'object' && v?.c);
+      const gp = t2 ? parseFloat(t2.c?.[0]) : NaN;
       if (gp > 0) {
-        out.goldPrice = gp;
         const gOpen = parseFloat(t2?.o);
+        out.goldPrice     = gp;
         out.goldChange24h = gOpen > 0 ? parseFloat(((gp - gOpen) / gOpen * 100).toFixed(2)) : null;
-        if (out.price) out.btcGoldRatio = out.price / gp;
+        if (out.price) out.btcGoldRatio = parseFloat((out.price / gp).toFixed(2));
         console.log(`[Market] Gold (Kraken XAU/USD): $${gp.toLocaleString()}`);
-      }
-    } catch (e2) { console.warn('[Market] Gold (Kraken) failed:', e2.message); }
+      } else throw new Error(`invalid price: ${gp}`);
+    } catch (e2) {
+      console.warn('[Market] Gold (Kraken) failed:', e2.message);
+      // Fallback 2: Binance PAXG
+      try {
+        const r3 = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=PAXGUSDT', { signal: AbortSignal.timeout(8000) });
+        const d3 = await r3.json();
+        const gp3 = parseFloat(d3.lastPrice);
+        if (gp3 > 0) {
+          out.goldPrice     = gp3;
+          out.goldChange24h = parseFloat(d3.priceChangePercent);
+          if (out.price) out.btcGoldRatio = parseFloat((out.price / gp3).toFixed(2));
+          console.log(`[Market] Gold (Binance PAXG): $${gp3.toLocaleString()}`);
+        }
+      } catch (e3) { console.warn('[Market] Gold all sources failed'); }
+    }
   }
 
   // BTC dominance (CoinGecko)
@@ -287,29 +306,32 @@ async function fetchMarketSnapshot() {
 async function fetchTechnicalData() {
   let closes = null, volumes = null;
 
-  // Primary: Binance klines
+  // Primary: Kraken OHLC (confirmed works from GitHub Actions; Binance is often IP-blocked)
   try {
-    const r = await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=200',
-      { signal: AbortSignal.timeout(12000) });
+    const since = Math.floor((Date.now() - 210 * 86400 * 1000) / 1000); // 210 days back in seconds
+    const r = await fetch(`https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=1440&since=${since}`,
+      { signal: AbortSignal.timeout(15000) });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const d = await r.json();
-    closes  = d.map(row => parseFloat(row[4])).filter(Boolean);
-    volumes = d.map(row => parseFloat(row[5])).filter(Boolean);
-    console.log(`[Tech] Binance candles: ${closes.length} days`);
+    if (d.error && d.error.length) throw new Error(`Kraken error: ${d.error[0]}`);
+    const rows = d.result?.XXBTZUSD || d.result?.XBTZUSD || [];
+    if (!rows.length) throw new Error('empty candle array');
+    closes  = rows.map(row => parseFloat(row[4])).filter(v => v > 0); // close = index 4
+    volumes = rows.map(row => parseFloat(row[6])).filter(v => v >= 0); // volume = index 6
+    console.log(`[Tech] Kraken candles: ${closes.length} days`);
   } catch (e) {
-    console.warn('[Tech] Binance candles failed:', e.message);
-    // Fallback: Kraken OHLC (interval 1440 = daily, up to 720 bars)
+    console.warn('[Tech] Kraken candles failed:', e.message);
+    // Fallback: Binance klines
     try {
-      const since = Math.floor((Date.now() - 210 * 86400 * 1000) / 1000); // 210 days back
-      const r2 = await fetch(`https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=1440&since=${since}`,
+      const r2 = await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=200',
         { signal: AbortSignal.timeout(12000) });
+      if (!r2.ok) throw new Error(`HTTP ${r2.status}`);
       const d2 = await r2.json();
-      const rows = d2.result?.XXBTZUSD || d2.result?.XBTUSD || [];
-      if (!rows.length) throw new Error('no Kraken candles');
-      closes  = rows.map(row => parseFloat(row[4])).filter(Boolean); // close = index 4
-      volumes = rows.map(row => parseFloat(row[6])).filter(Boolean); // volume = index 6
-      console.log(`[Tech] Kraken candles: ${closes.length} days`);
+      closes  = d2.map(row => parseFloat(row[4])).filter(v => v > 0);
+      volumes = d2.map(row => parseFloat(row[5])).filter(v => v >= 0);
+      console.log(`[Tech] Binance candles: ${closes.length} days`);
     } catch (e2) {
-      console.warn('[Tech] Kraken candles failed:', e2.message);
+      console.warn('[Tech] Binance candles failed:', e2.message);
       return null;
     }
   }
@@ -406,7 +428,22 @@ async function fetchMacros() {
       const s = await stooqFetch('$dxy');
       out.dxy = parseFloat(s.price.toFixed(2)); out.dxyChange = s.change;
       console.log(`[Macro] DXY (Stooq): ${out.dxy}`);
-    } catch (e2) { console.warn('[Macro] DXY (Stooq) failed:', e2.message); }
+    } catch (e2) {
+      console.warn('[Macro] DXY (Stooq) failed:', e2.message);
+      // FRED DTWEXBGS — Broad Dollar Index (proxy for DXY), 1-day lag
+      try {
+        const fr = await fetch('https://fred.stlouisfed.org/graph/fredgraph.csv?id=DTWEXBGS', { signal: AbortSignal.timeout(10000) });
+        const ft = await fr.text();
+        const fl = ft.trim().split('\n').filter(l => !l.startsWith('DATE') && l.split(',')[1]?.trim() !== '.');
+        const lastVal = fl[fl.length - 1]?.split(',')[1]?.trim();
+        if (lastVal && !isNaN(parseFloat(lastVal))) {
+          // DTWEXBGS is indexed to Jan 2006=100; approximate DXY by scaling
+          // Broad index ~100 ≈ DXY ~100; direct use as rough proxy
+          out.dxy = parseFloat(parseFloat(lastVal).toFixed(2));
+          console.log(`[Macro] DXY (FRED DTWEXBGS proxy): ${out.dxy}`);
+        }
+      } catch (e3) { console.warn('[Macro] DXY (FRED) failed:', e3.message); }
+    }
   }
 
   await sleep(300);
@@ -421,7 +458,20 @@ async function fetchMacros() {
       const s = await stooqFetch('^vix');
       out.vix = parseFloat(s.price.toFixed(1)); out.vixChange = s.change;
       console.log(`[Macro] VIX (Stooq): ${out.vix}`);
-    } catch (e2) { console.warn('[Macro] VIX (Stooq) failed:', e2.message); }
+    } catch (e2) {
+      console.warn('[Macro] VIX (Stooq) failed:', e2.message);
+      // FRED VIXCLS — 1-day lag but very reliable, no auth required
+      try {
+        const fr = await fetch('https://fred.stlouisfed.org/graph/fredgraph.csv?id=VIXCLS', { signal: AbortSignal.timeout(10000) });
+        const ft = await fr.text();
+        const fl = ft.trim().split('\n').filter(l => !l.startsWith('DATE') && l.split(',')[1]?.trim() !== '.');
+        const lastVal = fl[fl.length - 1]?.split(',')[1]?.trim();
+        if (lastVal && !isNaN(parseFloat(lastVal))) {
+          out.vix = parseFloat(parseFloat(lastVal).toFixed(1));
+          console.log(`[Macro] VIX (FRED VIXCLS): ${out.vix}`);
+        }
+      } catch (e3) { console.warn('[Macro] VIX (FRED) failed:', e3.message); }
+    }
   }
 
   await sleep(300);
@@ -437,7 +487,20 @@ async function fetchMacros() {
       const raw = s.price;
       out.tnxYield = parseFloat((raw > 20 ? raw/10 : raw).toFixed(2)); out.tnxChange = s.change;
       console.log(`[Macro] TNX (Stooq): ${out.tnxYield}%`);
-    } catch (e2) { console.warn('[Macro] TNX (Stooq) failed:', e2.message); }
+    } catch (e2) {
+      console.warn('[Macro] TNX (Stooq) failed:', e2.message);
+      // FRED DGS10 — 10Y Treasury yield, 1-day lag, no auth required
+      try {
+        const fr = await fetch('https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS10', { signal: AbortSignal.timeout(10000) });
+        const ft = await fr.text();
+        const fl = ft.trim().split('\n').filter(l => !l.startsWith('DATE') && l.split(',')[1]?.trim() !== '.');
+        const lastVal = fl[fl.length - 1]?.split(',')[1]?.trim();
+        if (lastVal && !isNaN(parseFloat(lastVal))) {
+          out.tnxYield = parseFloat(parseFloat(lastVal).toFixed(2));
+          console.log(`[Macro] TNX (FRED DGS10): ${out.tnxYield}%`);
+        }
+      } catch (e3) { console.warn('[Macro] TNX (FRED) failed:', e3.message); }
+    }
   }
 
   return out;
@@ -736,7 +799,7 @@ Return ONLY valid JSON. No markdown fences. No preamble.
 // ── Main run ──────────────────────────────────────────────────────────────────
 async function runBriefWorker() {
   console.log(`\n${'─'.repeat(60)}`);
-  console.log(`[Brief] Run started — ${new Date().toISOString()}`);
+  console.log(`[Brief] Run started v${WORKER_VERSION} — ${new Date().toISOString()}`);
 
   const duneCache = loadDuneCache();
   console.log(`[Brief] Dune cache loaded — cachedAt: ${duneCache.cachedAt || 'unknown'}`);
