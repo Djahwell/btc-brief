@@ -791,8 +791,8 @@ async function fetchStablecoinSupply() {
       const prev = JSON.parse(readFileSync(CACHE_FILE, 'utf8'));
       if (prev.stablecoinSupply?.total_usd && prev.stablecoinSupply?.date) {
         const ageDays = (Date.now() - new Date(prev.stablecoinSupply.date).getTime()) / 86400000;
-        if (ageDays >= 6 && ageDays <= 10) {
-          // snapshot is ~7 days old — use as baseline
+        if (ageDays >= 0.5 && ageDays <= 30) {
+          // snapshot is at least 12h old — use as baseline for 7d delta
           prev7dTotal = prev.stablecoinSupply.total_usd;
           prevDate    = prev.stablecoinSupply.date;
         }

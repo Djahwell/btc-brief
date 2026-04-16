@@ -22,7 +22,7 @@ const __dirname  = dirname(__filename);
 const DUNE_CACHE_FILE  = join(__dirname, 'public', 'dune_cache.json');
 const ALL_DATA_FILE    = join(__dirname, 'public', 'all_data.json');
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
-const WORKER_VERSION = '2.3.0'; // split CoinMetrics, FX-DXY, Treasury-TNX, Bybit-OI
+const WORKER_VERSION = '2.4.0'; // OKX OI multi-attempt, stablecoin delta fix
 
 // ── Load .env ─────────────────────────────────────────────────────────────────
 function loadEnv() {
@@ -223,35 +223,79 @@ async function fetchMarketSnapshot() {
     }
   }
 
-  // Open Interest (Binance fapi → Bybit fallback)
+  // Open Interest (Binance fapi → Bybit → OKX multi-attempt)
+  // OKX notes:
+  //  BTC-USDT-SWAP: oi=contracts (1 contract=0.01 BTC), oiCcy=BTC value
+  //  BTC-USD-SWAP : oi=contracts (1 contract=100 USD), oiCcy=BTC value (more reliable)
+  //  Valid BTC OI range: 5,000 – 500,000 BTC
+  const OI_MIN = 5_000, OI_MAX = 500_000;
+  const validateOI = (v) => v && isFinite(v) && v >= OI_MIN && v <= OI_MAX;
   try {
     const r = await fetch('https://fapi.binance.com/fapi/v1/openInterest?symbol=BTCUSDT',
       { signal: AbortSignal.timeout(8000) });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const d = await r.json();
-    out.openInterest    = parseFloat(d.openInterest);
-    out.openInterestUSD = out.openInterest * (out.price || 80000);
+    const oi = parseFloat(d.openInterest);
+    if (!validateOI(oi)) throw new Error(`Binance OI out of range: ${oi}`);
+    out.openInterest    = oi;
+    out.openInterestUSD = oi * (out.price || 80000);
+    console.log(`[Market] OI (Binance): ${oi.toFixed(0)} BTC`);
   } catch (e) {
     console.warn('[Market] Binance OI failed:', e.message);
+    // Bybit
     try {
-      const r2 = await fetch('https://api.bybit.com/v5/market/open-interest?category=linear&symbol=BTCUSDT&intervalTime=1h&limit=1', { signal: AbortSignal.timeout(8000) });
+      const r2 = await fetch('https://api.bybit.com/v5/market/open-interest?category=linear&symbol=BTCUSDT&intervalTime=1h&limit=1',
+        { signal: AbortSignal.timeout(8000) });
+      if (!r2.ok) throw new Error(`HTTP ${r2.status}`);
       const d2 = await r2.json();
-      const oi = d2?.result?.list?.[0]?.openInterest;
-      if (oi) { out.openInterest = parseFloat(oi); out.openInterestUSD = out.openInterest * (out.price || 80000); console.log(`[Market] OI (Bybit): ${out.openInterest.toFixed(0)} BTC`); }
+      const oi = parseFloat(d2?.result?.list?.[0]?.openInterest);
+      if (!validateOI(oi)) throw new Error(`Bybit OI out of range: ${oi}`);
+      out.openInterest    = oi;
+      out.openInterestUSD = oi * (out.price || 80000);
+      console.log(`[Market] OI (Bybit): ${oi.toFixed(0)} BTC`);
     } catch (e2) {
-      // OKX fallback for OI
-      try {
-        const r3 = await fetch('https://www.okx.com/api/v5/public/open-interest?instType=SWAP&instId=BTC-USDT-SWAP',
-          { signal: AbortSignal.timeout(8000) });
-        const d3 = await r3.json();
-        // oiCcy = OI in base coin (BTC) — preferred over oi (contract count)
-        const oiRaw = d3?.data?.[0]?.oiCcy ?? d3?.data?.[0]?.oi;
-        const oi = oiRaw ? parseFloat(oiRaw) : null;
-        if (oi && oi > 0) {
+      console.warn('[Market] Bybit OI failed:', e2.message);
+      // OKX — try multiple endpoint variants
+      const okxAttempts = [
+        // 1: instId only (no instType) for USDT-margined
+        { url: 'https://www.okx.com/api/v5/public/open-interest?instId=BTC-USDT-SWAP', label: 'OKX instId USDT' },
+        // 2: instType+instId for USDT-margined
+        { url: 'https://www.okx.com/api/v5/public/open-interest?instType=SWAP&instId=BTC-USDT-SWAP', label: 'OKX SWAP+USDT' },
+        // 3: aggregate all BTC USDT swaps via uly
+        { url: 'https://www.okx.com/api/v5/public/open-interest?instType=SWAP&uly=BTC-USDT', label: 'OKX uly BTC-USDT' },
+        // 4: coin-margined BTC-USD-SWAP (oiCcy definitively in BTC)
+        { url: 'https://www.okx.com/api/v5/public/open-interest?instType=SWAP&instId=BTC-USD-SWAP', label: 'OKX SWAP+USD' },
+      ];
+      let okxSet = false;
+      for (const attempt of okxAttempts) {
+        if (okxSet) break;
+        try {
+          const r3 = await fetch(attempt.url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) });
+          if (!r3.ok) throw new Error(`HTTP ${r3.status}`);
+          const d3 = await r3.json();
+          const row = d3?.data?.[0];
+          if (!row) throw new Error('empty data array');
+          // oiCcy = BTC value (preferred); oi = raw contract count
+          let oi = row.oiCcy ? parseFloat(row.oiCcy) : null;
+          // For USDT-margined contracts, each contract = 0.01 BTC
+          if (!validateOI(oi) && row.oi) {
+            const oiContracts = parseFloat(row.oi);
+            const oiVia01 = oiContracts * 0.01;
+            if (validateOI(oiVia01)) {
+              oi = oiVia01;
+              console.log(`[Market] OI (${attempt.label}) via oi×0.01: ${oi.toFixed(0)} BTC`);
+            }
+          }
+          if (!validateOI(oi)) throw new Error(`OI out of range: oiCcy=${row.oiCcy} oi=${row.oi}`);
           out.openInterest    = oi;
           out.openInterestUSD = oi * (out.price || 80000);
-          console.log(`[Market] OI (OKX): ${oi.toFixed(0)} BTC`);
+          console.log(`[Market] OI (${attempt.label}): ${oi.toFixed(0)} BTC`);
+          okxSet = true;
+        } catch (e3) {
+          console.warn(`[Market] OI ${attempt.label} failed:`, e3.message);
         }
-      } catch (e3) { console.warn('[Market] All OI sources failed'); }
+      }
+      if (!okxSet) console.warn('[Market] All OI sources failed — openInterest will be null');
     }
   }
 
