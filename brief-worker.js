@@ -22,7 +22,7 @@ const __dirname  = dirname(__filename);
 const DUNE_CACHE_FILE  = join(__dirname, 'public', 'dune_cache.json');
 const ALL_DATA_FILE    = join(__dirname, 'public', 'all_data.json');
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
-const WORKER_VERSION = '2.1.0'; // Kraken+CoinGecko+FRED+OKX fallbacks
+const WORKER_VERSION = '2.2.0'; // CoinMetrics MVRV + CBOE VIX + FRED ok-check + OKX oiCcy
 
 // ── Load .env ─────────────────────────────────────────────────────────────────
 function loadEnv() {
@@ -236,11 +236,13 @@ async function fetchMarketSnapshot() {
         const r3 = await fetch('https://www.okx.com/api/v5/public/open-interest?instType=SWAP&instId=BTC-USDT-SWAP',
           { signal: AbortSignal.timeout(8000) });
         const d3 = await r3.json();
-        const oi = d3?.data?.[0]?.oi;
-        if (oi) {
-          out.openInterest    = parseFloat(oi);
-          out.openInterestUSD = out.openInterest * (out.price || 80000);
-          console.log(`[Market] OI (OKX): ${out.openInterest.toFixed(0)} BTC`);
+        // oiCcy = OI in base coin (BTC) — preferred over oi (contract count)
+        const oiRaw = d3?.data?.[0]?.oiCcy ?? d3?.data?.[0]?.oi;
+        const oi = oiRaw ? parseFloat(oiRaw) : null;
+        if (oi && oi > 0) {
+          out.openInterest    = oi;
+          out.openInterestUSD = oi * (out.price || 80000);
+          console.log(`[Market] OI (OKX): ${oi.toFixed(0)} BTC`);
         }
       } catch (e3) { console.warn('[Market] All OI sources failed'); }
     }
@@ -418,30 +420,43 @@ async function fetchOptionsSkew(spotPrice) {
 async function fetchMacros() {
   const out = { dxy: null, dxyChange: null, vix: null, vixChange: null, tnxYield: null, tnxChange: null };
 
+  // ── Helper: fetch FRED CSV with proper ok-check ─────────────────────────────
+  const fredFetch = async (series) => {
+    const fr = await fetch(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${series}`,
+      { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(12000) });
+    if (!fr.ok) throw new Error(`FRED ${series}: HTTP ${fr.status}`);
+    const ft = await fr.text();
+    // Filter out header row AND dots (missing values common at tail of FRED series)
+    const fl = ft.trim().split('\n').filter(l => !l.startsWith('DATE') && l.split(',')[1]?.trim() !== '.');
+    if (!fl.length) throw new Error(`FRED ${series}: no valid rows`);
+    const lastVal = fl[fl.length - 1]?.split(',')[1]?.trim();
+    const v = parseFloat(lastVal);
+    if (!lastVal || isNaN(v)) throw new Error(`FRED ${series}: unparseable value "${lastVal}"`);
+    return v;
+  };
+
   // DXY
   try {
     const d = yfExtract(await yfetch('DX-Y.NYB'));
     if (d.price) { out.dxy = parseFloat(d.price.toFixed(2)); out.dxyChange = d.change; console.log(`[Macro] DXY (Yahoo): ${out.dxy}`); }
   } catch (e) {
     console.warn('[Macro] DXY (Yahoo) failed:', e.message);
-    try {
-      const s = await stooqFetch('$dxy');
-      out.dxy = parseFloat(s.price.toFixed(2)); out.dxyChange = s.change;
-      console.log(`[Macro] DXY (Stooq): ${out.dxy}`);
-    } catch (e2) {
-      console.warn('[Macro] DXY (Stooq) failed:', e2.message);
-      // FRED DTWEXBGS — Broad Dollar Index (proxy for DXY), 1-day lag
+    // Stooq: try both $dxy (DXY index) and dx.f (DX futures) — one usually works
+    for (const sym of ['$dxy', 'dx.f', 'usdidx']) {
       try {
-        const fr = await fetch('https://fred.stlouisfed.org/graph/fredgraph.csv?id=DTWEXBGS', { signal: AbortSignal.timeout(10000) });
-        const ft = await fr.text();
-        const fl = ft.trim().split('\n').filter(l => !l.startsWith('DATE') && l.split(',')[1]?.trim() !== '.');
-        const lastVal = fl[fl.length - 1]?.split(',')[1]?.trim();
-        if (lastVal && !isNaN(parseFloat(lastVal))) {
-          // DTWEXBGS is indexed to Jan 2006=100; approximate DXY by scaling
-          // Broad index ~100 ≈ DXY ~100; direct use as rough proxy
-          out.dxy = parseFloat(parseFloat(lastVal).toFixed(2));
-          console.log(`[Macro] DXY (FRED DTWEXBGS proxy): ${out.dxy}`);
+        const s = await stooqFetch(sym);
+        if (s.price && s.price > 80 && s.price < 130) { // sanity range for DXY
+          out.dxy = parseFloat(s.price.toFixed(2)); out.dxyChange = s.change;
+          console.log(`[Macro] DXY (Stooq ${sym}): ${out.dxy}`);
+          break;
         }
+      } catch (_) {}
+    }
+    if (out.dxy == null) {
+      // FRED DTWEXBGS — Broad Trade-Weighted Dollar Index, 1-day lag, no auth required
+      try {
+        out.dxy = parseFloat((await fredFetch('DTWEXBGS')).toFixed(2));
+        console.log(`[Macro] DXY (FRED DTWEXBGS proxy): ${out.dxy}`);
       } catch (e3) { console.warn('[Macro] DXY (FRED) failed:', e3.message); }
     }
   }
@@ -454,23 +469,33 @@ async function fetchMacros() {
     if (d.price) { out.vix = parseFloat(d.price.toFixed(1)); out.vixChange = d.change; console.log(`[Macro] VIX (Yahoo): ${out.vix}`); }
   } catch (e) {
     console.warn('[Macro] VIX (Yahoo) failed:', e.message);
+    // CBOE official VIX history CSV — authoritative source, no auth needed
     try {
-      const s = await stooqFetch('^vix');
-      out.vix = parseFloat(s.price.toFixed(1)); out.vixChange = s.change;
-      console.log(`[Macro] VIX (Stooq): ${out.vix}`);
+      const cboe = await fetch('https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv',
+        { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(12000) });
+      if (!cboe.ok) throw new Error(`CBOE VIX: HTTP ${cboe.status}`);
+      const txt = await cboe.text();
+      // Format: DATE,OPEN,HIGH,LOW,CLOSE  (header on line 1)
+      const lines = txt.trim().split('\n').filter(l => !l.toUpperCase().startsWith('DATE'));
+      const last = lines[lines.length - 1]?.split(',');
+      const close = last ? parseFloat(last[4]) : NaN; // CLOSE = index 4
+      if (close > 0 && close < 200) {
+        out.vix = parseFloat(close.toFixed(1));
+        console.log(`[Macro] VIX (CBOE official): ${out.vix}`);
+      } else throw new Error(`invalid VIX ${close}`);
     } catch (e2) {
-      console.warn('[Macro] VIX (Stooq) failed:', e2.message);
-      // FRED VIXCLS — 1-day lag but very reliable, no auth required
+      console.warn('[Macro] VIX (CBOE) failed:', e2.message);
       try {
-        const fr = await fetch('https://fred.stlouisfed.org/graph/fredgraph.csv?id=VIXCLS', { signal: AbortSignal.timeout(10000) });
-        const ft = await fr.text();
-        const fl = ft.trim().split('\n').filter(l => !l.startsWith('DATE') && l.split(',')[1]?.trim() !== '.');
-        const lastVal = fl[fl.length - 1]?.split(',')[1]?.trim();
-        if (lastVal && !isNaN(parseFloat(lastVal))) {
-          out.vix = parseFloat(parseFloat(lastVal).toFixed(1));
+        const s = await stooqFetch('^vix');
+        if (s.price && s.price > 0) { out.vix = parseFloat(s.price.toFixed(1)); out.vixChange = s.change; console.log(`[Macro] VIX (Stooq): ${out.vix}`); }
+      } catch (e3) {
+        console.warn('[Macro] VIX (Stooq) failed:', e3.message);
+        // FRED VIXCLS — 1-day lag, no auth required
+        try {
+          out.vix = parseFloat((await fredFetch('VIXCLS')).toFixed(1));
           console.log(`[Macro] VIX (FRED VIXCLS): ${out.vix}`);
-        }
-      } catch (e3) { console.warn('[Macro] VIX (FRED) failed:', e3.message); }
+        } catch (e4) { console.warn('[Macro] VIX (FRED) failed:', e4.message); }
+      }
     }
   }
 
@@ -485,20 +510,13 @@ async function fetchMacros() {
     try {
       const s = await stooqFetch('^tnx');
       const raw = s.price;
-      out.tnxYield = parseFloat((raw > 20 ? raw/10 : raw).toFixed(2)); out.tnxChange = s.change;
-      console.log(`[Macro] TNX (Stooq): ${out.tnxYield}%`);
+      if (raw > 0) { out.tnxYield = parseFloat((raw > 20 ? raw/10 : raw).toFixed(2)); out.tnxChange = s.change; console.log(`[Macro] TNX (Stooq): ${out.tnxYield}%`); }
     } catch (e2) {
       console.warn('[Macro] TNX (Stooq) failed:', e2.message);
-      // FRED DGS10 — 10Y Treasury yield, 1-day lag, no auth required
+      // FRED DGS10 — 10Y Treasury constant maturity yield, 1-day lag, no auth
       try {
-        const fr = await fetch('https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS10', { signal: AbortSignal.timeout(10000) });
-        const ft = await fr.text();
-        const fl = ft.trim().split('\n').filter(l => !l.startsWith('DATE') && l.split(',')[1]?.trim() !== '.');
-        const lastVal = fl[fl.length - 1]?.split(',')[1]?.trim();
-        if (lastVal && !isNaN(parseFloat(lastVal))) {
-          out.tnxYield = parseFloat(parseFloat(lastVal).toFixed(2));
-          console.log(`[Macro] TNX (FRED DGS10): ${out.tnxYield}%`);
-        }
+        out.tnxYield = parseFloat((await fredFetch('DGS10')).toFixed(2));
+        console.log(`[Macro] TNX (FRED DGS10): ${out.tnxYield}%`);
       } catch (e3) { console.warn('[Macro] TNX (FRED) failed:', e3.message); }
     }
   }
@@ -565,9 +583,10 @@ async function fetchCME() {
 }
 
 // ── Fetch CoinMetrics community API ───────────────────────────────────────────
+// Also computes MVRV ratio (CapMrktCurUSD / CapRealUSD) as a free Dune alternative.
 async function fetchCoinMetrics() {
   try {
-    const metrics = ['AdrActCnt','TxCnt','HashRate','FeeTotNtv','PriceUSD'].join(',');
+    const metrics = ['AdrActCnt','TxCnt','HashRate','FeeTotNtv','PriceUSD','CapRealUSD','CapMrktCurUSD'].join(',');
     const url = `https://community-api.coinmetrics.io/v4/timeseries/asset-metrics?assets=btc&metrics=${metrics}&frequency=1d&limit_per_asset=2&sort=time`;
     const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(15000) });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -576,9 +595,19 @@ async function fetchCoinMetrics() {
     if (!rows?.length) throw new Error('no data');
     const latest = rows[rows.length - 1];
     const n = k => latest[k] != null ? parseFloat(latest[k]) : null;
+    const capReal = n('CapRealUSD');
+    const capMrkt = n('CapMrktCurUSD');
+    const price   = n('PriceUSD');
+    // MVRV = market cap / realized cap  (1.0 = fair value, >3.5 = overvalued)
+    const mvrv          = (capReal && capMrkt && capReal > 0) ? parseFloat((capMrkt / capReal).toFixed(3)) : null;
+    // realizedPrice = realized cap / circulating supply  (circSupply ≈ capMrkt / price)
+    const circSupply    = (capMrkt && price && price > 0) ? capMrkt / price : null;
+    const realizedPrice = (capReal && circSupply && circSupply > 0) ? Math.round(capReal / circSupply) : null;
     const out = { date: latest.time?.slice(0,10) ?? null, activeAddresses: n('AdrActCnt'),
                   txCount: n('TxCnt'), hashRate: n('HashRate'), totalFeesBTC: n('FeeTotNtv'),
-                  refPrice: n('PriceUSD'), source: 'CoinMetrics Community API' };
+                  refPrice: price, capRealUSD: capReal, capMrktUSD: capMrkt,
+                  mvrv, realizedPrice, source: 'CoinMetrics Community API' };
+    if (mvrv != null) console.log(`[CoinMetrics] MVRV: ${mvrv} | Realized: $${(realizedPrice||0).toLocaleString()}`);
     console.log(`[CoinMetrics] ActiveAddr: ${Math.round(out.activeAddresses||0).toLocaleString()}`);
     return out;
   } catch (e) { console.warn('[CoinMetrics] Failed:', e.message); return null; }
@@ -823,6 +852,19 @@ async function runBriefWorker() {
   const coinMetrics = await fetchCoinMetrics();
 
   const allData = { ...duneCache, market, tech, options, macros, cme, coinMetrics, briefCachedAt: new Date().toISOString() };
+
+  // If Dune MVRV is missing (quota exceeded) but CoinMetrics has it, inject it
+  // so the brief can use it. CoinMetrics CapRealUSD/CapMrktCurUSD is the same calc.
+  if (coinMetrics?.mvrv != null && !allData.mvrv?.mvrv) {
+    allData.mvrv = {
+      mvrv: coinMetrics.mvrv,
+      realizedPrice: coinMetrics.realizedPrice,
+      source: 'CoinMetrics (CapMrktCurUSD / CapRealUSD)',
+      date: coinMetrics.date,
+      stale: false,
+    };
+    console.log(`[Brief] MVRV injected from CoinMetrics: ${coinMetrics.mvrv}`);
+  }
 
   mkdirSync(join(__dirname, 'public'), { recursive: true });
   writeFileSync(ALL_DATA_FILE, JSON.stringify(allData, null, 2));

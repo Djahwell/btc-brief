@@ -939,9 +939,21 @@ async function runFetch() {
     }
   } catch (e) {
     console.error('[ExFlow] ✗ (non-fatal):', e.message);
-    if (e.message.includes('address')) {
+    if (e.message.includes('402')) {
+      console.error('[ExFlow] HTTP 402 — Dune quota exceeded. Carrying forward cached exchange flow.');
+    } else if (e.message.includes('address')) {
       console.error('[ExFlow] Likely cause: bitcoin.outputs has no "address" column on this Dune plan.');
     }
+    // Carry forward the last cached exchange flow so the brief still has a value
+    try {
+      if (existsSync(CACHE_FILE)) {
+        const prev = JSON.parse(readFileSync(CACHE_FILE, 'utf8'));
+        if (prev.exchangeFlow?.netflow_btc != null) {
+          payload.exchangeFlow = { ...prev.exchangeFlow, stale: true };
+          console.warn(`[ExFlow] Using cached value from ${prev.cachedAt}: Net ${prev.exchangeFlow.netflow_btc?.toFixed(0)} BTC (stale)`);
+        }
+      }
+    } catch (_) {}
   }
 
   writeCache(payload);
