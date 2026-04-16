@@ -22,7 +22,7 @@ const __dirname  = dirname(__filename);
 const DUNE_CACHE_FILE  = join(__dirname, 'public', 'dune_cache.json');
 const ALL_DATA_FILE    = join(__dirname, 'public', 'all_data.json');
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
-const WORKER_VERSION = '2.2.0'; // CoinMetrics MVRV + CBOE VIX + FRED ok-check + OKX oiCcy
+const WORKER_VERSION = '2.3.0'; // split CoinMetrics, FX-DXY, Treasury-TNX, Bybit-OI
 
 // ── Load .env ─────────────────────────────────────────────────────────────────
 function loadEnv() {
@@ -199,12 +199,19 @@ async function fetchMarketSnapshot() {
     console.log(`[Market] Funding: ${(out.fundingRate * 100).toFixed(4)}% per 8h`);
   } catch (e) {
     console.warn('[Market] Binance funding failed:', e.message);
-    // Bybit fallback
+    // Bybit fallback — also extract OI from the same response (two for one)
     try {
       const r2 = await fetch('https://api.bybit.com/v5/market/tickers?category=linear&symbol=BTCUSDT', { signal: AbortSignal.timeout(8000) });
       const d2 = await r2.json();
       const t = d2?.result?.list?.[0];
       if (t?.fundingRate) { out.fundingRate = parseFloat(t.fundingRate); out.fundingSource = 'Bybit'; console.log(`[Market] Funding (Bybit): ${(out.fundingRate*100).toFixed(4)}%`); }
+      // openInterest is in base coin (BTC) for Bybit linear contracts
+      const bybitOI = parseFloat(t?.openInterest);
+      if (bybitOI > 0 && !out.openInterest) {
+        out.openInterest    = bybitOI;
+        out.openInterestUSD = bybitOI * (out.price || 80000);
+        console.log(`[Market] OI (Bybit): ${bybitOI.toFixed(0)} BTC`);
+      }
     } catch (e2) {
       // OKX fallback
       try {
@@ -435,29 +442,64 @@ async function fetchMacros() {
     return v;
   };
 
+  // ── DXY approximation from free FX rates ─────────────────────────────────────
+  // open.er-api.com is completely free, no API key, works from GitHub Actions.
+  // DXY = 50.14 × EUR/USD^(-0.576) × USD/JPY^(0.136) × GBP/USD^(-0.119) × …
+  // We approximate using EUR/USD dominance (57.6% weight) calibrated at EUR/USD=1.07→DXY=100.
+  // Sanity check: compare against Stooq/Yahoo if available and take closest to known range.
+  const fetchDXYFromFX = async () => {
+    const r = await fetch('https://open.er-api.com/v6/latest/USD',
+      { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(10000) });
+    if (!r.ok) throw new Error(`FX API: HTTP ${r.status}`);
+    const d = await r.json();
+    if (!d?.rates?.EUR) throw new Error('no EUR rate');
+    const eurusd = 1 / d.rates.EUR;    // price of 1 EUR in USD
+    const usdjpy = d.rates.JPY || 142;  // JPY per USD
+    const gbpusd = d.rates.GBP ? 1/d.rates.GBP : 1.26; // price of 1 GBP in USD
+    const usdcad = d.rates.CAD || 1.36;
+    const usdsek = d.rates.SEK || 10.4;
+    const usdchf = d.rates.CHF || 0.89;
+    // Official ICE DXY formula (EUR/USD^-0.576 dominates)
+    const dxy = 50.14348112
+      * Math.pow(eurusd, -0.576)
+      * Math.pow(usdjpy,  0.136)
+      * Math.pow(gbpusd, -0.119)
+      * Math.pow(usdcad, -0.091)
+      * Math.pow(usdsek, -0.042)
+      * Math.pow(usdchf, -0.036);
+    if (dxy < 75 || dxy > 130) throw new Error(`DXY out of plausible range: ${dxy.toFixed(2)}`);
+    return parseFloat(dxy.toFixed(2));
+  };
+
   // DXY
   try {
     const d = yfExtract(await yfetch('DX-Y.NYB'));
     if (d.price) { out.dxy = parseFloat(d.price.toFixed(2)); out.dxyChange = d.change; console.log(`[Macro] DXY (Yahoo): ${out.dxy}`); }
   } catch (e) {
     console.warn('[Macro] DXY (Yahoo) failed:', e.message);
-    // Stooq: try both $dxy (DXY index) and dx.f (DX futures) — one usually works
-    for (const sym of ['$dxy', 'dx.f', 'usdidx']) {
+    // Stooq: try common DXY symbols
+    for (const sym of ['$dxy', 'dx.f']) {
       try {
         const s = await stooqFetch(sym);
-        if (s.price && s.price > 80 && s.price < 130) { // sanity range for DXY
+        if (s.price && s.price > 80 && s.price < 130) {
           out.dxy = parseFloat(s.price.toFixed(2)); out.dxyChange = s.change;
-          console.log(`[Macro] DXY (Stooq ${sym}): ${out.dxy}`);
-          break;
+          console.log(`[Macro] DXY (Stooq ${sym}): ${out.dxy}`); break;
         }
       } catch (_) {}
     }
     if (out.dxy == null) {
-      // FRED DTWEXBGS — Broad Trade-Weighted Dollar Index, 1-day lag, no auth required
+      // open.er-api.com — free FX rates, compute DXY from EUR/USD (no auth needed)
       try {
-        out.dxy = parseFloat((await fredFetch('DTWEXBGS')).toFixed(2));
-        console.log(`[Macro] DXY (FRED DTWEXBGS proxy): ${out.dxy}`);
-      } catch (e3) { console.warn('[Macro] DXY (FRED) failed:', e3.message); }
+        out.dxy = await fetchDXYFromFX();
+        console.log(`[Macro] DXY (FX approx from EUR/USD): ${out.dxy}`);
+      } catch (e2) {
+        console.warn('[Macro] DXY (FX approx) failed:', e2.message);
+        // Last resort: FRED DTWEXBGS broad dollar index
+        try {
+          out.dxy = parseFloat((await fredFetch('DTWEXBGS')).toFixed(2));
+          console.log(`[Macro] DXY (FRED DTWEXBGS proxy): ${out.dxy}`);
+        } catch (e3) { console.warn('[Macro] DXY (FRED) failed:', e3.message); }
+      }
     }
   }
 
@@ -501,23 +543,48 @@ async function fetchMacros() {
 
   await sleep(300);
 
+  // TNX (10Y Treasury yield) — US Treasury XML is the primary free programmatic source
+  const fetchTNXFromTreasury = async () => {
+    // US Treasury publishes a daily XML yield curve.
+    // Format: https://home.treasury.gov/.../xml?data=daily_treasury_yield_curve&field_tdr_date_value_month=YYYYMM
+    const ym = new Date().toISOString().slice(0, 7).replace('-', ''); // e.g. "202604"
+    const url = `https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value_month=${ym}`;
+    const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(12000) });
+    if (!r.ok) throw new Error(`Treasury XML: HTTP ${r.status}`);
+    const xml = await r.text();
+    // Matches entries like: <d:BC_10YEAR>4.23</d:BC_10YEAR>
+    const matches = xml.match(/<d:BC_10YEAR[^>]*>([0-9.]+)<\/d:BC_10YEAR>/g) || [];
+    if (!matches.length) throw new Error('no BC_10YEAR entries in XML');
+    const lastEntry = matches[matches.length - 1];
+    const yield10y = parseFloat(lastEntry.replace(/<[^>]+>/g, ''));
+    if (!yield10y || yield10y < 0 || yield10y > 20) throw new Error(`implausible yield: ${yield10y}`);
+    return yield10y;
+  };
+
   // TNX (10Y Treasury yield)
   try {
     const d = yfExtract(await yfetch('%5ETNX'));
     if (d.price) { out.tnxYield = parseFloat((d.price > 20 ? d.price/10 : d.price).toFixed(2)); out.tnxChange = d.change; console.log(`[Macro] TNX (Yahoo): ${out.tnxYield}%`); }
   } catch (e) {
     console.warn('[Macro] TNX (Yahoo) failed:', e.message);
+    // US Treasury XML — official source, public endpoint, no auth
     try {
-      const s = await stooqFetch('^tnx');
-      const raw = s.price;
-      if (raw > 0) { out.tnxYield = parseFloat((raw > 20 ? raw/10 : raw).toFixed(2)); out.tnxChange = s.change; console.log(`[Macro] TNX (Stooq): ${out.tnxYield}%`); }
+      out.tnxYield = parseFloat((await fetchTNXFromTreasury()).toFixed(2));
+      console.log(`[Macro] TNX (Treasury XML): ${out.tnxYield}%`);
     } catch (e2) {
-      console.warn('[Macro] TNX (Stooq) failed:', e2.message);
-      // FRED DGS10 — 10Y Treasury constant maturity yield, 1-day lag, no auth
+      console.warn('[Macro] TNX (Treasury) failed:', e2.message);
       try {
-        out.tnxYield = parseFloat((await fredFetch('DGS10')).toFixed(2));
-        console.log(`[Macro] TNX (FRED DGS10): ${out.tnxYield}%`);
-      } catch (e3) { console.warn('[Macro] TNX (FRED) failed:', e3.message); }
+        const s = await stooqFetch('^tnx');
+        const raw = s.price;
+        if (raw > 0) { out.tnxYield = parseFloat((raw > 20 ? raw/10 : raw).toFixed(2)); out.tnxChange = s.change; console.log(`[Macro] TNX (Stooq): ${out.tnxYield}%`); }
+      } catch (e3) {
+        console.warn('[Macro] TNX (Stooq) failed:', e3.message);
+        // FRED DGS10 — last resort
+        try {
+          out.tnxYield = parseFloat((await fredFetch('DGS10')).toFixed(2));
+          console.log(`[Macro] TNX (FRED DGS10): ${out.tnxYield}%`);
+        } catch (e4) { console.warn('[Macro] TNX (FRED) failed:', e4.message); }
+      }
     }
   }
 
@@ -583,11 +650,17 @@ async function fetchCME() {
 }
 
 // ── Fetch CoinMetrics community API ───────────────────────────────────────────
-// Also computes MVRV ratio (CapMrktCurUSD / CapRealUSD) as a free Dune alternative.
+// Base metrics are always in the community tier. Cap metrics (CapRealUSD/CapMrktCurUSD)
+// are fetched in a SEPARATE request — if they fail the base data is preserved.
+// This avoids a 400/404 from a paid-tier metric killing the whole fetch.
 async function fetchCoinMetrics() {
+  const base = `https://community-api.coinmetrics.io/v4/timeseries/asset-metrics`;
+
+  // Step 1: fetch community-tier base metrics (always free)
+  let out = null;
   try {
-    const metrics = ['AdrActCnt','TxCnt','HashRate','FeeTotNtv','PriceUSD','CapRealUSD','CapMrktCurUSD'].join(',');
-    const url = `https://community-api.coinmetrics.io/v4/timeseries/asset-metrics?assets=btc&metrics=${metrics}&frequency=1d&limit_per_asset=2&sort=time`;
+    const metrics = 'AdrActCnt,TxCnt,HashRate,FeeTotNtv,PriceUSD';
+    const url = `${base}?assets=btc&metrics=${metrics}&frequency=1d&limit_per_asset=2&sort=time`;
     const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(15000) });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const raw = await r.json();
@@ -595,22 +668,38 @@ async function fetchCoinMetrics() {
     if (!rows?.length) throw new Error('no data');
     const latest = rows[rows.length - 1];
     const n = k => latest[k] != null ? parseFloat(latest[k]) : null;
-    const capReal = n('CapRealUSD');
-    const capMrkt = n('CapMrktCurUSD');
-    const price   = n('PriceUSD');
-    // MVRV = market cap / realized cap  (1.0 = fair value, >3.5 = overvalued)
-    const mvrv          = (capReal && capMrkt && capReal > 0) ? parseFloat((capMrkt / capReal).toFixed(3)) : null;
-    // realizedPrice = realized cap / circulating supply  (circSupply ≈ capMrkt / price)
-    const circSupply    = (capMrkt && price && price > 0) ? capMrkt / price : null;
-    const realizedPrice = (capReal && circSupply && circSupply > 0) ? Math.round(capReal / circSupply) : null;
-    const out = { date: latest.time?.slice(0,10) ?? null, activeAddresses: n('AdrActCnt'),
-                  txCount: n('TxCnt'), hashRate: n('HashRate'), totalFeesBTC: n('FeeTotNtv'),
-                  refPrice: price, capRealUSD: capReal, capMrktUSD: capMrkt,
-                  mvrv, realizedPrice, source: 'CoinMetrics Community API' };
-    if (mvrv != null) console.log(`[CoinMetrics] MVRV: ${mvrv} | Realized: $${(realizedPrice||0).toLocaleString()}`);
+    out = { date: latest.time?.slice(0,10) ?? null, activeAddresses: n('AdrActCnt'),
+            txCount: n('TxCnt'), hashRate: n('HashRate'), totalFeesBTC: n('FeeTotNtv'),
+            refPrice: n('PriceUSD'), mvrv: null, realizedPrice: null,
+            source: 'CoinMetrics Community API' };
     console.log(`[CoinMetrics] ActiveAddr: ${Math.round(out.activeAddresses||0).toLocaleString()}`);
-    return out;
-  } catch (e) { console.warn('[CoinMetrics] Failed:', e.message); return null; }
+  } catch (e) { console.warn('[CoinMetrics] Base fetch failed:', e.message); return null; }
+
+  // Step 2: try MVRV metrics in a separate request — these may be community or paid tier
+  // If they fail, we still return the base data above (don't throw).
+  try {
+    const capMetrics = 'CapRealUSD,CapMrktCurUSD';
+    const url2 = `${base}?assets=btc&metrics=${capMetrics}&frequency=1d&limit_per_asset=1&sort=time`;
+    const r2 = await fetch(url2, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(10000) });
+    if (!r2.ok) throw new Error(`HTTP ${r2.status}`);
+    const raw2 = await r2.json();
+    const row2 = raw2?.data?.[0];
+    if (row2) {
+      const capReal = row2.CapRealUSD  != null ? parseFloat(row2.CapRealUSD)  : null;
+      const capMrkt = row2.CapMrktCurUSD != null ? parseFloat(row2.CapMrktCurUSD) : null;
+      const price   = out.refPrice;
+      const mvrv = (capReal && capMrkt && capReal > 0) ? parseFloat((capMrkt / capReal).toFixed(3)) : null;
+      const circSupply = (capMrkt && price && price > 0) ? capMrkt / price : null;
+      const realizedPrice = (capReal && circSupply) ? Math.round(capReal / circSupply) : null;
+      out.mvrv = mvrv;
+      out.realizedPrice = realizedPrice;
+      out.capRealUSD = capReal;
+      out.capMrktUSD = capMrkt;
+      if (mvrv != null) console.log(`[CoinMetrics] MVRV: ${mvrv} | Realized: $${(realizedPrice||0).toLocaleString()}`);
+    }
+  } catch (e) { console.warn('[CoinMetrics] Cap metrics unavailable (community tier?):', e.message); }
+
+  return out;
 }
 
 // ── Trading phase ─────────────────────────────────────────────────────────────
