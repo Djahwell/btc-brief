@@ -97,6 +97,7 @@ async function stooqFetch(symbol) {
 
 // ── Stooq historical CSV (for QQQ correlation) ─────────────────────────────────
 // Returns array of daily closes (ascending), up to 90 days.
+// Also attaches a parallel `.dates` array (YYYY-MM-DD) for date-aligned correlation.
 async function stooqHistory(symbol, days = 90) {
   const to   = new Date(); const from = new Date(Date.now() - days * 86400000);
   const fmt  = d => `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
@@ -105,7 +106,17 @@ async function stooqHistory(symbol, days = 90) {
   if (!res.ok) throw new Error(`Stooq history ${symbol}: HTTP ${res.status}`);
   const text = await res.text();
   const lines = text.trim().split('\n').slice(1); // skip header
-  return lines.map(l => parseFloat(l.split(',')[4])).filter(v => v > 0); // close = col 4
+  // Stooq CSV: Date,Open,High,Low,Close,Volume  (date already ISO YYYY-MM-DD)
+  const out = [];
+  const dates = [];
+  for (const l of lines) {
+    const parts = l.split(',');
+    const date  = (parts[0] || '').trim();
+    const close = parseFloat(parts[4]);
+    if (date && close > 0) { out.push(close); dates.push(date); }
+  }
+  out.dates = dates; // parallel sidecar: out[i] is the close on dates[i]
+  return out;
 }
 
 function yfExtract(json) {
@@ -358,6 +369,10 @@ async function fetchMarketSnapshot() {
 // ── Fetch 200-day candles → SMAs + QQQ correlation ────────────────────────────
 async function fetchTechnicalData() {
   let closes = null, volumes = null;
+  // Parallel date sidecar — closesByDate[i] corresponds to btcDates[i] (YYYY-MM-DD, UTC).
+  // Used for date-aligned BTC-vs-QQQ correlation; SMA math continues to use `closes` directly.
+  let btcDates = [];
+  const tsToDate = ms => new Date(ms).toISOString().slice(0, 10);
 
   // Primary: Kraken OHLC (confirmed works from GitHub Actions; Binance is often IP-blocked)
   try {
@@ -369,20 +384,33 @@ async function fetchTechnicalData() {
     if (d.error && d.error.length) throw new Error(`Kraken error: ${d.error[0]}`);
     const rows = d.result?.XXBTZUSD || d.result?.XBTZUSD || [];
     if (!rows.length) throw new Error('empty candle array');
-    closes  = rows.map(row => parseFloat(row[4])).filter(v => v > 0); // close = index 4
-    volumes = rows.map(row => parseFloat(row[6])).filter(v => v >= 0); // volume = index 6
-    console.log(`[Tech] Kraken candles: ${closes.length} days`);
+    // Kraken row: [time(s), open, high, low, close, vwap, volume, count]
+    closes  = []; volumes = []; btcDates = [];
+    for (const row of rows) {
+      const c = parseFloat(row[4]); const v = parseFloat(row[6]);
+      if (!(c > 0)) continue;
+      closes.push(c);
+      volumes.push(v >= 0 ? v : 0);
+      btcDates.push(tsToDate(parseInt(row[0], 10) * 1000));
+    }
+    console.log(`[Tech] Kraken candles: ${closes.length} days (last date: ${btcDates[btcDates.length - 1]})`);
   } catch (e) {
     console.warn('[Tech] Kraken candles failed:', e.message);
-    // Fallback: Binance klines
+    // Fallback: Binance klines — [openTime(ms), open, high, low, close, volume, ...]
     try {
       const r2 = await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=200',
         { signal: AbortSignal.timeout(12000) });
       if (!r2.ok) throw new Error(`HTTP ${r2.status}`);
       const d2 = await r2.json();
-      closes  = d2.map(row => parseFloat(row[4])).filter(v => v > 0);
-      volumes = d2.map(row => parseFloat(row[5])).filter(v => v >= 0);
-      console.log(`[Tech] Binance candles: ${closes.length} days`);
+      closes = []; volumes = []; btcDates = [];
+      for (const row of d2) {
+        const c = parseFloat(row[4]); const v = parseFloat(row[5]);
+        if (!(c > 0)) continue;
+        closes.push(c);
+        volumes.push(v >= 0 ? v : 0);
+        btcDates.push(tsToDate(parseInt(row[0], 10)));
+      }
+      console.log(`[Tech] Binance candles: ${closes.length} days (last date: ${btcDates[btcDates.length - 1]})`);
     } catch (e2) {
       console.warn('[Tech] Binance candles failed:', e2.message);
       return null;
@@ -393,34 +421,66 @@ async function fetchTechnicalData() {
   const sma = (arr, n) => { const sl = arr.slice(-n); return sl.length < n ? null : sl.reduce((a,b) => a+b, 0)/n; };
   const sma200 = sma(closes, 200), sma50 = sma(closes, 50), sma20 = sma(closes, 20);
 
-  // QQQ correlation — Yahoo Finance → Stooq fallback
+  // ── QQQ correlation ─────────────────────────────────────────────────────────
+  // Correct methodology:
+  //   1) Align BTC and QQQ by trading date (intersection of dates, sorted).
+  //      QQQ only trades ~5 days/week, so pairing raw index-by-index slices
+  //      offsets BTC by ~20–25 calendar days and destroys the signal.
+  //   2) Compute correlation on daily pct RETURNS, not price levels. Two trending
+  //      series can be strongly dependent via their common trend and still look
+  //      weakly correlated on returns (or vice-versa); returns is the right stat.
+  // Window: last 60 common trading days (≈12 weeks), matches "60d" label.
   let btcQqqCorr = null, corrWindow = 0;
-  const computeCorr = (btcArr, qqqArr) => {
-    const CORR_DAYS = 60;
-    const btcSlice = btcArr.slice(-CORR_DAYS), qqqSlice = qqqArr.slice(-CORR_DAYS);
-    const corrN = Math.min(btcSlice.length, qqqSlice.length);
-    if (corrN < 20) return { corr: null, n: 0 };
-    const b = btcSlice.slice(-corrN), q = qqqSlice.slice(-corrN);
-    const mean = arr => arr.reduce((a,x) => a+x, 0) / arr.length;
-    const mB = mean(b), mQ = mean(q);
+  const btcByDate = {};
+  for (let i = 0; i < btcDates.length; i++) btcByDate[btcDates[i]] = closes[i];
+
+  const correlateOnReturns = (qqqDates, qqqCloseArr, sourceLabel) => {
+    // Build intersection of dates (QQQ drives the set — fewer points).
+    const paired = [];
+    for (let i = 0; i < qqqDates.length; i++) {
+      const dt = qqqDates[i]; const qc = qqqCloseArr[i];
+      const bc = btcByDate[dt];
+      if (dt && qc != null && !isNaN(qc) && bc != null) paired.push({ dt, bc, qc });
+    }
+    paired.sort((a, b) => a.dt < b.dt ? -1 : a.dt > b.dt ? 1 : 0);
+    // Need 61 points for 60 returns.
+    const WINDOW_RETURNS = 60;
+    const window = paired.slice(-(WINDOW_RETURNS + 1));
+    if (window.length < 21) return { corr: null, n: 0 };
+    const btcRet = [], qqqRet = [];
+    for (let i = 1; i < window.length; i++) {
+      btcRet.push((window[i].bc - window[i - 1].bc) / window[i - 1].bc);
+      qqqRet.push((window[i].qc - window[i - 1].qc) / window[i - 1].qc);
+    }
+    const n = btcRet.length;
+    const mean = a => a.reduce((s, x) => s + x, 0) / a.length;
+    const mB = mean(btcRet), mQ = mean(qqqRet);
     let num = 0, dB = 0, dQ = 0;
-    for (let i = 0; i < corrN; i++) { const db = b[i]-mB, dq = q[i]-mQ; num += db*dq; dB += db*db; dQ += dq*dq; }
-    return { corr: (dB > 0 && dQ > 0) ? parseFloat((num / Math.sqrt(dB*dQ)).toFixed(2)) : null, n: corrN };
+    for (let i = 0; i < n; i++) {
+      const db = btcRet[i] - mB, dq = qqqRet[i] - mQ;
+      num += db * dq; dB += db * db; dQ += dq * dq;
+    }
+    const corr = (dB > 0 && dQ > 0) ? parseFloat((num / Math.sqrt(dB * dQ)).toFixed(2)) : null;
+    const firstDt = window[0].dt, lastDt = window[window.length - 1].dt;
+    console.log(`[Tech] BTC-QQQ corr (${sourceLabel}, returns, ${n} trading days, ${firstDt}→${lastDt}): ${corr}`);
+    return { corr, n };
   };
+
   try {
-    const qqqRes = await yfetch('QQQ', '90d');
-    const qqqCloses = (qqqRes?.chart?.result?.[0]?.indicators?.quote?.[0]?.close || []).filter(v => v != null && !isNaN(v));
-    const { corr, n } = computeCorr(closes, qqqCloses);
+    const qqqRes = await yfetch('QQQ', '120d'); // 120d so we reliably get 60+ trading days
+    const result0 = qqqRes?.chart?.result?.[0];
+    const timestamps = result0?.timestamp || [];
+    const closeArr   = result0?.indicators?.quote?.[0]?.close || [];
+    const qqqDates   = timestamps.map(t => tsToDate(t * 1000));
+    const { corr, n } = correlateOnReturns(qqqDates, closeArr, 'Yahoo');
     btcQqqCorr = corr; corrWindow = n;
-    if (corr != null) console.log(`[Tech] BTC-QQQ corr (Yahoo): ${corr} over ${n}d`);
   } catch (e) {
     console.warn('[Tech] QQQ corr (Yahoo) failed:', e.message);
     // Fallback: Stooq qqq.us historical CSV
     try {
-      const qqqCloses = await stooqHistory('qqq.us', 90);
-      const { corr, n } = computeCorr(closes, qqqCloses);
+      const qqqCloses = await stooqHistory('qqq.us', 120);
+      const { corr, n } = correlateOnReturns(qqqCloses.dates || [], qqqCloses, 'Stooq');
       btcQqqCorr = corr; corrWindow = n;
-      if (corr != null) console.log(`[Tech] BTC-QQQ corr (Stooq): ${corr} over ${n}d`);
     } catch (e2) { console.warn('[Tech] QQQ corr (Stooq) failed:', e2.message); }
   }
 

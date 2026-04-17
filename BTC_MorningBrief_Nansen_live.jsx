@@ -791,47 +791,57 @@ export default function MorningBrief() {
           : volTrendRatio < 0.80 ? "FALLING"
           : "STABLE";
       }
-      // ── QQQ 60-day rolling Pearson correlation (live) ────────────────────
-      // Fetch QQQ daily closes from Yahoo Finance via existing proxy,
-      // align with BTC closes, compute Pearson r over the last 60 days.
+      // ── QQQ 60-day rolling Pearson correlation ───────────────────────────
+      // Priority:
+      //   1) Server-precomputed value from all_data.json (brief-worker.js).
+      //      This is the only path that works inside the packaged APK, because
+      //      the "/api/yahoo" Vite-proxy rewrite does not exist in the bundle.
+      //   2) Live Vite-proxy fetch from Yahoo Finance (local `npm run dev` only).
       var btcQqqCorr = null;
       var corrWindowUsed = 0;
-      try {
-        var qqqRes = await safeFetch(
-          "/api/yahoo/v8/finance/chart/QQQ?interval=1d&range=90d",
-          { timeout: 10000 }
-        );
-        var qqqCloses = (qqqRes &&
-          qqqRes.chart &&
-          qqqRes.chart.result &&
-          qqqRes.chart.result[0] &&
-          qqqRes.chart.result[0].indicators &&
-          qqqRes.chart.result[0].indicators.quote &&
-          qqqRes.chart.result[0].indicators.quote[0] &&
-          qqqRes.chart.result[0].indicators.quote[0].close) || [];
-        qqqCloses = qqqCloses.filter(function(v) { return v != null && !isNaN(v); });
-        var CORR_DAYS = 60;
-        var btcSlice = closes.slice(-CORR_DAYS);
-        var qqqSlice = qqqCloses.slice(-CORR_DAYS);
-        var corrN = Math.min(btcSlice.length, qqqSlice.length);
-        if (corrN >= 20) {
-          btcSlice = btcSlice.slice(-corrN);
-          qqqSlice = qqqSlice.slice(-corrN);
-          var arrMean = function(arr) { return arr.reduce(function(a, b) { return a + b; }, 0) / arr.length; };
-          var mB = arrMean(btcSlice), mQ = arrMean(qqqSlice);
-          var num = 0, dB = 0, dQ = 0;
-          for (var ci = 0; ci < corrN; ci++) {
-            var db = btcSlice[ci] - mB, dq = qqqSlice[ci] - mQ;
-            num += db * dq; dB += db * db; dQ += dq * dq;
+      var cachedTech = allDataRef.current && allDataRef.current.tech;
+      if (cachedTech && cachedTech.btcQqqCorr != null) {
+        btcQqqCorr = cachedTech.btcQqqCorr;
+        corrWindowUsed = cachedTech.corrWindow || 60;
+        console.info("[Correlation] Using cached BTC-QQQ " + corrWindowUsed + "d Pearson (brief-worker):", btcQqqCorr);
+      } else {
+        try {
+          var qqqRes = await safeFetch(
+            "/api/yahoo/v8/finance/chart/QQQ?interval=1d&range=90d",
+            { timeout: 10000 }
+          );
+          var qqqCloses = (qqqRes &&
+            qqqRes.chart &&
+            qqqRes.chart.result &&
+            qqqRes.chart.result[0] &&
+            qqqRes.chart.result[0].indicators &&
+            qqqRes.chart.result[0].indicators.quote &&
+            qqqRes.chart.result[0].indicators.quote[0] &&
+            qqqRes.chart.result[0].indicators.quote[0].close) || [];
+          qqqCloses = qqqCloses.filter(function(v) { return v != null && !isNaN(v); });
+          var CORR_DAYS = 60;
+          var btcSlice = closes.slice(-CORR_DAYS);
+          var qqqSlice = qqqCloses.slice(-CORR_DAYS);
+          var corrN = Math.min(btcSlice.length, qqqSlice.length);
+          if (corrN >= 20) {
+            btcSlice = btcSlice.slice(-corrN);
+            qqqSlice = qqqSlice.slice(-corrN);
+            var arrMean = function(arr) { return arr.reduce(function(a, b) { return a + b; }, 0) / arr.length; };
+            var mB = arrMean(btcSlice), mQ = arrMean(qqqSlice);
+            var num = 0, dB = 0, dQ = 0;
+            for (var ci = 0; ci < corrN; ci++) {
+              var db = btcSlice[ci] - mB, dq = qqqSlice[ci] - mQ;
+              num += db * dq; dB += db * db; dQ += dq * dq;
+            }
+            btcQqqCorr = (dB > 0 && dQ > 0)
+              ? parseFloat((num / Math.sqrt(dB * dQ)).toFixed(2))
+              : null;
+            corrWindowUsed = corrN;
+            console.info("[Correlation] Live BTC-QQQ " + corrN + "d Pearson (Yahoo proxy):", btcQqqCorr);
           }
-          btcQqqCorr = (dB > 0 && dQ > 0)
-            ? parseFloat((num / Math.sqrt(dB * dQ)).toFixed(2))
-            : null;
-          corrWindowUsed = corrN;
-          console.info("[Correlation] BTC-QQQ " + corrN + "d Pearson:", btcQqqCorr);
+        } catch (corrErr) {
+          console.warn("[Correlation] QQQ Yahoo-proxy fetch failed (expected in APK, no all_data cache either):", corrErr.message);
         }
-      } catch (corrErr) {
-        console.warn("[Correlation] QQQ fetch failed:", corrErr.message);
       }
 
       return {
@@ -2003,27 +2013,27 @@ FROM realized r, spot s`;
   };
 
   const callClaude = async (systemPrompt, userMessage, useSearch, maxTokens) => {
-    // Step 1: use cached brief only if it was generated with LIVE data quality.
-    // Reject the cache and regenerate if key fields are null — the Mac browser
-    // can fetch these live via Vite proxy even when GitHub Actions IPs are blocked.
+    // Step 1: accept any recent cached brief that has a price. Fields like
+    // macros.dxy / tech.sma200 / cme.cmeBasisPct are DIAGNOSTIC — they reflect
+    // whether the GH Actions run could reach Yahoo/Binance — they do NOT invalidate
+    // the brief itself. Previously, a null DXY would reject the cache and force
+    // the APK into Step 3 (Anthropic proxy), which doesn't exist in the bundle
+    // and produced the "Unexpected token '<'" error from Capacitor's SPA fallback.
     var ad = allDataRef.current;
     if (ad && ad.brief) {
       var ageMs = Date.now() - new Date(ad.briefCachedAt || ad.cachedAt).getTime();
       var hasPrice   = ad.market && ad.market.price != null;
-      var hasMacros  = ad.macros && ad.macros.dxy != null;       // DXY from Yahoo/Stooq
-      var hasTech    = ad.tech   && ad.tech.sma200 != null;      // SMAs from Binance/Kraken
-      var hasCME     = ad.cme    && ad.cme.cmeBasisPct != null;  // CME basis from Yahoo/OKX
-      var dataQuality = hasMacros && hasTech;  // minimum: live macros + live SMAs
-      if (ageMs < 20 * 3_600_000 && hasPrice && dataQuality) {
+      var hasMacros  = ad.macros && ad.macros.dxy != null;       // diagnostic
+      var hasTech    = ad.tech   && ad.tech.sma200 != null;      // diagnostic
+      var hasCME     = ad.cme    && ad.cme.cmeBasisPct != null;  // diagnostic
+      if (ageMs < 36 * 3_600_000 && hasPrice) {
         console.info("[Claude] ✓ Using pre-generated brief (age: " + Math.round(ageMs / 3_600_000) + "h, macros:" + hasMacros + " tech:" + hasTech + " cme:" + hasCME + ")");
         return JSON.stringify(ad.brief);
       } else {
         var reasons = [];
-        if (!hasPrice)    reasons.push("no price");
-        if (!hasMacros)   reasons.push("no macros (DXY null)");
-        if (!hasTech)     reasons.push("no tech (SMA null)");
-        if (ageMs >= 20 * 3_600_000) reasons.push("stale (" + Math.round(ageMs / 3_600_000) + "h)");
-        console.warn("[Claude] Cached brief rejected — " + reasons.join(", ") + " — regenerating with live data");
+        if (!hasPrice) reasons.push("no price");
+        if (ageMs >= 36 * 3_600_000) reasons.push("stale (" + Math.round(ageMs / 3_600_000) + "h)");
+        console.warn("[Claude] Cached brief rejected — " + reasons.join(", ") + " — will try a fresh fetch");
       }
     }
 
@@ -2035,18 +2045,23 @@ FROM realized r, spot s`;
         console.info("[Claude] Retrying all_data.json from", _rUrl);
         var retry = await fetch(_rUrl, { signal: AbortSignal.timeout(_rUrl.startsWith("/") ? 3000 : 15000) });
         if (!retry.ok) continue;
+        // Guard: Capacitor returns index.html (status 200) for missing routes,
+        // and GH Pages can 404 with an HTML page. Detect non-JSON bodies
+        // instead of letting .json() throw "Unexpected token '<'".
+        var _rCt = (retry.headers && retry.headers.get && retry.headers.get("content-type")) || "";
+        if (_rCt && !_rCt.toLowerCase().includes("json")) {
+          console.warn("[Claude] Retry from", _rUrl, "— non-JSON content-type (" + _rCt + "), skipping");
+          continue;
+        }
         var retryJson = await retry.json();
         if (retryJson && retryJson.brief) {
-          var _rHasPrice  = retryJson.market && retryJson.market.price != null;
-          var _rHasMacros = retryJson.macros && retryJson.macros.dxy != null;
-          var _rHasTech   = retryJson.tech   && retryJson.tech.sma200 != null;
-          if (_rHasPrice && _rHasMacros && _rHasTech) {
+          var _rHasPrice = retryJson.market && retryJson.market.price != null;
+          if (_rHasPrice) {
             allDataRef.current = retryJson;
-            console.info("[Claude] ✓ Retry from", _rUrl, "— using pre-generated brief (full data quality)");
+            console.info("[Claude] ✓ Retry from", _rUrl, "— using pre-generated brief");
             return JSON.stringify(retryJson.brief);
-          } else if (_rHasPrice) {
-            console.warn("[Claude] Retry from", _rUrl, "— brief has nulls (macros:" + _rHasMacros + " tech:" + _rHasTech + ") — will regenerate live");
           }
+          console.warn("[Claude] Retry from", _rUrl, "— brief found but market.price missing");
         }
         if (retryJson && retryJson.brief_error) {
           console.warn("[Claude] brief_error in", _rUrl, ":", retryJson.brief_error);
@@ -2056,8 +2071,20 @@ FROM realized r, spot s`;
       }
     }
 
-    // Step 3: local dev fallback — call Anthropic via Vite proxy
-    // (This will NOT work in the APK — we should never reach here in production)
+    // Step 3: local-dev only — call Anthropic via Vite proxy.
+    // This path DOES NOT EXIST in the packaged APK. Capacitor's WebView serves
+    // index.html for unmatched routes, and `res.json()` would throw the
+    // infamous "Unexpected token '<'". Detect the APK runtime and throw a clear
+    // error instead.
+    var isCapacitor = typeof window !== "undefined"
+      && (!!window.Capacitor
+          || (window.location && typeof window.location.protocol === "string"
+              && (window.location.protocol === "capacitor:"
+                  || window.location.protocol === "file:"
+                  || window.location.protocol === "https:" && window.location.hostname === "localhost" && window.Capacitor)));
+    if (isCapacitor) {
+      throw new Error("No fresh brief available yet. Today's brief is generated by GitHub Actions — try Refresh in a few minutes, or check the brief-generate workflow run.");
+    }
     if (!ANTHROPIC_KEY) {
       throw new Error("Brief unavailable: no cached brief found and no API key configured.");
     }
@@ -2089,6 +2116,14 @@ FROM realized r, spot s`;
       throw fetchErr;
     }
     clearTimeout(timeoutId);
+    // Detect non-JSON bodies (e.g. Capacitor SPA-fallback index.html, a Vite
+    // 404 page, or a reverse-proxy error) before calling .json() so we don't
+    // surface "Unexpected token '<', '<!doctype ...'" to the user.
+    var _aCt = (res.headers && res.headers.get && res.headers.get("content-type")) || "";
+    if (_aCt && !_aCt.toLowerCase().includes("json")) {
+      var _body = await res.text().catch(function() { return ""; });
+      throw new Error("Anthropic proxy returned non-JSON (status " + res.status + ", content-type: " + (_aCt || "unknown") + "). The /api/anthropic proxy likely isn't reachable here. First chars: " + _body.slice(0, 120));
+    }
     const data = await res.json();
     if (data.error) throw new Error("API: " + data.error.type + " — " + data.error.message + " " + JSON.stringify(data.error));
     if (!data.content || !data.content.length) throw new Error("Empty response (stop: " + data.stop_reason + ")");
@@ -2816,6 +2851,25 @@ FROM realized r, spot s`;
   const score = (brief && brief.compositeScore != null) ? parseInt(brief.compositeScore, 10) : null;
   const scoreColor = score == null ? C.textMid : score >= 5 ? C.green : score >= 2 ? C.teal : score >= -1 ? C.textMid : score >= -4 ? C.orange : C.red;
 
+  // BTC/QQQ correlation — prefer the live server-computed value from
+  // brief-worker.js (techLevels.btcQqqCorr) over Claude's brief.correlationRegime,
+  // which can be stale, empty, or literally "Unavailable" when the worker's
+  // Yahoo/Stooq fallbacks both fail.
+  const liveCorr       = (techLevels && techLevels.btcQqqCorr != null) ? techLevels.btcQqqCorr : null;
+  const liveCorrWindow = (techLevels && techLevels.corrWindow)   ? techLevels.corrWindow  : 60;
+  const liveCorrRegime = liveCorr == null ? null
+    : Math.abs(liveCorr) > 0.7 ? "HIGH"
+    : Math.abs(liveCorr) > 0.4 ? "MODERATE"
+    : "LOW";
+  const corrDisplayNum = liveCorr != null
+    ? liveCorr.toFixed(2) + " (" + liveCorrWindow + "d)"
+    : ((brief && brief.correlationRegime && brief.correlationRegime.btcQqqCorrelation) || "Unavailable");
+  const corrDisplayRegime = liveCorrRegime
+    || (brief && brief.correlationRegime && brief.correlationRegime.regime)
+    || "";
+  const corrImpl      = brief && brief.correlationRegime && brief.correlationRegime.implication;
+  const showCorrRow   = liveCorr != null || !!(brief && brief.correlationRegime);
+
   // Rate limit info - computed before render
   const isRateLimit = !!(error && (error.includes("rate_limit_error") || error.includes("exceeded_limit")));
   var resetInfo = null;
@@ -3000,11 +3054,11 @@ FROM realized r, spot s`;
                   <div style={{ color: C.textMid, fontSize: 14, fontFamily: "Inter, sans-serif", fontWeight: 300, lineHeight: 1.6 }}>
                     {brief.biasReason}
                   </div>
-                  {brief.correlationRegime && (
+                  {showCorrRow && (
                     <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                       <span style={{ color: C.textDim, fontSize: 11, fontFamily: "monospace", whiteSpace: "nowrap" }}>BTC/QQQ CORR:</span>
-                      <Tag text={(brief.correlationRegime.btcQqqCorrelation || "") + " — " + (brief.correlationRegime.regime || "")} color={brief.correlationRegime.regime === "HIGH" ? C.orange : brief.correlationRegime.regime === "LOW" ? C.green : C.textMid} />
-                      <span style={{ color: C.textDim, fontSize: 10 }}>{brief.correlationRegime.implication}</span>
+                      <Tag text={corrDisplayNum + (corrDisplayRegime ? " — " + corrDisplayRegime : "")} color={corrDisplayRegime === "HIGH" ? C.orange : corrDisplayRegime === "LOW" ? C.green : C.textMid} />
+                      {corrImpl && <span style={{ color: C.textDim, fontSize: 10 }}>{corrImpl}</span>}
                     </div>
                   )}
                 </div>
