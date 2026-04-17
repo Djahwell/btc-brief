@@ -1,0 +1,73 @@
+name: Generate Brief (on-demand · calls Anthropic)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Runs ONLY when triggered by:
+#   - The Cloudflare Worker (`btc-brief`) on the first APK open of the day
+#   - A human pressing "Run workflow" in the GitHub Actions UI
+#
+# There is NO cron here. If nobody opens the app on a given day, the
+# Anthropic API is never called.
+#
+# Flow:
+#   1. Pulls the latest dune_cache.json from GitHub Pages (kept fresh by
+#      dune-refresh.yml every 6h).
+#   2. Runs brief-worker.js — fetches live market data + calls Claude.
+#   3. Deploys updated public/all_data.json to GitHub Pages.
+#   4. The Worker's next GET /brief returns the fresh data; APK clients
+#      polling with `regenerating: true` see briefCachedAt flip to today
+#      and auto-refresh.
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  generate-brief:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15       # Market fetches ~1min + Claude ~3min + headroom
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      # Pull the latest dune_cache.json from GitHub Pages so brief-worker.js
+      # has fresh on-chain data without re-running the slow Dune queries.
+      - name: Fetch latest dune_cache.json
+        run: |
+          mkdir -p public
+          curl --fail --silent --show-error \
+            -o public/dune_cache.json \
+            "https://djahwell.github.io/btc-brief/dune_cache.json" || \
+          echo "[warn] dune_cache.json unavailable — brief-worker will fall back to training-knowledge defaults"
+
+      - name: Create .env from secrets
+        run: |
+          echo "VITE_ANTHROPIC_API_KEY=${{ secrets.VITE_ANTHROPIC_API_KEY }}" > .env
+
+      - name: Run Brief worker (market data + Claude brief)
+        run: node brief-worker.js
+
+      - name: Deploy all_data.json to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: public
+          commit-message: 'chore: refresh brief [skip ci]'
+          single-commit: true

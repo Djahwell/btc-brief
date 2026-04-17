@@ -1,68 +1,59 @@
-name: Refresh All Data + Generate Brief
+name: Refresh Dune Cache (no Claude call)
 
-# ─── Triggers ──────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
+# Keeps public/dune_cache.json warm for the on-demand brief-generate workflow.
+# Does NOT call Anthropic — that's done by brief-generate.yml on first use
+# of the day, triggered by the Cloudflare Worker.
+#
+# Runs every 6h so the Dune MVRV query (which takes ~10 min) isn't a
+# bottleneck when the user opens the app for the first time that day.
+# ─────────────────────────────────────────────────────────────────────────────
+
 on:
   schedule:
-    - cron: '0 */6 * * *'   # every 6 hours (00:00, 06:00, 12:00, 18:00 UTC)
-  workflow_dispatch:          # adds a "Run workflow" button in the GitHub UI
+    - cron: '0 */6 * * *'   # every 6 hours
+  workflow_dispatch:
 
-# ─── Permissions (needed for GitHub Pages deploy) ──────────────────────────────
 permissions:
   contents: write
   pages: write
   id-token: write
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true   # silence Node.js 20 deprecation warning
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  refresh-and-deploy:
+  refresh-dune:
     runs-on: ubuntu-latest
-    timeout-minutes: 45       # Dune MVRV ~10min + Playwright ~2min + Claude ~3min
+    timeout-minutes: 30       # Dune MVRV ~10min + Playwright ~2min
 
     steps:
-      # 1. Get the code
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Node.js 22 LTS (compatible with Node 24 runner, avoids deprecation)
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
 
-      # 3. Install JS dependencies
       - name: Install npm dependencies
         run: npm ci
 
-      # 4. Install Chromium for Playwright (Farside + BMP LTH scraping)
       - name: Install Playwright Chromium
         run: npx playwright install chromium --with-deps
 
-      # 5. Write .env so workers can find all secrets
       - name: Create .env from secrets
         run: |
           echo "VITE_DUNE_API_KEY=${{ secrets.VITE_DUNE_API_KEY }}" > .env
-          echo "VITE_ANTHROPIC_API_KEY=${{ secrets.VITE_ANTHROPIC_API_KEY }}" >> .env
 
-      # 6. Run Dune worker — writes public/dune_cache.json
-      #    (MVRV, exchange flows, ETF flows via Farside/Playwright, LTH, stablecoins)
       - name: Run Dune worker
         run: node dune-worker.js
 
-      # 7. Run Brief worker — fetches market data + calls Claude
-      #    Writes public/all_data.json (complete data + pre-generated brief)
-      - name: Run Brief worker (market data + Claude brief)
-        run: node brief-worker.js
-
-      # 8. Deploy the public/ folder to GitHub Pages
-      #    all_data.json will be live at:
-      #    https://djahwell.github.io/btc-brief/all_data.json
-      - name: Deploy to GitHub Pages
+      - name: Deploy dune_cache.json to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: gh-pages
           folder: public
-          commit-message: 'chore: refresh all data + brief [skip ci]'
+          commit-message: 'chore: refresh dune_cache [skip ci]'
           single-commit: true

@@ -10,8 +10,17 @@ import { useState, useEffect, useCallback, useRef } from "react";
 
 const ANTHROPIC_KEY  = import.meta.env.VITE_ANTHROPIC_API_KEY;
 
-// ─── ALL-DATA CACHE URL (GitHub Pages — updated every 6h by brief-worker.js) ──
-const ALL_DATA_URL = 'https://djahwell.github.io/btc-brief/all_data.json';
+// ─── DATA SOURCES ─────────────────────────────────────────────────────────────
+// WORKER_URL  — Cloudflare Worker that gates the Anthropic call. The worker
+//   returns the latest all_data.json from GitHub Pages, and on the first
+//   request of the day (UTC) triggers the `brief-generate` GitHub Actions
+//   workflow so Anthropic is called at most once per day across all APK users.
+//   When it's regenerating it returns the previous day's data plus
+//   { regenerating: true } so the APK can show a banner and poll.
+// ALL_DATA_URL — direct fallback to GitHub Pages in case the worker is down.
+//   This path never calls Anthropic; it just returns whatever was last deployed.
+const WORKER_URL    = 'https://btc-brief.joel-toe.workers.dev';
+const ALL_DATA_URL  = 'https://djahwell.github.io/btc-brief/all_data.json';
 
 // Data: Binance · Deribit · Alternative.me · CoinGecko · CoinMetrics · Dune Analytics · Farside Investors · Yahoo Finance · Claude Sonnet
 
@@ -316,10 +325,10 @@ function Tag({ text, color }) {
     <span style={{
       background: c + "18", color: c,
       border: "1px solid " + c + "35",
-      borderRadius: 3, padding: "2px 8px",
-      fontSize: 9, fontWeight: 800,
-      letterSpacing: 1.5, fontFamily: "monospace",
-      whiteSpace: "nowrap",
+      borderRadius: 4, padding: "3px 9px",
+      fontSize: 11, fontWeight: 800,
+      letterSpacing: 1.2, fontFamily: "monospace",
+      whiteSpace: "nowrap", lineHeight: 1.4,
     }}>{text}</span>
   );
 }
@@ -327,14 +336,12 @@ function Tag({ text, color }) {
 function Card({ children, accent, glow, style }) {
   const s = style || {};
   return (
-    <div style={{
+    <div className="card" style={{
       background: C.surface,
       border: "1px solid " + (accent ? accent + "40" : C.border),
       borderLeft: accent ? "3px solid " + accent : undefined,
-      borderRadius: 8, padding: "16px 18px",
+      borderRadius: 10, padding: "18px 20px",
       boxShadow: glow ? "0 0 20px " + glow + "12" : undefined,
-      minWidth: 0,        // prevent grid column blowout from nowrap children
-      overflow: "hidden", // clip any content that still exceeds card bounds
       ...s,
     }}>{children}</div>
   );
@@ -343,8 +350,8 @@ function Card({ children, accent, glow, style }) {
 function Label({ children, color }) {
   return (
     <div style={{
-      color: color || C.textDim, fontSize: 8, fontWeight: 800,
-      letterSpacing: 3, fontFamily: "monospace",
+      color: color || C.textDim, fontSize: 10, fontWeight: 800,
+      letterSpacing: 2.5, fontFamily: "monospace",
       marginBottom: 10, textTransform: "uppercase",
     }}>{children}</div>
   );
@@ -352,12 +359,12 @@ function Label({ children, color }) {
 
 function MiniStat({ label, value, sub, color, size }) {
   const col = color || C.textMid;
-  const sz = size || 14;
+  const sz = size || 15;
   return (
-    <div style={{ background: C.surfaceHigh, borderRadius: 5, padding: "8px 12px", borderTop: "2px solid " + col }}>
-      <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", letterSpacing: 1.5, marginBottom: 4 }}>{label}</div>
+    <div style={{ background: C.surfaceHigh, borderRadius: 6, padding: "10px 13px", borderTop: "2px solid " + col }}>
+      <div style={{ color: C.textDim, fontSize: 11, fontFamily: "monospace", letterSpacing: 1.5, marginBottom: 5 }}>{label}</div>
       <div style={{ color: col, fontSize: sz, fontWeight: 800, fontFamily: "monospace" }}>{value}</div>
-      {sub && <div style={{ color: C.textDim, fontSize: 9, marginTop: 2 }}>{sub}</div>}
+      {sub && <div style={{ color: C.textDim, fontSize: 10, marginTop: 3 }}>{sub}</div>}
     </div>
   );
 }
@@ -400,12 +407,159 @@ function computeActivePhase(price) {
   return { id: "D+", label: "EXTENDED BULL RUN", color: "#8b5cf6", action: "Scale out 10% every $15K", progress: 100, pctToNext: null };
 }
 
-const GLOBAL_CSS = "* { box-sizing: border-box; margin: 0; padding: 0; } " +
-  "@keyframes pulse { 0%,100%{opacity:.3} 50%{opacity:.7} } " +
-  "@keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} } " +
-  "@keyframes spin { to{transform:rotate(360deg)} } " +
-  "@keyframes glow { 0%,100%{opacity:.6} 50%{opacity:1} } " +
-  ".fade-up { animation: fadeUp 0.35s ease forwards; }";
+const GLOBAL_CSS = `
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+@keyframes pulse { 0%,100%{opacity:.3} 50%{opacity:.7} }
+@keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+@keyframes spin { to{transform:rotate(360deg)} }
+@keyframes glow { 0%,100%{opacity:.6} 50%{opacity:1} }
+.fade-up { animation: fadeUp 0.35s ease forwards; }
+
+/* ── Base typography scale ─────────────────────────────── */
+html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+body { line-height: 1.5; }
+
+/* ── Responsive layout utilities ───────────────────────── */
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+.grid-auto {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+.grid-auto-sm {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+}
+.grid-quad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+/* ── Topbar ─────────────────────────────────────────────── */
+.topbar {
+  border-bottom: 1px solid #1a2540;
+  padding: 0 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 46px;
+  background: #040608;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  flex-wrap: wrap;
+  padding: 6px 0;
+}
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 6px 0;
+}
+
+/* ── Card ───────────────────────────────────────────────── */
+.card {
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* ── Market stats strip ─────────────────────────────────── */
+.market-strip {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.market-tile {
+  flex: 1 1 120px;
+  min-width: 110px;
+  max-width: 200px;
+}
+
+/* ── Accuracy tracker table ─────────────────────────────── */
+.acc-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0 -4px;
+  padding: 0 4px;
+}
+.acc-table-row {
+  display: grid;
+  grid-template-columns: 110px 90px 60px 90px 90px 90px 1fr;
+  gap: 8px;
+  min-width: 580px;
+}
+
+/* ── Masthead headline ──────────────────────────────────── */
+.masthead-h1 {
+  font-family: 'Playfair Display', serif;
+  font-weight: 900;
+  color: #e2e8f8;
+  line-height: 1.2;
+  margin-bottom: 10px;
+  max-width: 600px;
+  font-size: clamp(20px, 4vw, 30px);
+}
+
+/* ── Score decomposition ────────────────────────────────── */
+.score-decomp-grid {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.score-axis {
+  flex: 1 1 80px;
+  min-width: 70px;
+  max-width: 160px;
+}
+
+/* ── Tablet breakpoint (≤ 900px) ────────────────────────── */
+@media (max-width: 900px) {
+  .grid-3 { grid-template-columns: repeat(2, 1fr); }
+  .grid-quad { grid-template-columns: repeat(2, 1fr); }
+  .topbar { padding: 0 16px; }
+  .market-tile { min-width: 100px; }
+}
+
+/* ── Mobile breakpoint (≤ 600px) ────────────────────────── */
+@media (max-width: 600px) {
+  .grid-3 { grid-template-columns: 1fr; }
+  .grid-2 { grid-template-columns: 1fr; }
+  .grid-quad { grid-template-columns: 1fr 1fr; }
+  .grid-auto { grid-template-columns: 1fr; }
+  .topbar { padding: 0 12px; gap: 4px; }
+  .topbar-subtitle { display: none; }
+  .market-tile { flex: 1 1 calc(50% - 8px); min-width: 90px; max-width: none; }
+  .score-axis { flex: 1 1 calc(33% - 6px); }
+}
+
+/* ── Small mobile (≤ 400px) ─────────────────────────────── */
+@media (max-width: 400px) {
+  .market-tile { flex: 1 1 100%; max-width: none; }
+  .grid-quad { grid-template-columns: 1fr; }
+}
+`;
 
 const STAGES = {
   "fetching-market": ["FETCHING LIVE MARKET DATA", "Binance · Deribit · Alternative.me · CoinGecko · CoinMetrics · Dune · Farside Investors · Yahoo Finance (DXY · VIX · TNX · CME Basis)"],
@@ -443,14 +597,18 @@ export default function MorningBrief() {
 
   const safeSet = function(setter) { return function(val) { if (isMounted.current) setter(val); }; };
 
-  // ── Load all_data.json — try local first, then GitHub Pages ───────────────────
-  // Local path: /all_data.json → served by Vite from public/all_data.json
-  //             (generated by `node brief-worker.js` for local dev)
-  // Remote:     ALL_DATA_URL  → GitHub Pages (generated by GitHub Actions)
+  // ── Load all_data.json — Worker first, then GitHub Pages, then local ─────────
+  // Worker URL: goes through Cloudflare Worker, which triggers the
+  //             brief-generate workflow on the first use of the day.
+  //             Returns { ..., regenerating: true } while the workflow runs.
+  // ALL_DATA_URL: direct GitHub Pages read — bypasses the worker (no trigger).
+  //               Used as a fallback if the worker is down or unreachable.
+  // /all_data.json: local Vite copy for `npm run dev`.
   const loadAllData = async function() {
     const sources = [
-      { url: "/all_data.json",  timeout: 3000  },   // local (fast)
-      { url: ALL_DATA_URL,      timeout: 15000 },   // GitHub Pages
+      { url: "/all_data.json",  timeout: 3000,  triggers: false },  // local dev
+      { url: WORKER_URL,        timeout: 20000, triggers: true  },  // Worker (can trigger refresh)
+      { url: ALL_DATA_URL,      timeout: 15000, triggers: false },  // GitHub Pages direct (fallback)
     ];
     for (var i = 0; i < sources.length; i++) {
       var src = sources[i];
@@ -460,13 +618,46 @@ export default function MorningBrief() {
         var d = await r.json();
         if (d && (d.briefCachedAt || d.cachedAt)) {
           allDataRef.current = d;
-          console.info("[AllData] Loaded from", src.url, "— age:", Math.round((Date.now() - new Date(d.briefCachedAt || d.cachedAt).getTime()) / 3_600_000) + "h");
+          var ageH = Math.round((Date.now() - new Date(d.briefCachedAt || d.cachedAt).getTime()) / 3_600_000);
+          var regenNote = d.regenerating ? " · REGENERATING (new brief queued)" : "";
+          console.info("[AllData] Loaded from", src.url, "— age:", ageH + "h" + regenNote);
           return d;
         }
       } catch (e) {
         console.warn("[AllData] Failed from", src.url, ":", e.message);
       }
     }
+    return null;
+  };
+
+  // ── Poll the Worker until the brief flips to today's date ────────────────────
+  // Called by generateBrief() when the first load returned { regenerating: true }.
+  // The brief-generate workflow takes ~3–5 min to complete, then redeploys
+  // GitHub Pages (~10 min of edge cache) — total ~10–15 min in the worst case.
+  // We poll every 45s for up to 15 min.
+  const pollForFreshBrief = async function(onUpdate) {
+    var today = new Date().toISOString().slice(0, 10);
+    var maxAttempts = 20; // 20 × 45s = 15 min
+    for (var attempt = 0; attempt < maxAttempts; attempt++) {
+      await new Promise(function(res) { setTimeout(res, 45000); });
+      if (!isMounted.current) return null;
+      try {
+        var r = await fetch(WORKER_URL + "?t=" + Date.now(), { signal: AbortSignal.timeout(15000) });
+        if (!r.ok) continue;
+        var d = await r.json();
+        var freshDate = d && d.briefCachedAt ? d.briefCachedAt.slice(0, 10) : null;
+        if (d && d.brief && freshDate === today && !d.regenerating) {
+          allDataRef.current = d;
+          console.info("[Poll] ✓ Fresh brief arrived after " + ((attempt + 1) * 45) + "s");
+          if (onUpdate) onUpdate(d);
+          return d;
+        }
+        console.info("[Poll] attempt " + (attempt + 1) + "/" + maxAttempts + " — still regenerating");
+      } catch (e) {
+        console.warn("[Poll] attempt " + (attempt + 1) + " failed:", e.message);
+      }
+    }
+    console.warn("[Poll] gave up after 15 min — new brief may still arrive later");
     return null;
   };
 
@@ -1919,6 +2110,22 @@ FROM realized r, spot s`;
       if (cachedAll) {
         var cacheAgeH = Math.round((Date.now() - new Date(cachedAll.briefCachedAt || cachedAll.cachedAt).getTime()) / 3_600_000);
         addLog("Cache loaded ✓ — age: " + cacheAgeH + "h | brief: " + (cachedAll.brief ? "ready" : "missing"));
+
+        // If the Worker says a refresh was just triggered (first user of the
+        // day), poll in the background for up to 15 min and swap the brief in
+        // when the new one arrives. The user sees yesterday's brief meanwhile.
+        if (cachedAll.regenerating) {
+          addLog("♻ First-use-of-day trigger fired — new brief generating (poll 15 min)");
+          pollForFreshBrief(function(freshData) {
+            allDataRef.current = freshData;
+            if (freshData.brief) {
+              try {
+                safeSet(setBrief)(freshData.brief);
+                addLog("✓ Auto-refreshed with fresh brief");
+              } catch (_) {}
+            }
+          });
+        }
       } else {
         addLog("Cache unavailable — will retry when generating brief");
       }
@@ -2651,32 +2858,32 @@ FROM realized r, spot s`;
       <style>{GLOBAL_CSS}</style>
 
       {/* TOPBAR */}
-      <div style={{ borderBottom: "1px solid " + C.border, padding: "0 28px", display: "flex", justifyContent: "space-between", alignItems: "center", height: 46, background: "#040608", position: "sticky", top: 0, zIndex: 100 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <span style={{ fontFamily: "JetBrains Mono, monospace", color: C.accent, fontWeight: 700, fontSize: 12, letterSpacing: 3 }}>◆ MAISON TOÉ</span>
-          <span style={{ color: C.border }}>│</span>
-          <span style={{ color: C.textDim, fontSize: 10, letterSpacing: 1.5, fontFamily: "monospace" }}>BTC INTELLIGENCE BRIEF</span>
+      <div className="topbar">
+        <div className="topbar-left">
+          <span style={{ fontFamily: "JetBrains Mono, monospace", color: C.accent, fontWeight: 700, fontSize: 13, letterSpacing: 3, flexShrink: 0 }}>◆ MAISON TOÉ</span>
+          <span style={{ color: C.border, flexShrink: 0 }}>│</span>
+          <span className="topbar-subtitle" style={{ color: C.textDim, fontSize: 11, letterSpacing: 1.5, fontFamily: "monospace", whiteSpace: "nowrap" }}>BTC INTELLIGENCE BRIEF</span>
           {brief && brief.marketStatus && <Tag text={brief.marketStatus} />}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <div className="topbar-right">
           {generated && (
-            <span style={{ color: C.textDim, fontSize: 9, fontFamily: "monospace" }}>
-              {"Generated " + generated.toLocaleTimeString()}
+            <span style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", whiteSpace: "nowrap" }}>
+              {generated.toLocaleTimeString()}
               {genMs && (
                 <span style={{ color: C.border }}>{" · ⚡ " + (genMs.total / 1000).toFixed(1) + "s"}</span>
               )}
             </span>
           )}
-          <button onClick={function() { setShowAccuracy(function(a) { return !a; }); }} style={{ background: "transparent", border: "1px solid " + C.border, color: C.textDim, borderRadius: 4, padding: "4px 10px", fontSize: 9, fontWeight: 700, letterSpacing: 1, cursor: "pointer", fontFamily: "monospace" }}>
+          <button onClick={function() { setShowAccuracy(function(a) { return !a; }); }} style={{ background: "transparent", border: "1px solid " + C.border, color: C.textDim, borderRadius: 5, padding: "5px 12px", fontSize: 10, fontWeight: 700, letterSpacing: 1, cursor: "pointer", fontFamily: "monospace", whiteSpace: "nowrap" }}>
             ACCURACY
           </button>
-          <button onClick={function() { generateBrief(); }} disabled={loading} style={{ background: loading ? "transparent" : C.accentDim, border: "1px solid " + (loading ? C.border : C.accent), color: loading ? C.textDim : C.accent, borderRadius: 4, padding: "4px 14px", fontSize: 9, fontWeight: 700, letterSpacing: 2, cursor: loading ? "not-allowed" : "pointer", fontFamily: "monospace" }}>
-            {loading ? "GENERATING..." : "REFRESH"}
+          <button onClick={function() { generateBrief(); }} disabled={loading} style={{ background: loading ? "transparent" : C.accentDim, border: "1px solid " + (loading ? C.border : C.accent), color: loading ? C.textDim : C.accent, borderRadius: 5, padding: "5px 16px", fontSize: 10, fontWeight: 700, letterSpacing: 2, cursor: loading ? "not-allowed" : "pointer", fontFamily: "monospace", whiteSpace: "nowrap" }}>
+            {loading ? "GENERATING…" : "REFRESH"}
           </button>
         </div>
       </div>
 
-      <div style={{ maxWidth: 1160, margin: "0 auto", padding: "28px 20px" }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto", padding: "24px clamp(12px, 3vw, 28px)" }}>
 
         {/* LOADING */}
         {loading && (
@@ -2697,8 +2904,8 @@ FROM realized r, spot s`;
                     return (
                       <div key={item.key} style={{ textAlign: "center" }}>
                         <div style={{ width: 8, height: 8, borderRadius: "50%", margin: "0 auto 4px", background: dotColor, animation: st === "searching" ? "glow 0.8s ease infinite" : undefined }} />
-                        <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", letterSpacing: 1 }}>{item.label}</div>
-                        <div style={{ fontSize: 8, fontFamily: "monospace", color: dotColor }}>{st === "done" ? "✓" : st === "failed" ? "✗" : "…"}</div>
+                        <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", letterSpacing: 1 }}>{item.label}</div>
+                        <div style={{ fontSize: 10, fontFamily: "monospace", color: dotColor }}>{st === "done" ? "✓" : st === "failed" ? "✗" : "…"}</div>
                       </div>
                     );
                   })}
@@ -2712,16 +2919,16 @@ FROM realized r, spot s`;
                 })}
               </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
-              {[1,2,3].map(function(i) { return <Card key={i}><Skeleton h={8} mb={12} /><Skeleton w="60%" h={22} mb={8} /><Skeleton h={10} /></Card>; })}
+            <div className="grid-3" style={{ marginBottom: 14 }}>
+              {[1,2,3].map(function(i) { return <Card key={i}><Skeleton h={10} mb={12} /><Skeleton w="60%" h={22} mb={8} /><Skeleton h={12} /></Card>; })}
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-              {[1,2].map(function(i) { return <Card key={i}><Skeleton h={8} mb={10} /><Skeleton h={14} mb={6} /><Skeleton w="70%" h={10} /></Card>; })}
+            <div className="grid-2">
+              {[1,2].map(function(i) { return <Card key={i}><Skeleton h={10} mb={10} /><Skeleton h={16} mb={6} /><Skeleton w="70%" h={12} /></Card>; })}
             </div>
             {/* Live debug log */}
             {debugLog.length > 0 && (
               <div style={{ marginTop: 20, background: C.surfaceHigh, borderRadius: 6, padding: "12px 16px", border: "1px solid " + C.border }}>
-                <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", letterSpacing: 2, marginBottom: 8 }}>LIVE STATUS LOG</div>
+                <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", letterSpacing: 2, marginBottom: 8 }}>LIVE STATUS LOG</div>
                 {debugLog.map(function(line, i) {
                   return (
                     <div key={i} style={{ color: line.includes("ERROR") || line.includes("FAILED") ? C.red : line.includes("done") || line.includes("Done") ? C.green : C.textMid, fontSize: 10, fontFamily: "monospace", lineHeight: 1.8 }}>{line}</div>
@@ -2749,7 +2956,7 @@ FROM realized r, spot s`;
                     <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace" }}>remaining until reset</div>
                     {resetInfo.utilization && (
                       <div style={{ marginTop: 14 }}>
-                        <div style={{ color: C.textDim, fontSize: 9, fontFamily: "monospace", marginBottom: 6 }}>WINDOW UTILIZATION</div>
+                        <div style={{ color: C.textDim, fontSize: 11, fontFamily: "monospace", marginBottom: 6 }}>WINDOW UTILIZATION</div>
                         <div style={{ background: C.surfaceHigh, borderRadius: 4, height: 8, width: 280, margin: "0 auto", overflow: "hidden" }}>
                           <div style={{ width: Math.min(100, resetInfo.utilization * 100) + "%", height: "100%", background: resetInfo.utilization >= 1 ? C.red : C.orange }} />
                         </div>
@@ -2760,7 +2967,7 @@ FROM realized r, spot s`;
                 ) : (
                   <div style={{ color: C.textDim, fontSize: 11, marginBottom: 20 }}>Usage window exceeded. Try again in a few hours.</div>
                 )}
-                <div style={{ color: C.textDim, fontSize: 9, fontFamily: "monospace", maxWidth: 400, margin: "0 auto 16px", lineHeight: 1.6 }}>
+                <div style={{ color: C.textDim, fontSize: 11, fontFamily: "monospace", maxWidth: 400, margin: "0 auto 16px", lineHeight: 1.6 }}>
                   This dashboard uses 1 Claude API call per brief. The claude.ai 5-hour usage window applies.
                 </div>
               </div>
@@ -2784,35 +2991,35 @@ FROM realized r, spot s`;
             <div style={{ marginBottom: 24, paddingBottom: 20, borderBottom: "1px solid " + C.border }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
                 <div style={{ flex: 1, minWidth: 300 }}>
-                  <div style={{ color: C.textDim, fontSize: 9, fontFamily: "monospace", letterSpacing: 3, marginBottom: 8 }}>
+                  <div style={{ color: C.textDim, fontSize: 11, fontFamily: "monospace", letterSpacing: 3, marginBottom: 8 }}>
                     {brief.date && brief.date.toUpperCase()}
                   </div>
-                  <h1 style={{ fontFamily: "Playfair Display, serif", fontSize: 28, fontWeight: 900, color: C.text, lineHeight: 1.2, marginBottom: 10, maxWidth: 600 }}>
+                  <h1 className="masthead-h1">
                     {brief.headline}
                   </h1>
-                  <div style={{ color: C.textMid, fontSize: 13, fontFamily: "Inter, sans-serif", fontWeight: 300 }}>
+                  <div style={{ color: C.textMid, fontSize: 14, fontFamily: "Inter, sans-serif", fontWeight: 300, lineHeight: 1.6 }}>
                     {brief.biasReason}
                   </div>
                   {brief.correlationRegime && (
                     <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                      <span style={{ color: C.textDim, fontSize: 9, fontFamily: "monospace" }}>BTC/QQQ CORR:</span>
+                      <span style={{ color: C.textDim, fontSize: 11, fontFamily: "monospace", whiteSpace: "nowrap" }}>BTC/QQQ CORR:</span>
                       <Tag text={(brief.correlationRegime.btcQqqCorrelation || "") + " — " + (brief.correlationRegime.regime || "")} color={brief.correlationRegime.regime === "HIGH" ? C.orange : brief.correlationRegime.regime === "LOW" ? C.green : C.textMid} />
                       <span style={{ color: C.textDim, fontSize: 10 }}>{brief.correlationRegime.implication}</span>
                     </div>
                   )}
                 </div>
-                <div style={{ display: "flex", gap: 10 }}>
-                  <div style={{ background: biasColor + "12", border: "2px solid " + biasColor, borderRadius: 8, padding: "18px 22px", textAlign: "center", minWidth: 130 }}>
-                    <div style={{ color: C.textDim, fontSize: 8, letterSpacing: 3, fontFamily: "monospace", marginBottom: 6 }}>BIAS</div>
-                    <div style={{ color: biasColor, fontSize: 16, fontWeight: 900, fontFamily: "Playfair Display, serif" }}>{brief.overallBias}</div>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <div style={{ background: biasColor + "12", border: "2px solid " + biasColor, borderRadius: 10, padding: "18px 24px", textAlign: "center", minWidth: 120 }}>
+                    <div style={{ color: C.textDim, fontSize: 10, letterSpacing: 2.5, fontFamily: "monospace", marginBottom: 8 }}>BIAS</div>
+                    <div style={{ color: biasColor, fontSize: 17, fontWeight: 900, fontFamily: "Playfair Display, serif" }}>{brief.overallBias}</div>
                   </div>
                   {score != null && !isNaN(score) && (
-                    <div style={{ background: scoreColor + "12", border: "2px solid " + scoreColor, borderRadius: 8, padding: "18px 22px", textAlign: "center", minWidth: 90 }}>
-                      <div style={{ color: C.textDim, fontSize: 8, letterSpacing: 3, fontFamily: "monospace", marginBottom: 6 }}>SCORE</div>
-                      <div style={{ color: scoreColor, fontSize: 28, fontWeight: 900, fontFamily: "JetBrains Mono, monospace" }}>
+                    <div style={{ background: scoreColor + "12", border: "2px solid " + scoreColor, borderRadius: 10, padding: "18px 24px", textAlign: "center", minWidth: 88 }}>
+                      <div style={{ color: C.textDim, fontSize: 10, letterSpacing: 2.5, fontFamily: "monospace", marginBottom: 8 }}>SCORE</div>
+                      <div style={{ color: scoreColor, fontSize: 30, fontWeight: 900, fontFamily: "JetBrains Mono, monospace", lineHeight: 1 }}>
                         {score > 0 ? "+" : ""}{score}
                       </div>
-                      <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace" }}>/10</div>
+                      <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginTop: 4 }}>/10</div>
                     </div>
                   )}
                 </div>
@@ -2821,9 +3028,9 @@ FROM realized r, spot s`;
 
             {/* SCORE DECOMPOSITION — auditable breakdown of composite score */}
             {brief.scoreDecomposition && (
-              <div style={{ marginBottom: 14, background: C.surface, border: "1px solid " + C.border, borderRadius: 8, padding: "12px 16px" }}>
-                <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", letterSpacing: 3, marginBottom: 8 }}>SCORE DECOMPOSITION  ·  -10 to +10  ·  each axis auditable</div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              <div style={{ marginBottom: 14, background: C.surface, border: "1px solid " + C.border, borderRadius: 10, padding: "14px 18px" }}>
+                <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", letterSpacing: 2.5, marginBottom: 10 }}>SCORE DECOMPOSITION  ·  -10 to +10  ·  each axis auditable</div>
+                <div className="score-decomp-grid">
                   {[
                     { key: "onChain",          label: "ON-CHAIN" },
                     { key: "etfInstitutional", label: "ETF/INST" },
@@ -2838,11 +3045,11 @@ FROM realized r, spot s`;
                     const s = parseInt(axis.score, 10);
                     const color = s > 0 ? C.green : s < 0 ? C.red : C.textDim;
                     return (
-                      <div key={key} title={axis.signal || ""} style={{ background: color + "15", border: "1px solid " + color + "50", borderRadius: 5, padding: "5px 9px", cursor: "default" }}>
-                        <div style={{ color: C.textDim, fontSize: 7, fontFamily: "monospace", letterSpacing: 1 }}>{label}</div>
-                        <div style={{ color, fontSize: 13, fontWeight: 800, fontFamily: "monospace" }}>{s > 0 ? "+" : ""}{s}</div>
+                      <div key={key} title={axis.signal || ""} className="score-axis" style={{ background: color + "15", border: "1px solid " + color + "50", borderRadius: 6, padding: "8px 10px", cursor: "default" }}>
+                        <div style={{ color: C.textDim, fontSize: 11, fontFamily: "monospace", letterSpacing: 1, marginBottom: 4 }}>{label}</div>
+                        <div style={{ color, fontSize: 14, fontWeight: 800, fontFamily: "monospace" }}>{s > 0 ? "+" : ""}{s}</div>
                         {axis.signal && (
-                          <div style={{ color: C.textDim, fontSize: 7, fontFamily: "monospace", maxWidth: 120, marginTop: 2, lineHeight: 1.3 }}>{axis.signal.slice(0, 55)}{axis.signal.length > 55 ? "…" : ""}</div>
+                          <div style={{ color: C.textDim, fontSize: 11, fontFamily: "monospace", maxWidth: 140, marginTop: 4, lineHeight: 1.4 }}>{axis.signal.slice(0, 60)}{axis.signal.length > 60 ? "…" : ""}</div>
                         )}
                       </div>
                     );
@@ -2855,19 +3062,19 @@ FROM realized r, spot s`;
             {convergence && (
               <div style={{ marginBottom: 14, background: convergence.color + "08", border: "1px solid " + convergence.color + "50", borderRadius: 8, padding: "12px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
                 <div>
-                  <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", letterSpacing: 3, marginBottom: 4 }}>LIVE CONVERGENCE SIGNAL</div>
+                  <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", letterSpacing: 3, marginBottom: 4 }}>LIVE CONVERGENCE SIGNAL</div>
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     <span style={{ color: convergence.color, fontSize: 16, fontWeight: 900, fontFamily: "JetBrains Mono, monospace" }}>{convergence.label}</span>
                     <span style={{ background: convergence.color + "20", color: convergence.color, fontFamily: "monospace", fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 4 }}>{(convergence.score > 0 ? "+" : "") + convergence.score}</span>
                   </div>
                   <div style={{ marginTop: 6, display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    {convergence.factors.map(function(f, i) { return <span key={i} style={{ color: C.textDim, fontSize: 9, fontFamily: "monospace", background: C.surfaceHigh, padding: "2px 6px", borderRadius: 3 }}>{f}</span>; })}
-                    {convergence.factors.length === 0 && <span style={{ color: C.textDim, fontSize: 9, fontFamily: "monospace" }}>No strong signal triggers active</span>}
+                    {convergence.factors.map(function(f, i) { return <span key={i} style={{ color: C.textDim, fontSize: 11, fontFamily: "monospace", background: C.surfaceHigh, padding: "2px 6px", borderRadius: 3 }}>{f}</span>; })}
+                    {convergence.factors.length === 0 && <span style={{ color: C.textDim, fontSize: 11, fontFamily: "monospace" }}>No strong signal triggers active</span>}
                   </div>
                 </div>
-                <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", textAlign: "right" }}>
+                <div style={{ color: C.textDim, fontSize: 11, fontFamily: "monospace", textAlign: "right" }}>
                   <div>Funding · F&G · 200d SMA · Options Skew · CME Basis · Vol Trend</div>
-                  <div style={{ marginTop: 2 }}>6-axis · client-side deterministic · not from LLM</div>
+                  <div style={{ marginTop: 3 }}>6-axis · client-side deterministic · not from LLM</div>
                 </div>
               </div>
             )}
@@ -2878,7 +3085,7 @@ FROM realized r, spot s`;
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                     <div>
-                      <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", letterSpacing: 3, marginBottom: 3 }}>ACTIVE PHASE - PORTFOLIO MANDATE</div>
+                      <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", letterSpacing: 3, marginBottom: 3 }}>ACTIVE PHASE - PORTFOLIO MANDATE</div>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <span style={{ color: _ap.color, fontSize: 20, fontWeight: 900, fontFamily: "JetBrains Mono, monospace" }}>{"Phase " + _ap.id}</span>
                         <span style={{ color: _ap.color, fontSize: 13, fontWeight: 600 }}>{_ap.label}</span>
@@ -2893,16 +3100,16 @@ FROM realized r, spot s`;
                       var isPast = priceNow && ph.high <= priceNow;
                       return (
                         <div key={ph.id} style={{ textAlign: "center", opacity: isActive ? 1 : isPast ? 0.5 : 0.3 }}>
-                          <div style={{ color: isActive ? ph.color : C.textDim, fontSize: 8, fontFamily: "monospace", letterSpacing: 1, marginBottom: 2 }}>{"PHASE " + ph.id}</div>
-                          <div style={{ color: isActive ? ph.color : C.textDim, fontSize: 9, fontFamily: "monospace" }}>{isPast ? "COMPLETE" : isActive ? "ACTIVE" : "$" + (ph.low / 1000).toFixed(0) + "K"}</div>
+                          <div style={{ color: isActive ? ph.color : C.textDim, fontSize: 10, fontFamily: "monospace", letterSpacing: 1, marginBottom: 2 }}>{"PHASE " + ph.id}</div>
+                          <div style={{ color: isActive ? ph.color : C.textDim, fontSize: 11, fontFamily: "monospace" }}>{isPast ? "COMPLETE" : isActive ? "ACTIVE" : "$" + (ph.low / 1000).toFixed(0) + "K"}</div>
                         </div>
                       );
                     })}
                     {_ap.pctToNext && (
                       <div style={{ background: _ap.color + "18", borderRadius: 6, padding: "8px 14px", textAlign: "center" }}>
-                        <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginBottom: 2 }}>TO NEXT PHASE</div>
+                        <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginBottom: 2 }}>TO NEXT PHASE</div>
                         <div style={{ color: _ap.color, fontSize: 15, fontWeight: 800, fontFamily: "monospace" }}>{"+" + _ap.pctToNext + "%"}</div>
-                        <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace" }}>{"$" + _ap.nextPhaseAt.toLocaleString()}</div>
+                        <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace" }}>{"$" + _ap.nextPhaseAt.toLocaleString()}</div>
                       </div>
                     )}
                   </div>
@@ -2924,14 +3131,14 @@ FROM realized r, spot s`;
                       var col = pct == null ? C.textMid : pct > 0 ? C.green : C.red;
                       return (
                         <div key={item.label} style={{ textAlign: "center" }}>
-                          <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", letterSpacing: 1 }}>{item.label}</div>
+                          <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", letterSpacing: 1 }}>{item.label}</div>
                           <div style={{ color: C.textMid, fontSize: 11, fontWeight: 700, fontFamily: "monospace" }}>{"$" + item.val.toLocaleString()}</div>
-                          {pct != null && <div style={{ color: col, fontSize: 9, fontFamily: "monospace" }}>{(pct > 0 ? "+" : "") + pct.toFixed(1) + "%"}</div>}
+                          {pct != null && <div style={{ color: col, fontSize: 11, fontFamily: "monospace" }}>{(pct > 0 ? "+" : "") + pct.toFixed(1) + "%"}</div>}
                           <div style={{ color: C.textDim, fontSize: 8 }}>{item.note}</div>
                         </div>
                       );
                     })}
-                    <div style={{ marginLeft: "auto", color: C.textDim, fontSize: 8, fontFamily: "monospace", alignSelf: "flex-end" }}>
+                    <div style={{ marginLeft: "auto", color: C.textDim, fontSize: 10, fontFamily: "monospace", alignSelf: "flex-end" }}>
                       {techLevels.candleCount + "d candles · " + techLevels.techSource}
                     </div>
                   </div>
@@ -2941,7 +3148,7 @@ FROM realized r, spot s`;
 
             {/* LIVE MARKET STATS */}
             {marketData && marketData.price && (
-              <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+              <div className="market-strip">
                 {[
                   { label: "BTC", value: "$" + marketData.price.toLocaleString(), sub: (marketData.change24h >= 0 ? "+" : "") + (marketData.change24h ? marketData.change24h.toFixed(2) : "0") + "% 24h", color: marketData.change24h >= 0 ? C.green : C.red },
                   { label: "VOLUME 24H", value: "$" + (marketData.volume24h / 1e9).toFixed(1) + "B", sub: "~" + Math.round(marketData.volume24h / marketData.price).toLocaleString() + " BTC" + (marketData.volumeEstimated ? " (est.)" : ""), color: C.blue },
@@ -2966,10 +3173,10 @@ FROM realized r, spot s`;
                   macroData && macroData.tnxYield != null ? { label: "10Y YIELD", value: macroData.tnxYield + "%", sub: macroData.tnxChange != null ? (macroData.tnxChange > 0 ? "↑" : "↓") + " " + Math.abs(macroData.tnxChange) + "% 1d" : "US 10Y Treasury", color: macroData.tnxYield > 4.5 ? C.red : macroData.tnxYield < 3.5 ? C.green : C.textMid } : null,
                 ].filter(Boolean).map(function(s, i) {
                   return (
-                    <div key={i} style={{ flex: 1, minWidth: 120, background: C.surface, border: "1px solid " + C.border, borderTop: "2px solid " + s.color, borderRadius: 6, padding: "10px 14px" }}>
-                      <div style={{ color: C.textDim, fontSize: 8, letterSpacing: 2, fontFamily: "monospace", marginBottom: 5 }}>{s.label}</div>
-                      <div style={{ color: s.color, fontSize: 17, fontWeight: 700, fontFamily: "JetBrains Mono, monospace" }}>{s.value}</div>
-                      <div style={{ color: C.textDim, fontSize: 9, marginTop: 2 }}>{s.sub}</div>
+                    <div key={i} className="market-tile" style={{ background: C.surface, border: "1px solid " + C.border, borderTop: "2px solid " + s.color, borderRadius: 8, padding: "11px 14px" }}>
+                      <div style={{ color: C.textDim, fontSize: 11, letterSpacing: 2, fontFamily: "monospace", marginBottom: 5 }}>{s.label}</div>
+                      <div style={{ color: s.color, fontSize: 18, fontWeight: 700, fontFamily: "JetBrains Mono, monospace", lineHeight: 1.2 }}>{s.value}</div>
+                      <div style={{ color: C.textDim, fontSize: 10, marginTop: 4 }}>{s.sub}</div>
                     </div>
                   );
                 })}
@@ -2980,34 +3187,34 @@ FROM realized r, spot s`;
             {liquidations && (liquidations.long > 0 || liquidations.short > 0) && (
               <div style={{ background: C.surface, border: "1px solid " + C.border, borderLeft: "3px solid " + liqColor, borderRadius: 8, padding: "14px 18px", marginBottom: 16 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                  <span style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", letterSpacing: 3, fontWeight: 800 }}>
+                  <span style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", letterSpacing: 3, fontWeight: 800 }}>
                     {"LIQUIDATION HEATMAP — " + (liquidations.window || "recent").toUpperCase() + " · " + (liquidations.source || "")}
                   </span>
                   <Tag text={liqSkew} color={liqColor} />
                 </div>
                 <div style={{ display: "flex", height: 20, borderRadius: 4, overflow: "hidden", marginBottom: 10 }}>
                   <div style={{ width: liqLongPct + "%", background: C.red + "90", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {liqLongPct > 15 && <span style={{ color: "#fff", fontSize: 9, fontWeight: 700, fontFamily: "monospace" }}>{liqLongPct.toFixed(0) + "%"}</span>}
+                    {liqLongPct > 15 && <span style={{ color: "#fff", fontSize: 11, fontWeight: 700, fontFamily: "monospace" }}>{liqLongPct.toFixed(0) + "%"}</span>}
                   </div>
                   <div style={{ width: liqShortPct + "%", background: C.green + "90", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {liqShortPct > 15 && <span style={{ color: "#fff", fontSize: 9, fontWeight: 700, fontFamily: "monospace" }}>{liqShortPct.toFixed(0) + "%"}</span>}
+                    {liqShortPct > 15 && <span style={{ color: "#fff", fontSize: 11, fontWeight: 700, fontFamily: "monospace" }}>{liqShortPct.toFixed(0) + "%"}</span>}
                   </div>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
                   <div style={{ display: "flex", gap: 20 }}>
                     <div>
-                      <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginBottom: 2 }}>LONGS LIQUIDATED</div>
+                      <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginBottom: 2 }}>LONGS LIQUIDATED</div>
                       <div style={{ color: C.red, fontSize: 13, fontWeight: 800, fontFamily: "monospace" }}>{"$" + ((liquidations.long || 0) / 1e6).toFixed(1) + "M"}</div>
                       <div style={{ color: C.textDim, fontSize: 9 }}>Forced sell pressure</div>
                     </div>
                     <div>
-                      <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginBottom: 2 }}>SHORTS LIQUIDATED</div>
+                      <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginBottom: 2 }}>SHORTS LIQUIDATED</div>
                       <div style={{ color: C.green, fontSize: 13, fontWeight: 800, fontFamily: "monospace" }}>{"$" + ((liquidations.short || 0) / 1e6).toFixed(1) + "M"}</div>
                       <div style={{ color: C.textDim, fontSize: 9 }}>Forced buy pressure</div>
                     </div>
                   </div>
                   <div style={{ textAlign: "right" }}>
-                    <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginBottom: 2 }}>TOTAL</div>
+                    <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginBottom: 2 }}>TOTAL</div>
                     <div style={{ color: C.textMid, fontSize: 13, fontWeight: 800, fontFamily: "monospace" }}>{"$" + (liqTotal / 1e6).toFixed(1) + "M"}</div>
                     <div style={{ color: C.textDim, fontSize: 9 }}>
                       {liqLongPct > 65 ? "Longs over-leveraged" : liqLongPct < 35 ? "Shorts squeezed - reversal potential" : "Balanced deleveraging"}
@@ -3022,31 +3229,31 @@ FROM realized r, spot s`;
             {brief.normalization && (
               <div style={{ background: C.surfaceMid, border: "1px solid " + C.border, borderLeft: "3px solid " + C.purple, borderRadius: 8, padding: "14px 18px", marginBottom: 16 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                  <span style={{ color: C.purple, fontSize: 8, fontFamily: "monospace", letterSpacing: 3, fontWeight: 800 }}>QUAD-NORMALIZED SIGNALS</span>
-                  <span style={{ color: C.textDim, fontSize: 9, fontFamily: "monospace" }}>
+                  <span style={{ color: C.purple, fontSize: 10, fontFamily: "monospace", letterSpacing: 3, fontWeight: 800 }}>QUAD-NORMALIZED SIGNALS</span>
+                  <span style={{ color: C.textDim, fontSize: 11, fontFamily: "monospace" }}>
                     {["Liquid: " + brief.normalization.liquidSupply, "MCap: " + brief.normalization.marketCap, "Vol: " + brief.normalization.dailyVolumeBTC].join(" · ")}
                   </span>
                 </div>
                 <div style={{ background: C.bg, borderRadius: 5, padding: "8px 14px", marginBottom: 10, display: "flex", gap: 24, alignItems: "center", borderLeft: "3px solid " + C.gold }}>
                   <div>
-                    <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", letterSpacing: 1, marginBottom: 2 }}>VOLUME REGIME</div>
+                    <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", letterSpacing: 1, marginBottom: 2 }}>VOLUME REGIME</div>
                     <span style={{ color: C.gold, fontSize: 12, fontWeight: 800, fontFamily: "monospace" }}>{brief.normalization.volumeRegime}</span>
                   </div>
                   <div>
-                    <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginBottom: 2 }}>24H VOL</div>
+                    <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginBottom: 2 }}>24H VOL</div>
                     <span style={{ color: C.textMid, fontSize: 11, fontFamily: "monospace" }}>{(brief.normalization.dailyVolumeUSD || "") + " / " + (brief.normalization.dailyVolumeBTC || "")}</span>
                   </div>
                   <div>
-                    <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginBottom: 2 }}>TREND</div>
+                    <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginBottom: 2 }}>TREND</div>
                     <span style={{ color: brief.normalization.volumeTrend === "RISING" ? C.green : brief.normalization.volumeTrend === "FALLING" ? C.red : C.textMid, fontSize: 11, fontWeight: 700, fontFamily: "monospace" }}>{brief.normalization.volumeTrend}</span>
                   </div>
                   {brief.normalization.historicalValidation && (
-                    <div style={{ marginLeft: "auto", color: C.textDim, fontSize: 9, fontStyle: "italic", maxWidth: 320 }}>{brief.normalization.historicalValidation}</div>
+                    <div style={{ marginLeft: "auto", color: C.textDim, fontSize: 11, fontStyle: "italic", maxWidth: 320 }}>{brief.normalization.historicalValidation}</div>
                   )}
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                <div className="grid-quad">
                   <div style={{ background: C.bg, borderRadius: 5, padding: "10px 12px", borderTop: "2px solid " + C.teal }}>
-                    <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", letterSpacing: 1, marginBottom: 5 }}>WHALE NETFLOW</div>
+                    <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", letterSpacing: 1, marginBottom: 5 }}>WHALE NETFLOW</div>
                     <div style={{ color: C.teal, fontSize: 13, fontWeight: 800, fontFamily: "monospace" }}>{brief.normalization.whaleNetflowBTC}</div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 6 }}>
                       {[
@@ -3056,7 +3263,7 @@ FROM realized r, spot s`;
                       ].map(function(r, i) {
                         return r.v ? (
                           <div key={i} style={{ display: "flex", justifyContent: "space-between" }}>
-                            <span style={{ color: r.c, fontSize: 8, fontFamily: "monospace" }}>{r.l}</span>
+                            <span style={{ color: r.c, fontSize: 10, fontFamily: "monospace" }}>{r.l}</span>
                             <span style={{ color: r.c, fontSize: 10, fontWeight: 700, fontFamily: "monospace" }}>{r.v}</span>
                           </div>
                         ) : null;
@@ -3064,18 +3271,18 @@ FROM realized r, spot s`;
                     </div>
                   </div>
                   <div style={{ background: C.bg, borderRadius: 5, padding: "10px 12px", borderTop: "2px solid " + C.blue }}>
-                    <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", letterSpacing: 1, marginBottom: 5 }}>ETF ABSORPTION</div>
+                    <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", letterSpacing: 1, marginBottom: 5 }}>ETF ABSORPTION</div>
                     <div style={{ color: C.blue, fontSize: 13, fontWeight: 800, fontFamily: "monospace" }}>{brief.normalization.etfFlowUSD}</div>
-                    <div style={{ color: C.textDim, fontSize: 9, fontFamily: "monospace", marginBottom: 4 }}>{brief.normalization.etfFlowBTC} BTC absorbed</div>
+                    <div style={{ color: C.textDim, fontSize: 11, fontFamily: "monospace", marginBottom: 4 }}>{brief.normalization.etfFlowBTC} BTC absorbed</div>
                     {brief.normalization.etfFlowPctLiquid && (
                       <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span style={{ color: C.purple, fontSize: 8, fontFamily: "monospace" }}>% LIQUID (PRIMARY)</span>
+                        <span style={{ color: C.purple, fontSize: 10, fontFamily: "monospace" }}>% LIQUID (PRIMARY)</span>
                         <span style={{ color: C.purple, fontSize: 10, fontWeight: 700, fontFamily: "monospace" }}>{brief.normalization.etfFlowPctLiquid}</span>
                       </div>
                     )}
                   </div>
                   <div style={{ background: C.bg, borderRadius: 5, padding: "10px 12px", borderTop: "2px solid " + C.orange }}>
-                    <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", letterSpacing: 1, marginBottom: 5 }}>LTH NET POSITION</div>
+                    <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", letterSpacing: 1, marginBottom: 5 }}>LTH NET POSITION</div>
                     {lthData && lthData.lth_net_btc != null ? (() => {
                       const val     = lthData.lth_net_btc;
                       const sign    = val >= 0 ? '+' : '';
@@ -3087,11 +3294,11 @@ FROM realized r, spot s`;
                           <div style={{ color, fontSize: 13, fontWeight: 800, fontFamily: "monospace" }}>
                             {sign}{Math.abs(val).toLocaleString()} BTC/day
                           </div>
-                          <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginTop: 2 }}>
+                          <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginTop: 2 }}>
                             {label} · {lthData.date}
                           </div>
                           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
-                            <span style={{ color: C.purple, fontSize: 8, fontFamily: "monospace" }}>% LIQUID</span>
+                            <span style={{ color: C.purple, fontSize: 10, fontFamily: "monospace" }}>% LIQUID</span>
                             <span style={{ color: C.purple, fontSize: 10, fontWeight: 700, fontFamily: "monospace" }}>{sign}{pctLiq}%</span>
                           </div>
                         </>
@@ -3099,13 +3306,13 @@ FROM realized r, spot s`;
                     })() : (
                       <>
                         <div style={{ color: C.textDim, fontSize: 12, fontWeight: 700, fontFamily: "monospace" }}>N/A</div>
-                        <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginTop: 4 }}>run npm run dune to fetch</div>
+                        <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginTop: 4 }}>run npm run dune to fetch</div>
                       </>
                     )}
                   </div>
                   {/* ── STABLECOIN SUPPLY (CoinGecko via worker cache) ── */}
                   <div style={{ background: C.bg, borderRadius: 5, padding: "10px 12px", borderTop: "2px solid " + C.teal }}>
-                    <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", letterSpacing: 1, marginBottom: 5 }}>STABLE DEMAND</div>
+                    <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", letterSpacing: 1, marginBottom: 5 }}>STABLE DEMAND</div>
                     {stablecoinData && stablecoinData.total_usd != null ? (() => {
                       const totalB  = (stablecoinData.total_usd / 1e9).toFixed(1);
                       const deltaB  = stablecoinData.delta_7d_usd != null
@@ -3118,12 +3325,12 @@ FROM realized r, spot s`;
                           <div style={{ color: C.teal, fontSize: 13, fontWeight: 800, fontFamily: "monospace" }}>
                             ${totalB}B
                           </div>
-                          <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginTop: 2 }}>
+                          <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginTop: 2 }}>
                             USDT+USDC · {stablecoinData.date}
                           </div>
                           {deltaB && (
                             <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
-                              <span style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace" }}>7D DELTA</span>
+                              <span style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace" }}>7D DELTA</span>
                               <span style={{ color: regimeColor, fontSize: 10, fontWeight: 700, fontFamily: "monospace" }}>{deltaB}</span>
                             </div>
                           )}
@@ -3132,7 +3339,7 @@ FROM realized r, spot s`;
                               background: regimeColor + "18", color: regimeColor,
                               border: "1px solid " + regimeColor + "35",
                               borderRadius: 3, padding: "1px 6px",
-                              fontSize: 8, fontWeight: 800, letterSpacing: 1.2, fontFamily: "monospace",
+                              fontSize: 10, fontWeight: 800, letterSpacing: 1.2, fontFamily: "monospace",
                             }}>{regime}</span>
                           </div>
                         </>
@@ -3140,7 +3347,7 @@ FROM realized r, spot s`;
                     })() : (
                       <>
                         <div style={{ color: C.textDim, fontSize: 12, fontWeight: 700, fontFamily: "monospace" }}>N/A</div>
-                        <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginTop: 4 }}>run npm run dune to fetch</div>
+                        <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginTop: 4 }}>run npm run dune to fetch</div>
                       </>
                     )}
                   </div>
@@ -3149,7 +3356,7 @@ FROM realized r, spot s`;
             )}
 
             {/* ROW 1: Price / Whale / ETF */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+            <div className="grid-3" style={{ marginBottom: 14 }}>
 
               <Card accent={signalColors[brief.priceAnalysis && brief.priceAnalysis.signal]}>
                 <Label>Price Structure</Label>
@@ -3157,14 +3364,14 @@ FROM realized r, spot s`;
                   <span style={{ color: C.text, fontSize: 12, fontWeight: 600 }}>Market Structure</span>
                   <Tag text={brief.priceAnalysis && brief.priceAnalysis.signal} />
                 </div>
-                <p style={{ color: C.textMid, fontSize: 12, lineHeight: 1.7, marginBottom: 12, fontFamily: "Inter, sans-serif", fontWeight: 300 }}>{brief.priceAnalysis && brief.priceAnalysis.trend}</p>
+                <p style={{ color: C.textMid, fontSize: 13, lineHeight: 1.75, marginBottom: 12, fontFamily: "Inter, sans-serif", fontWeight: 300 }}>{brief.priceAnalysis && brief.priceAnalysis.trend}</p>
                 <div style={{ background: C.surfaceHigh, borderRadius: 5, padding: "9px 12px", marginBottom: 8 }}>
-                  <div style={{ color: C.textDim, fontSize: 8, letterSpacing: 2, fontFamily: "monospace", marginBottom: 3 }}>KEY LEVEL TODAY</div>
+                  <div style={{ color: C.textDim, fontSize: 10, letterSpacing: 2, fontFamily: "monospace", marginBottom: 3 }}>KEY LEVEL TODAY</div>
                   <div style={{ color: C.gold, fontSize: 11, lineHeight: 1.5 }}>{brief.priceAnalysis && brief.priceAnalysis.keyLevel}</div>
                 </div>
                 {brief.priceAnalysis && brief.priceAnalysis.realizedPriceContext && (
                   <div style={{ background: C.surfaceHigh, borderRadius: 5, padding: "8px 12px" }}>
-                    <div style={{ color: C.textDim, fontSize: 8, letterSpacing: 2, fontFamily: "monospace", marginBottom: 3 }}>COST BASIS CONTEXT</div>
+                    <div style={{ color: C.textDim, fontSize: 10, letterSpacing: 2, fontFamily: "monospace", marginBottom: 3 }}>COST BASIS CONTEXT</div>
                     <div style={{ color: C.textMid, fontSize: 10, lineHeight: 1.5 }}>{brief.priceAnalysis.realizedPriceContext}</div>
                   </div>
                 )}
@@ -3179,28 +3386,28 @@ FROM realized r, spot s`;
                 {brief.whaleSignal && brief.whaleSignal.netflowBTC && (
                   <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
                     <div style={{ flex: 1, background: C.surfaceHigh, borderRadius: 5, padding: "8px 10px" }}>
-                      <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginBottom: 2 }}>RAW BTC</div>
+                      <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginBottom: 2 }}>RAW BTC</div>
                       <div style={{ color: C.gold, fontSize: 12, fontWeight: 700, fontFamily: "monospace" }}>{brief.whaleSignal.netflowBTC}</div>
-                      {brief.whaleSignal.netflowUSD && <div style={{ color: C.textDim, fontSize: 9, fontFamily: "monospace" }}>{brief.whaleSignal.netflowUSD}</div>}
+                      {brief.whaleSignal.netflowUSD && <div style={{ color: C.textDim, fontSize: 11, fontFamily: "monospace" }}>{brief.whaleSignal.netflowUSD}</div>}
                     </div>
                     {brief.whaleSignal.netflowPctLiquid && (
                       <div style={{ flex: 1, background: C.surfaceHigh, borderRadius: 5, padding: "8px 10px", borderTop: "2px solid " + C.purple }}>
-                        <div style={{ color: C.purple, fontSize: 8, fontFamily: "monospace", marginBottom: 2 }}>% LIQUID (PRIMARY)</div>
+                        <div style={{ color: C.purple, fontSize: 10, fontFamily: "monospace", marginBottom: 2 }}>% LIQUID (PRIMARY)</div>
                         <div style={{ color: C.purple, fontSize: 13, fontWeight: 900, fontFamily: "monospace" }}>{brief.whaleSignal.netflowPctLiquid}</div>
-                        {brief.whaleSignal.netflowPctVolume && <div style={{ color: C.gold, fontSize: 9, fontFamily: "monospace" }}>{brief.whaleSignal.netflowPctVolume + " vol"}</div>}
+                        {brief.whaleSignal.netflowPctVolume && <div style={{ color: C.gold, fontSize: 11, fontFamily: "monospace" }}>{brief.whaleSignal.netflowPctVolume + " vol"}</div>}
                       </div>
                     )}
                   </div>
                 )}
                 {brief.whaleSignal && brief.whaleSignal.historicalContext && (
                   <div style={{ background: C.surfaceHigh, borderRadius: 5, padding: "7px 10px", marginBottom: 8 }}>
-                    <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginBottom: 2 }}>VS HISTORY</div>
+                    <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginBottom: 2 }}>VS HISTORY</div>
                     <div style={{ color: C.purple, fontSize: 10, lineHeight: 1.5 }}>{brief.whaleSignal.historicalContext}</div>
                   </div>
                 )}
-                <p style={{ color: C.textMid, fontSize: 11, lineHeight: 1.6, marginBottom: 8, fontFamily: "Inter, sans-serif", fontWeight: 300 }}>{brief.whaleSignal && brief.whaleSignal.detail}</p>
+                <p style={{ color: C.textMid, fontSize: 13, lineHeight: 1.7, marginBottom: 10, fontFamily: "Inter, sans-serif", fontWeight: 300 }}>{brief.whaleSignal && brief.whaleSignal.detail}</p>
                 <div style={{ background: C.surfaceHigh, borderRadius: 5, padding: "8px 10px" }}>
-                  <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginBottom: 2 }}>POSITION IMPLICATION</div>
+                  <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginBottom: 2 }}>POSITION IMPLICATION</div>
                   <div style={{ color: C.teal, fontSize: 10, lineHeight: 1.5 }}>{brief.whaleSignal && brief.whaleSignal.actionable}</div>
                 </div>
               </Card>
@@ -3217,25 +3424,25 @@ FROM realized r, spot s`;
                 <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
                   {brief.etfFlows && brief.etfFlows.totalNetUSD && (
                     <div style={{ flex: 1, background: C.surfaceHigh, borderRadius: 5, padding: "8px 10px" }}>
-                      <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginBottom: 2 }}>TOTAL NET</div>
+                      <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginBottom: 2 }}>TOTAL NET</div>
                       <div style={{ color: brief.etfFlows.status === "INFLOW" ? C.green : C.red, fontSize: 12, fontWeight: 700, fontFamily: "monospace" }}>{brief.etfFlows.totalNetUSD}</div>
-                      {brief.etfFlows.totalNetBTC && <div style={{ color: C.textDim, fontSize: 9, fontFamily: "monospace" }}>{brief.etfFlows.totalNetBTC + " BTC"}</div>}
+                      {brief.etfFlows.totalNetBTC && <div style={{ color: C.textDim, fontSize: 11, fontFamily: "monospace" }}>{brief.etfFlows.totalNetBTC + " BTC"}</div>}
                     </div>
                   )}
                   {brief.etfFlows && brief.etfFlows.totalNetPctLiquid && (
                     <div style={{ flex: 1, background: C.surfaceHigh, borderRadius: 5, padding: "8px 10px", borderTop: "2px solid " + C.purple }}>
-                      <div style={{ color: C.purple, fontSize: 8, fontFamily: "monospace", marginBottom: 2 }}>% LIQUID</div>
+                      <div style={{ color: C.purple, fontSize: 10, fontFamily: "monospace", marginBottom: 2 }}>% LIQUID</div>
                       <div style={{ color: C.purple, fontSize: 13, fontWeight: 900, fontFamily: "monospace" }}>{brief.etfFlows.totalNetPctLiquid}</div>
                     </div>
                   )}
                   {brief.etfFlows && brief.etfFlows.ibitFlow && (
                     <div style={{ flex: 1, background: C.surfaceHigh, borderRadius: 5, padding: "8px 10px" }}>
-                      <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginBottom: 2 }}>IBIT</div>
+                      <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginBottom: 2 }}>IBIT</div>
                       <div style={{ color: C.accent, fontSize: 12, fontWeight: 700, fontFamily: "monospace" }}>{brief.etfFlows.ibitFlow}</div>
                     </div>
                   )}
                 </div>
-                <p style={{ color: C.textMid, fontSize: 11, lineHeight: 1.6, marginBottom: 6, fontFamily: "Inter, sans-serif", fontWeight: 300 }}>{brief.etfFlows && brief.etfFlows.detail}</p>
+                <p style={{ color: C.textMid, fontSize: 13, lineHeight: 1.7, marginBottom: 8, fontFamily: "Inter, sans-serif", fontWeight: 300 }}>{brief.etfFlows && brief.etfFlows.detail}</p>
                 {brief.etfFlows && brief.etfFlows.vsBaseline && <div style={{ color: C.textDim, fontSize: 10, fontStyle: "italic" }}>{"vs baseline: " + brief.etfFlows.vsBaseline}</div>}
                 {brief.etfFlows && brief.etfFlows.streakDays && (
                   <div style={{ marginTop: 6 }}>
@@ -3248,10 +3455,10 @@ FROM realized r, spot s`;
             {/* CME BASIS CARD — shown when CoinGlass data is available */}
             {cmeData && (cmeData.cmeBasisPct != null || cmeData.totalAggOIusd != null) && (
               <div style={{ marginBottom: 14, background: C.surfaceMid, border: "1px solid " + C.border, borderLeft: "3px solid " + C.blue, borderRadius: 8, padding: "12px 18px", display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
-                <div style={{ color: C.blue, fontSize: 8, fontFamily: "monospace", letterSpacing: 3, fontWeight: 800, flexShrink: 0 }}>CME FUTURES · INSTITUTIONAL DEMAND</div>
+                <div style={{ color: C.blue, fontSize: 10, fontFamily: "monospace", letterSpacing: 3, fontWeight: 800, flexShrink: 0 }}>CME FUTURES · INSTITUTIONAL DEMAND</div>
                 {cmeData.cmeBasisPct != null && (
                   <div style={{ textAlign: "center" }}>
-                    <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginBottom: 2 }}>CME BASIS (ANNLZD)</div>
+                    <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginBottom: 2 }}>CME BASIS (ANNLZD)</div>
                     <div style={{ color: cmeData.cmeBasisPct > 12 ? C.green : cmeData.cmeBasisPct > 4 ? C.teal : cmeData.cmeBasisPct < -2 ? C.red : C.textMid, fontSize: 16, fontWeight: 800, fontFamily: "monospace" }}>
                       {(cmeData.cmeBasisPct > 0 ? "+" : "") + cmeData.cmeBasisPct + "%"}
                     </div>
@@ -3260,14 +3467,14 @@ FROM realized r, spot s`;
                 )}
                 {cmeData.totalAggOIusd != null && (
                   <div style={{ textAlign: "center" }}>
-                    <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginBottom: 2 }}>AGGREGATE OI</div>
+                    <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginBottom: 2 }}>AGGREGATE OI</div>
                     <div style={{ color: C.cyan, fontSize: 16, fontWeight: 800, fontFamily: "monospace" }}>${(cmeData.totalAggOIusd / 1e9).toFixed(1)}B</div>
                     <div style={{ color: C.textDim, fontSize: 8 }}>all venues</div>
                   </div>
                 )}
                 {cmeData.cmeOIusd != null && (
                   <div style={{ textAlign: "center" }}>
-                    <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginBottom: 2 }}>CME OI</div>
+                    <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginBottom: 2 }}>CME OI</div>
                     <div style={{ color: C.blue, fontSize: 16, fontWeight: 800, fontFamily: "monospace" }}>${(cmeData.cmeOIusd / 1e9).toFixed(1)}B</div>
                     <div style={{ color: C.textDim, fontSize: 8 }}>institutional</div>
                   </div>
@@ -3277,14 +3484,14 @@ FROM realized r, spot s`;
                     {Object.keys(cmeData.oiByExchange).sort(function(a, b) { return cmeData.oiByExchange[b] - cmeData.oiByExchange[a]; }).slice(0, 5).map(function(ex) {
                       return (
                         <div key={ex} style={{ background: C.bg, borderRadius: 4, padding: "4px 8px", textAlign: "center" }}>
-                          <div style={{ color: C.textDim, fontSize: 7, fontFamily: "monospace" }}>{ex}</div>
-                          <div style={{ color: C.textMid, fontSize: 9, fontFamily: "monospace", fontWeight: 700 }}>${(cmeData.oiByExchange[ex] / 1e9).toFixed(1)}B</div>
+                          <div style={{ color: C.textDim, fontSize: 11, fontFamily: "monospace" }}>{ex}</div>
+                          <div style={{ color: C.textMid, fontSize: 11, fontFamily: "monospace", fontWeight: 700 }}>${(cmeData.oiByExchange[ex] / 1e9).toFixed(1)}B</div>
                         </div>
                       );
                     })}
                   </div>
                 )}
-                <div style={{ marginLeft: "auto", color: C.textDim, fontSize: 8, fontFamily: "monospace" }}>CoinGlass · live</div>
+                <div style={{ marginLeft: "auto", color: C.textDim, fontSize: 10, fontFamily: "monospace" }}>CoinGlass · live</div>
               </div>
             )}
 
@@ -3299,13 +3506,13 @@ FROM realized r, spot s`;
                     <Tag text={brief.fundingRates.signal} />
                   </div>
                   <div style={{ background: C.surfaceHigh, borderRadius: 5, padding: "10px 12px", marginBottom: 10 }}>
-                    <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginBottom: 3 }}>RATE PER 8H</div>
+                    <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginBottom: 3 }}>RATE PER 8H</div>
                     <div style={{ color: brief.fundingRates.signal === "BULLISH" ? C.green : brief.fundingRates.signal === "BEARISH" ? C.red : C.textMid, fontSize: 16, fontWeight: 800, fontFamily: "monospace" }}>{brief.fundingRates.rate8h}</div>
-                    <div style={{ color: C.textDim, fontSize: 9, fontFamily: "monospace" }}>{brief.fundingRates.annualized}</div>
+                    <div style={{ color: C.textDim, fontSize: 11, fontFamily: "monospace" }}>{brief.fundingRates.annualized}</div>
                   </div>
                   <p style={{ color: C.textMid, fontSize: 10, lineHeight: 1.6, fontFamily: "Inter, sans-serif", fontWeight: 300 }}>{brief.fundingRates.detail}</p>
                   <div style={{ marginTop: 8 }}>
-                    <span style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace" }}>SQUEEZE RISK: </span>
+                    <span style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace" }}>SQUEEZE RISK: </span>
                     <Tag text={brief.fundingRates.squeeze_risk} color={brief.fundingRates.squeeze_risk === "HIGH" ? C.green : brief.fundingRates.squeeze_risk === "MEDIUM" ? C.orange : C.textDim} />
                   </div>
                 </Card>
@@ -3319,7 +3526,7 @@ FROM realized r, spot s`;
                     <Tag text={"LEVERAGE: " + brief.openInterest.leverageRisk} color={brief.openInterest.leverageRisk === "HIGH" ? C.red : brief.openInterest.leverageRisk === "MEDIUM" ? C.orange : C.green} />
                   </div>
                   <div style={{ background: C.surfaceHigh, borderRadius: 5, padding: "9px 12px", marginBottom: 10 }}>
-                    <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginBottom: 2 }}>REGIME</div>
+                    <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginBottom: 2 }}>REGIME</div>
                     <div style={{ color: C.cyan, fontSize: 11, lineHeight: 1.4 }}>{brief.openInterest.regime}</div>
                   </div>
                   <p style={{ color: C.textMid, fontSize: 10, lineHeight: 1.6, fontFamily: "Inter, sans-serif", fontWeight: 300 }}>{brief.openInterest.detail}</p>
@@ -3334,11 +3541,11 @@ FROM realized r, spot s`;
                     <Tag text={brief.cmeBasis.signal} />
                   </div>
                   <div style={{ background: C.surfaceHigh, borderRadius: 5, padding: "10px 12px", marginBottom: 10 }}>
-                    <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginBottom: 3 }}>BASIS (ANNUALIZED)</div>
+                    <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginBottom: 3 }}>BASIS (ANNUALIZED)</div>
                     <div style={{ color: brief.cmeBasis.signal === "BULLISH" ? C.green : brief.cmeBasis.signal === "BEARISH" ? C.red : C.blue, fontSize: 18, fontWeight: 800, fontFamily: "monospace" }}>{brief.cmeBasis.basisPct}</div>
                   </div>
                   <p style={{ color: C.textMid, fontSize: 10, lineHeight: 1.6, marginBottom: 8, fontFamily: "Inter, sans-serif", fontWeight: 300 }}>{brief.cmeBasis.detail}</p>
-                  {brief.cmeBasis.cmeOIvsPerp && <div style={{ color: C.textDim, fontSize: 9, fontStyle: "italic" }}>{brief.cmeBasis.cmeOIvsPerp}</div>}
+                  {brief.cmeBasis.cmeOIvsPerp && <div style={{ color: C.textDim, fontSize: 11, fontStyle: "italic" }}>{brief.cmeBasis.cmeOIvsPerp}</div>}
                 </Card>
               )}
 
@@ -3354,7 +3561,7 @@ FROM realized r, spot s`;
                   </div>
                   <p style={{ color: C.textMid, fontSize: 10, lineHeight: 1.6, marginBottom: 8, fontFamily: "Inter, sans-serif", fontWeight: 300 }}>{brief.mvrvSignal.implication}</p>
                   <div style={{ background: C.surfaceHigh, borderRadius: 5, padding: "8px 10px" }}>
-                    <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginBottom: 2 }}>CYCLE CONTEXT</div>
+                    <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginBottom: 2 }}>CYCLE CONTEXT</div>
                     <div style={{ color: C.purple, fontSize: 10, lineHeight: 1.5 }}>{brief.mvrvSignal.cycleContext}</div>
                   </div>
                 </Card>
@@ -3367,13 +3574,13 @@ FROM realized r, spot s`;
                     <Tag text={brief.stablecoinSignal.status} />
                     <Tag text={brief.stablecoinSignal.signal} />
                   </div>
-                  <p style={{ color: C.textMid, fontSize: 11, lineHeight: 1.6, fontFamily: "Inter, sans-serif", fontWeight: 300 }}>{brief.stablecoinSignal.detail}</p>
+                  <p style={{ color: C.textMid, fontSize: 13, lineHeight: 1.7, fontFamily: "Inter, sans-serif", fontWeight: 300 }}>{brief.stablecoinSignal.detail}</p>
                 </Card>
               )}
             </div>
 
             {/* ROW 3: Macro / Action */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+            <div className="grid-2" style={{ marginBottom: 14 }}>
 
               <Card accent={signalColors[brief.macroContext && brief.macroContext.riskLevel]}>
                 <Label>Macro Environment</Label>
@@ -3381,37 +3588,37 @@ FROM realized r, spot s`;
                   <span style={{ color: C.text, fontSize: 12, fontWeight: 600 }}>Global Risk</span>
                   <Tag text={"RISK: " + (brief.macroContext && brief.macroContext.riskLevel)} color={signalColors[brief.macroContext && brief.macroContext.riskLevel]} />
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
+                <div className="grid-auto-sm" style={{ marginBottom: 12 }}>
                   {brief.macroContext && brief.macroContext.dxy && (
                     <div style={{ background: C.surfaceHigh, borderRadius: 5, padding: "8px 10px" }}>
-                      <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginBottom: 2 }}>DXY</div>
+                      <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginBottom: 2 }}>DXY</div>
                       <div style={{ color: signalColors[brief.macroContext.dxySignal] || C.textMid, fontSize: 12, fontWeight: 700, fontFamily: "monospace" }}>{brief.macroContext.dxy}</div>
                       <Tag text={brief.macroContext.dxySignal} color={signalColors[brief.macroContext.dxySignal]} />
                     </div>
                   )}
                   {brief.macroContext && brief.macroContext.realYield && (
                     <div style={{ background: C.surfaceHigh, borderRadius: 5, padding: "8px 10px" }}>
-                      <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginBottom: 2 }}>10Y REAL YIELD</div>
+                      <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginBottom: 2 }}>10Y REAL YIELD</div>
                       <div style={{ color: signalColors[brief.macroContext.realYieldSignal] || C.textMid, fontSize: 12, fontWeight: 700, fontFamily: "monospace" }}>{brief.macroContext.realYield}</div>
                       <Tag text={brief.macroContext.realYieldSignal} color={signalColors[brief.macroContext.realYieldSignal]} />
                     </div>
                   )}
                   {brief.macroContext && brief.macroContext.gold && (
                     <div style={{ background: C.surfaceHigh, borderRadius: 5, padding: "8px 10px" }}>
-                      <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginBottom: 2 }}>GOLD / BTC-GOLD</div>
+                      <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginBottom: 2 }}>GOLD / BTC-GOLD</div>
                       <div style={{ color: C.gold, fontSize: 11, fontWeight: 700, fontFamily: "monospace" }}>{brief.macroContext.gold}</div>
                     </div>
                   )}
                 </div>
-                <p style={{ color: C.textMid, fontSize: 11, lineHeight: 1.6, marginBottom: 10, fontFamily: "Inter, sans-serif", fontWeight: 300 }}>{brief.macroContext && brief.macroContext.detail}</p>
+                <p style={{ color: C.textMid, fontSize: 13, lineHeight: 1.7, marginBottom: 12, fontFamily: "Inter, sans-serif", fontWeight: 300 }}>{brief.macroContext && brief.macroContext.detail}</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   <div style={{ background: C.surfaceHigh, borderRadius: 5, padding: "8px 10px" }}>
-                    <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginBottom: 2 }}>FED WATCH</div>
+                    <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginBottom: 2 }}>FED WATCH</div>
                     <div style={{ color: C.textMid, fontSize: 10 }}>{brief.macroContext && brief.macroContext.fedWatch}</div>
                   </div>
                   {brief.macroContext && brief.macroContext.geopolitical && (
                     <div style={{ background: C.redDim + "60", borderRadius: 5, padding: "7px 10px" }}>
-                      <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginBottom: 2 }}>GEOPOLITICAL</div>
+                      <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginBottom: 2 }}>GEOPOLITICAL</div>
                       <div style={{ color: C.orange, fontSize: 10 }}>{brief.macroContext.geopolitical}</div>
                     </div>
                   )}
@@ -3432,37 +3639,37 @@ FROM realized r, spot s`;
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <div style={{ background: C.bg, borderRadius: 5, padding: "9px 12px" }}>
-                    <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginBottom: 3 }}>SIZE / ALLOCATION</div>
+                    <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginBottom: 3 }}>SIZE / ALLOCATION</div>
                     <div style={{ color: C.text, fontSize: 13, fontWeight: 600 }}>{brief.todayAction && brief.todayAction.size}</div>
                   </div>
                   <div style={{ background: C.bg, borderRadius: 5, padding: "9px 12px" }}>
-                    <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginBottom: 3 }}>CHANGES IF</div>
+                    <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginBottom: 3 }}>CHANGES IF</div>
                     <div style={{ color: C.orange, fontSize: 11 }}>{brief.todayAction && brief.todayAction.trigger}</div>
                   </div>
                   <div style={{ background: C.redDim + "70", border: "1px solid " + C.red + "30", borderRadius: 5, padding: "9px 12px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
-                      <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace" }}>STOP LOSS — CLIENT COMPUTED</div>
+                      <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace" }}>STOP LOSS — CLIENT COMPUTED</div>
                       {clientStop && clientStop.method && <Tag text={clientStop.method} color={C.red} />}
                     </div>
                     <div style={{ color: C.red, fontSize: 16, fontWeight: 800, fontFamily: "monospace" }}>
                       {(clientStop && clientStop.level) || "$58,500"}
                     </div>
                     {clientStop && clientStop.pct && (
-                      <div style={{ color: C.textDim, fontSize: 9, fontFamily: "monospace", marginTop: 2 }}>
+                      <div style={{ color: C.textDim, fontSize: 11, fontFamily: "monospace", marginTop: 2 }}>
                         {clientStop.pct + "% from current · not from LLM"}
                       </div>
                     )}
                   </div>
                   {brief.todayAction && brief.todayAction.dynamicStop && (
                     <div style={{ background: C.surfaceHigh, borderRadius: 5, padding: "7px 10px" }}>
-                      <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginBottom: 2 }}>ANALYST STOP NOTE</div>
+                      <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginBottom: 2 }}>ANALYST STOP NOTE</div>
                       <div style={{ color: C.textMid, fontSize: 10, fontStyle: "italic" }}>{brief.todayAction.dynamicStop}</div>
                     </div>
                   )}
                   {brief.todayAction && brief.todayAction.scoreJustification && (
                     <div style={{ background: C.bg, borderRadius: 5, padding: "9px 12px" }}>
-                      <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginBottom: 3 }}>SCORE BREAKDOWN</div>
-                      <div style={{ color: C.textMid, fontSize: 9, lineHeight: 1.6, fontFamily: "monospace" }}>{brief.todayAction.scoreJustification}</div>
+                      <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginBottom: 3 }}>SCORE BREAKDOWN</div>
+                      <div style={{ color: C.textMid, fontSize: 11, lineHeight: 1.6, fontFamily: "monospace" }}>{brief.todayAction.scoreJustification}</div>
                     </div>
                   )}
                 </div>
@@ -3473,7 +3680,7 @@ FROM realized r, spot s`;
             <Card style={{ marginBottom: 14, borderTop: "3px solid " + C.accent }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                 <Label color={C.accent}>Senior Analyst Note</Label>
-                <span style={{ color: C.textDim, fontSize: 9, fontFamily: "monospace" }}>Maison Toé Digital Assets — BTC Desk</span>
+                <span style={{ color: C.textDim, fontSize: 11, fontFamily: "monospace" }}>Maison Toé Digital Assets — BTC Desk</span>
               </div>
               <p style={{ color: C.text, fontSize: 14, lineHeight: 1.9, fontFamily: "Playfair Display, serif", fontStyle: "italic", fontWeight: 400, borderLeft: "2px solid " + C.accent, paddingLeft: 18 }}>
                 {brief.analystNote}
@@ -3481,7 +3688,7 @@ FROM realized r, spot s`;
             </Card>
 
             {/* CATALYST WATCH + RISK */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div className="grid-2" style={{ marginBottom: 14 }}>
               <Card>
                 <Label>Catalyst Watch</Label>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -3493,7 +3700,7 @@ FROM realized r, spot s`;
                             <span style={{ color: C.text, fontSize: 11, fontWeight: 600 }}>{cat.event}</span>
                             <Tag text={cat.impact} color={cat.impact === "BULLISH" ? C.green : cat.impact === "BEARISH" ? C.red : C.purple} />
                           </div>
-                          <div style={{ color: C.textDim, fontSize: 9, fontFamily: "monospace" }}>{cat.timing}</div>
+                          <div style={{ color: C.textDim, fontSize: 11, fontFamily: "monospace" }}>{cat.timing}</div>
                           <div style={{ color: C.textMid, fontSize: 10, marginTop: 3 }}>{cat.note}</div>
                         </div>
                       </div>
@@ -3509,13 +3716,13 @@ FROM realized r, spot s`;
                 </p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", padding: "9px 12px", background: C.bg, borderRadius: 5 }}>
-                    <span style={{ color: C.textDim, fontSize: 9, fontFamily: "monospace" }}>HARD STOP</span>
+                    <span style={{ color: C.textDim, fontSize: 11, fontFamily: "monospace" }}>HARD STOP</span>
                     <span style={{ color: C.red, fontWeight: 700, fontFamily: "monospace", fontSize: 11 }}>
                       {(brief.todayAction && brief.todayAction.dynamicStop) || (brief.todayAction && brief.todayAction.stopAlert) || "See action card"}
                     </span>
                   </div>
                   {brief.contextTimestamp && (
-                    <div style={{ color: C.textDim, fontSize: 9, fontStyle: "italic", padding: "4px 0" }}>
+                    <div style={{ color: C.textDim, fontSize: 11, fontStyle: "italic", padding: "4px 0" }}>
                       {brief.contextTimestamp}
                     </div>
                   )}
@@ -3529,29 +3736,29 @@ FROM realized r, spot s`;
                 <div style={{ marginBottom: 14 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                     <Label>Model Accuracy — 30-Day Call Log</Label>
-                    <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace" }}>Last 7 graded fed back to Claude each session</div>
+                    <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace" }}>Last 7 graded fed back to Claude each session</div>
                   </div>
                   {accPct != null ? (
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       <div style={{ background: C.surfaceHigh, borderRadius: 5, padding: "8px 14px", textAlign: "center" }}>
-                        <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace" }}>HIT RATE</div>
+                        <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace" }}>HIT RATE</div>
                         <div style={{ color: accPct >= 60 ? C.green : accPct >= 40 ? C.orange : C.red, fontSize: 20, fontWeight: 800, fontFamily: "monospace" }}>{accPct + "%"}</div>
-                        <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace" }}>{accGraded.length + " graded"}</div>
+                        <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace" }}>{accGraded.length + " graded"}</div>
                       </div>
                       <div style={{ background: C.surfaceHigh, borderRadius: 5, padding: "8px 14px", textAlign: "center" }}>
-                        <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace" }}>BIAS DRIFT</div>
+                        <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace" }}>BIAS DRIFT</div>
                         <div style={{ color: accDriftColor, fontSize: 13, fontWeight: 800, fontFamily: "monospace" }}>{accDriftLabel}</div>
-                        <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace" }}>last 7 errors</div>
+                        <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace" }}>last 7 errors</div>
                       </div>
                       {accHcHit != null && (
                         <div style={{ background: C.surfaceHigh, borderRadius: 5, padding: "8px 14px", textAlign: "center" }}>
-                          <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace" }}>HIGH CONV.</div>
+                          <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace" }}>HIGH CONV.</div>
                           <div style={{ color: accHcHit >= 60 ? C.green : accHcHit >= 40 ? C.orange : C.red, fontSize: 20, fontWeight: 800, fontFamily: "monospace" }}>{accHcHit + "%"}</div>
-                          <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace" }}>score abs&gt;=5</div>
+                          <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace" }}>score abs&gt;=5</div>
                         </div>
                       )}
                       <div style={{ background: C.surfaceHigh, borderRadius: 5, padding: "8px 14px", flex: 1, minWidth: 160 }}>
-                        <div style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", marginBottom: 4 }}>CALIBRATION STATUS</div>
+                        <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginBottom: 4 }}>CALIBRATION STATUS</div>
                         {accPct >= 60 ? (
                           <div style={{ color: C.green, fontSize: 10, fontFamily: "monospace" }}>WELL CALIBRATED — full conviction scores active</div>
                         ) : accPct >= 40 ? (
@@ -3570,54 +3777,56 @@ FROM realized r, spot s`;
                     No calls logged yet. Accuracy builds after the second session.
                   </div>
                 ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "110px 90px 60px 90px 90px 90px 1fr", gap: 8, padding: "4px 10px" }}>
-                      {["DATE","PRICE","SCORE","BIAS","ACTION","OUTCOME","% MOVE 5D"].map(function(h) {
-                        return <div key={h} style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", letterSpacing: 1 }}>{h}</div>;
+                  <div className="acc-table-scroll">
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <div className="acc-table-row" style={{ padding: "4px 10px" }}>
+                        {["DATE","PRICE","SCORE","BIAS","ACTION","OUTCOME","% MOVE 5D"].map(function(h) {
+                          return <div key={h} style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", letterSpacing: 1 }}>{h}</div>;
+                        })}
+                      </div>
+                      {accuracyLog.slice().reverse().map(function(entry, i) {
+                        return (
+                          <div key={i} className="acc-table-row" style={{ padding: "8px 10px", background: i % 2 === 0 ? C.surfaceHigh : C.surface, borderRadius: 4, borderLeft: "3px solid " + (entry.outcome === "CORRECT" ? C.green : entry.outcome === "WRONG" ? C.red : C.border) }}>
+                            <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace" }}>{entry.date ? entry.date.slice(0, 10) : "—"}</div>
+                            <div style={{ color: C.textMid, fontSize: 10, fontFamily: "monospace" }}>{entry.price ? "$" + entry.price.toLocaleString() : "—"}</div>
+                            <div style={{ color: entry.score >= 5 ? C.green : entry.score >= 2 ? C.teal : entry.score < 0 ? C.red : C.textMid, fontSize: 10, fontWeight: 700, fontFamily: "monospace" }}>
+                              {entry.score != null ? (entry.score > 0 ? "+" + entry.score : String(entry.score)) : "—"}
+                            </div>
+                            <div style={{ color: biasColors[entry.bias] || C.textMid, fontSize: 10, fontFamily: "monospace" }}>{entry.bias || "—"}</div>
+                            <div style={{ color: signalColors[entry.recommendation] || C.textMid, fontSize: 10, fontFamily: "monospace" }}>{entry.recommendation || "—"}</div>
+                            <div style={{ color: entry.outcome === "CORRECT" ? C.green : entry.outcome === "WRONG" ? C.red : C.textDim, fontSize: 10, fontFamily: "monospace" }}>
+                              {entry.outcome
+                                ? entry.outcome
+                                : entry.ts
+                                  ? (function() {
+                                      var msLeft = (entry.ts + GRADE_AFTER_MS) - Date.now();
+                                      var dLeft = Math.ceil(msLeft / 86400000);
+                                      return dLeft > 0 ? dLeft + "d left" : "GRADING…";
+                                    })()
+                                  : "PENDING"}
+                            </div>
+                            <div style={{ color: entry.pctMove > 0 ? C.green : entry.pctMove < 0 ? C.red : C.textDim, fontSize: 10, fontFamily: "monospace" }}>
+                              {entry.pctMove != null ? (entry.pctMove > 0 ? "+" : "") + entry.pctMove + "%" : "—"}
+                            </div>
+                          </div>
+                        );
                       })}
                     </div>
-                    {accuracyLog.slice().reverse().map(function(entry, i) {
-                      return (
-                        <div key={i} style={{ display: "grid", gridTemplateColumns: "110px 90px 60px 90px 90px 90px 1fr", gap: 8, padding: "7px 10px", background: i % 2 === 0 ? C.surfaceHigh : C.surface, borderRadius: 4, borderLeft: "3px solid " + (entry.outcome === "CORRECT" ? C.green : entry.outcome === "WRONG" ? C.red : C.border) }}>
-                          <div style={{ color: C.textDim, fontSize: 9, fontFamily: "monospace" }}>{entry.date ? entry.date.slice(0, 10) : "—"}</div>
-                          <div style={{ color: C.textMid, fontSize: 9, fontFamily: "monospace" }}>{entry.price ? "$" + entry.price.toLocaleString() : "—"}</div>
-                          <div style={{ color: entry.score >= 5 ? C.green : entry.score >= 2 ? C.teal : entry.score < 0 ? C.red : C.textMid, fontSize: 9, fontWeight: 700, fontFamily: "monospace" }}>
-                            {entry.score != null ? (entry.score > 0 ? "+" + entry.score : String(entry.score)) : "—"}
-                          </div>
-                          <div style={{ color: biasColors[entry.bias] || C.textMid, fontSize: 9, fontFamily: "monospace" }}>{entry.bias || "—"}</div>
-                          <div style={{ color: signalColors[entry.recommendation] || C.textMid, fontSize: 9, fontFamily: "monospace" }}>{entry.recommendation || "—"}</div>
-                          <div style={{ color: entry.outcome === "CORRECT" ? C.green : entry.outcome === "WRONG" ? C.red : C.textDim, fontSize: 9, fontFamily: "monospace" }}>
-                            {entry.outcome
-                              ? entry.outcome
-                              : entry.ts
-                                ? (function() {
-                                    var msLeft = (entry.ts + GRADE_AFTER_MS) - Date.now();
-                                    var dLeft = Math.ceil(msLeft / 86400000);
-                                    return dLeft > 0 ? dLeft + "d left" : "GRADING…";
-                                  })()
-                                : "PENDING"}
-                          </div>
-                          <div style={{ color: entry.pctMove > 0 ? C.green : entry.pctMove < 0 ? C.red : C.textDim, fontSize: 9, fontFamily: "monospace" }}>
-                            {entry.pctMove != null ? (entry.pctMove > 0 ? "+" : "") + entry.pctMove + "%" : "—"}
-                          </div>
-                        </div>
-                      );
-                    })}
                   </div>
                 )}
-                <div style={{ marginTop: 10, color: C.textDim, fontSize: 9, fontStyle: "italic" }}>
+                <div style={{ marginTop: 10, color: C.textDim, fontSize: 11, fontStyle: "italic" }}>
                   Grading: ACCUMULATE/ADD correct if BTC +2%+ after 5 days. REDUCE/HEDGE correct if BTC -2%+. FLAT if within 2%. Outcome column shows days remaining until graded.
                 </div>
               </Card>
             )}
 
             {/* FOOTER */}
-            <div style={{ marginTop: 24, paddingTop: 14, borderTop: "1px solid " + C.border, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-              <span style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace", letterSpacing: 1 }}>
+            <div style={{ marginTop: 28, paddingTop: 16, borderTop: "1px solid " + C.border, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+              <span style={{ color: C.textDim, fontSize: 11, fontFamily: "monospace", letterSpacing: 0.5 }}>
                 MAISON TOÉ DIGITAL ASSETS — FOR PROFESSIONAL INVESTORS — NOT FINANCIAL ADVICE
               </span>
-              <span style={{ color: C.textDim, fontSize: 8, fontFamily: "monospace" }}>
-                Live: Binance · Deribit · Alternative.me · CoinGecko · CoinMetrics · Dune · Farside Investors · Yahoo Finance (BTC=F, DXY, VIX, TNX) · Claude Sonnet
+              <span style={{ color: C.textDim, fontSize: 11, fontFamily: "monospace" }}>
+                Live: Binance · Deribit · Alternative.me · CoinGecko · CoinMetrics · Dune · Farside · Yahoo Finance · Claude Sonnet
               </span>
             </div>
 

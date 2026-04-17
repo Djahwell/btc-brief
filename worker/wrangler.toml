@@ -1,0 +1,34 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Cloudflare Worker config for BTC Brief trigger gate.
+# ─────────────────────────────────────────────────────────────────────────────
+# Deploy:
+#   1.  npm install -g wrangler        (one-time, global)
+#   2.  wrangler login                 (opens browser)
+#   3.  wrangler kv:namespace create BRIEF_KV
+#       → copy the `id` into the [[kv_namespaces]] block below
+#   4.  wrangler secret put GITHUB_PAT      (paste fine-grained PAT)
+#       wrangler secret put GITHUB_REPO     (e.g. "Djahwell/btc-brief")
+#       wrangler secret put WORKFLOW_FILE   (e.g. "brief-generate.yml")
+#       wrangler secret put PAGES_URL       (e.g. "https://djahwell.github.io/btc-brief/all_data.json")
+#   5.  wrangler deploy
+#
+# After deploy, the Worker is live at:
+#   https://btc-brief.<your-cloudflare-subdomain>.workers.dev/brief
+# ─────────────────────────────────────────────────────────────────────────────
+
+name            = "btc-brief"
+main            = "worker.js"
+compatibility_date = "2024-12-01"
+
+# KV namespace for the per-day trigger lock.
+# Replace `id` with the UUID returned by `wrangler kv:namespace create BRIEF_KV`.
+[[kv_namespaces]]
+binding = "BRIEF_KV"
+id      = "8543a6691b2e47a4b1a2eca45c6a789c"
+
+# Observability — enables logs in the Cloudflare dashboard.
+[observability]
+enabled = true
+
+# Note: secrets (GITHUB_PAT, GITHUB_REPO, WORKFLOW_FILE, PAGES_URL) are set via
+# `wrangler secret put <NAME>` and are NOT committed to this file.
