@@ -12,10 +12,12 @@ const ANTHROPIC_KEY  = import.meta.env.VITE_ANTHROPIC_API_KEY;
 
 // ─── DATA SOURCES ─────────────────────────────────────────────────────────────
 // WORKER_URL  — Cloudflare Worker that gates the Anthropic call. The worker
-//   returns the latest all_data.json from GitHub Pages, and on the first
-//   request of the day (UTC) triggers the `brief-generate` GitHub Actions
-//   workflow so Anthropic is called at most once per day across all APK users.
-//   When it's regenerating it returns the previous day's data plus
+//   returns the latest all_data.json from GitHub Pages, and when a user opens
+//   after a new Dune cache cycle (cachedAt > briefCachedAt) it triggers the
+//   `brief-generate` GitHub Actions workflow. Net effect: Anthropic is called
+//   at most once per Dune refresh cycle across all APK users, and zero times
+//   on days nobody opens the app.
+//   When regenerating, the worker returns the previous brief plus
 //   { regenerating: true } so the APK can show a banner and poll.
 // ALL_DATA_URL — direct fallback to GitHub Pages in case the worker is down.
 //   This path never calls Anthropic; it just returns whatever was last deployed.
@@ -582,6 +584,7 @@ export default function MorningBrief() {
   const [showAccuracy, setShowAccuracy] = useState(false);
   const [clientStop, setClientStop] = useState(null);
   const [debugLog, setDebugLog] = useState([]);
+  const [showDebugLog, setShowDebugLog] = useState(false);
   const [techLevels, setTechLevels] = useState(null);
   const [convergence, setConvergence] = useState(null);
   const [cmeData, setCmeData] = useState(null);
@@ -599,7 +602,7 @@ export default function MorningBrief() {
 
   // ── Load all_data.json — Worker first, then GitHub Pages, then local ─────────
   // Worker URL: goes through Cloudflare Worker, which triggers the
-  //             brief-generate workflow on the first use of the day.
+  //             brief-generate workflow on the first open of each Dune cycle.
   //             Returns { ..., regenerating: true } while the workflow runs.
   // ALL_DATA_URL: direct GitHub Pages read — bypasses the worker (no trigger).
   //               Used as a fallback if the worker is down or unreachable.
@@ -630,13 +633,18 @@ export default function MorningBrief() {
     return null;
   };
 
-  // ── Poll the Worker until the brief flips to today's date ────────────────────
+  // ── Poll the Worker until the brief catches up to the latest Dune cycle ─────
   // Called by generateBrief() when the first load returned { regenerating: true }.
   // The brief-generate workflow takes ~3–5 min to complete, then redeploys
   // GitHub Pages (~10 min of edge cache) — total ~10–15 min in the worst case.
   // We poll every 45s for up to 15 min.
+  //
+  // Freshness rule: the Worker sets `regenerating: true` when briefCachedAt is
+  // older than cachedAt (the Dune cycle timestamp). Once the workflow finishes
+  // and a new all_data.json is deployed, the Worker stops returning the flag.
+  // That's the authoritative signal — simpler and midnight-safe vs. comparing
+  // the brief's date string to today's date.
   const pollForFreshBrief = async function(onUpdate) {
-    var today = new Date().toISOString().slice(0, 10);
     var maxAttempts = 20; // 20 × 45s = 15 min
     for (var attempt = 0; attempt < maxAttempts; attempt++) {
       await new Promise(function(res) { setTimeout(res, 45000); });
@@ -645,8 +653,7 @@ export default function MorningBrief() {
         var r = await fetch(WORKER_URL + "?t=" + Date.now(), { signal: AbortSignal.timeout(15000) });
         if (!r.ok) continue;
         var d = await r.json();
-        var freshDate = d && d.briefCachedAt ? d.briefCachedAt.slice(0, 10) : null;
-        if (d && d.brief && freshDate === today && !d.regenerating) {
+        if (d && d.brief && !d.regenerating) {
           allDataRef.current = d;
           console.info("[Poll] ✓ Fresh brief arrived after " + ((attempt + 1) * 45) + "s");
           if (onUpdate) onUpdate(d);
@@ -663,7 +670,9 @@ export default function MorningBrief() {
 
   const addLog = (msg) => {
     const ts = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-    setDebugLog(function(prev) { return prev.concat([ts + "  " + msg]).slice(-20); });
+    // Keep the last 100 entries — 20 is too few; the QQQ diagnostics fell off
+    // the end before the persistent panel could display them.
+    setDebugLog(function(prev) { return prev.concat([ts + "  " + msg]).slice(-100); });
     console.log("[Brief] " + msg);
   };
 
@@ -729,7 +738,12 @@ export default function MorningBrief() {
   // Fallback: Kraken OHLC
   const fetchTechnicalLevels = async function() {
     var closes = null;
+    var btcDates = null; // parallel to closes, "YYYY-MM-DD" strings (UTC) — used for QQQ date-intersection correlation
     var techSource = null;
+
+    var toISODate = function(ms) {
+      return new Date(ms).toISOString().slice(0, 10);
+    };
 
     // ── Primary: Binance klines ───────────────────────────────────────────
     // Returns [[openTime, open, high, low, close, volume, ...], ...]
@@ -739,7 +753,15 @@ export default function MorningBrief() {
         { timeout: 10000 }
       );
       if (!d || d.length < 20) throw new Error("not enough candles: " + (d ? d.length : 0));
-      closes = d.map(function(row) { return parseFloat(row[4]); }).filter(Boolean);
+      // Keep closes + dates in lockstep so a skipped close (NaN) also drops its date.
+      closes = [];
+      btcDates = [];
+      for (var bi = 0; bi < d.length; bi++) {
+        var bClose = parseFloat(d[bi][4]);
+        if (!bClose || isNaN(bClose)) continue;
+        closes.push(bClose);
+        btcDates.push(toISODate(d[bi][0]));
+      }
       // Capture volume for live volume-trend computation (row[5] = base asset volume in BTC)
       if (!window.__btcVolumes) window.__btcVolumes = [];
       window.__btcVolumes = d.map(function(row) { return parseFloat(row[5]); }).filter(Boolean);
@@ -759,7 +781,15 @@ export default function MorningBrief() {
         );
         var rows = kr && kr.result && (kr.result["XXBTZUSD"] || kr.result["XBTZUSD"]);
         if (!rows || rows.length < 20) throw new Error("not enough rows");
-        closes = rows.map(function(row) { return parseFloat(row[4]); }).filter(Boolean);
+        // Kraken time is seconds since epoch at row[0].
+        closes = [];
+        btcDates = [];
+        for (var ki = 0; ki < rows.length; ki++) {
+          var kClose = parseFloat(rows[ki][4]);
+          if (!kClose || isNaN(kClose)) continue;
+          closes.push(kClose);
+          btcDates.push(toISODate(rows[ki][0] * 1000));
+        }
         techSource = "Kraken daily";
       } catch (e2) {
         console.warn("fetchTechnicalLevels Kraken failed:", e2.message);
@@ -794,53 +824,153 @@ export default function MorningBrief() {
       // ── QQQ 60-day rolling Pearson correlation ───────────────────────────
       // Priority:
       //   1) Server-precomputed value from all_data.json (brief-worker.js).
-      //      This is the only path that works inside the packaged APK, because
-      //      the "/api/yahoo" Vite-proxy rewrite does not exist in the bundle.
-      //   2) Live Vite-proxy fetch from Yahoo Finance (local `npm run dev` only).
+      //   2) Cloudflare Worker /qqq proxy — works in APK (CORS) AND local dev.
+      //      The worker returns { dates: [...], closes: [...] } from Yahoo or
+      //      Stooq (whichever it can reach); Cloudflare IPs bypass the blocks
+      //      Yahoo puts on GitHub Actions, and the proxy adds CORS headers so
+      //      the webview doesn't reject the response.
+      //   3) Local-dev only: /api/yahoo Vite proxy (kept as belt-and-braces).
       var btcQqqCorr = null;
       var corrWindowUsed = 0;
-      var cachedTech = allDataRef.current && allDataRef.current.tech;
+      var cachedAll  = allDataRef.current;
+      var cachedTech = cachedAll && cachedAll.tech;
       if (cachedTech && cachedTech.btcQqqCorr != null) {
         btcQqqCorr = cachedTech.btcQqqCorr;
         corrWindowUsed = cachedTech.corrWindow || 60;
         console.info("[Correlation] Using cached BTC-QQQ " + corrWindowUsed + "d Pearson (brief-worker):", btcQqqCorr);
+        try { addLog("QQQ ✓ cached " + corrWindowUsed + "d: " + btcQqqCorr); } catch (_) {}
       } else {
-        try {
-          var qqqRes = await safeFetch(
-            "/api/yahoo/v8/finance/chart/QQQ?interval=1d&range=90d",
-            { timeout: 10000 }
-          );
-          var qqqCloses = (qqqRes &&
-            qqqRes.chart &&
-            qqqRes.chart.result &&
-            qqqRes.chart.result[0] &&
-            qqqRes.chart.result[0].indicators &&
-            qqqRes.chart.result[0].indicators.quote &&
-            qqqRes.chart.result[0].indicators.quote[0] &&
-            qqqRes.chart.result[0].indicators.quote[0].close) || [];
-          qqqCloses = qqqCloses.filter(function(v) { return v != null && !isNaN(v); });
-          var CORR_DAYS = 60;
-          var btcSlice = closes.slice(-CORR_DAYS);
-          var qqqSlice = qqqCloses.slice(-CORR_DAYS);
-          var corrN = Math.min(btcSlice.length, qqqSlice.length);
-          if (corrN >= 20) {
-            btcSlice = btcSlice.slice(-corrN);
-            qqqSlice = qqqSlice.slice(-corrN);
-            var arrMean = function(arr) { return arr.reduce(function(a, b) { return a + b; }, 0) / arr.length; };
-            var mB = arrMean(btcSlice), mQ = arrMean(qqqSlice);
-            var num = 0, dB = 0, dQ = 0;
-            for (var ci = 0; ci < corrN; ci++) {
-              var db = btcSlice[ci] - mB, dq = qqqSlice[ci] - mQ;
-              num += db * dq; dB += db * db; dQ += dq * dq;
-            }
-            btcQqqCorr = (dB > 0 && dQ > 0)
-              ? parseFloat((num / Math.sqrt(dB * dQ)).toFixed(2))
-              : null;
-            corrWindowUsed = corrN;
-            console.info("[Correlation] Live BTC-QQQ " + corrN + "d Pearson (Yahoo proxy):", btcQqqCorr);
+        // Diagnose WHY the cache miss — crucial in APK where the Yahoo proxy fallback does nothing.
+        var diag;
+        if (!cachedAll)                                    diag = "no all_data loaded";
+        else if (!cachedTech)                              diag = "all_data has no 'tech' field";
+        else if (cachedTech.btcQqqCorr == null)            diag = "tech.btcQqqCorr is null (brief-worker QQQ fetch failed → re-run brief-generate)";
+        else                                               diag = "unknown";
+        console.warn("[Correlation] QQQ cache miss: " + diag);
+        try { addLog("QQQ cache miss — " + diag); } catch (_) {}
+
+        // Shared Pearson-on-returns helper — now aligns BTC and QQQ on
+        // COMMON TRADING DATES (not trailing length) to match brief-worker.js.
+        //
+        // Why this matters: QQQ trades ~5 days/week, BTC trades 7 days/week.
+        // If we slice the last N items of each array, BTC's last-60 covers
+        // ~60 calendar days but QQQ's last-60 covers ~84 calendar days, so
+        // index-by-index pairing correlates BTC-today's return with an
+        // unrelated QQQ return from weeks ago. That produced the spurious
+        // ~0.05 we saw in the APK. Date-intersection pairs returns computed
+        // between the SAME consecutive QQQ trading days using BTC closes
+        // from those exact dates.
+        //
+        // Returns { corr, n, source } or { corr: null, n: 0, reason }.
+        var pearsonOnReturnsByDate = function(btcDatesArr, btcClosesArr, qqqDatesArr, qqqClosesArr) {
+          var WINDOW = 60; // last N consecutive QQQ trading-day returns
+          if (!qqqDatesArr || !qqqClosesArr || qqqClosesArr.length < 21) {
+            return { corr: null, n: 0, reason: "qqq<21 (" + (qqqClosesArr ? qqqClosesArr.length : 0) + ")" };
           }
-        } catch (corrErr) {
-          console.warn("[Correlation] QQQ Yahoo-proxy fetch failed (expected in APK, no all_data cache either):", corrErr.message);
+          if (!btcDatesArr || !btcClosesArr || btcClosesArr.length < 21) {
+            return { corr: null, n: 0, reason: "btc<21 (" + (btcClosesArr ? btcClosesArr.length : 0) + ")" };
+          }
+          // Index BTC by ISO date.
+          var btcByDate = {};
+          for (var bi2 = 0; bi2 < btcDatesArr.length; bi2++) {
+            btcByDate[btcDatesArr[bi2]] = btcClosesArr[bi2];
+          }
+          // Walk QQQ dates in order; keep QQQ days where BTC has a close.
+          var pairedDates = [];
+          var pairedQ = [];
+          var pairedB = [];
+          for (var qi = 0; qi < qqqDatesArr.length; qi++) {
+            var dt = qqqDatesArr[qi];
+            var bc = btcByDate[dt];
+            if (bc == null) continue;
+            var qc = qqqClosesArr[qi];
+            if (qc == null || isNaN(qc)) continue;
+            pairedDates.push(dt);
+            pairedQ.push(qc);
+            pairedB.push(bc);
+          }
+          if (pairedB.length < 21) {
+            return { corr: null, n: 0, reason: "intersect<21 (" + pairedB.length + ")" };
+          }
+          // Restrict to last WINDOW+1 aligned closes → WINDOW returns.
+          var nAlign = Math.min(pairedB.length, WINDOW + 1);
+          var btcW = pairedB.slice(-nAlign);
+          var qW   = pairedQ.slice(-nAlign);
+          var firstDate = pairedDates[pairedDates.length - nAlign];
+          var lastDate  = pairedDates[pairedDates.length - 1];
+          // Returns between consecutive aligned trading days.
+          var btcR = [], qR = [];
+          for (var i = 1; i < nAlign; i++) {
+            btcR.push((btcW[i] - btcW[i-1]) / btcW[i-1]);
+            qR.push((qW[i]   - qW[i-1])   / qW[i-1]);
+          }
+          var mean = function(a) { return a.reduce(function(s,x){ return s+x; }, 0) / a.length; };
+          var mB = mean(btcR), mQ = mean(qR);
+          var num = 0, dB = 0, dQ = 0;
+          for (var j = 0; j < btcR.length; j++) {
+            var db = btcR[j] - mB, dq = qR[j] - mQ;
+            num += db * dq; dB += db * db; dQ += dq * dq;
+          }
+          var corr = (dB > 0 && dQ > 0) ? parseFloat((num / Math.sqrt(dB * dQ)).toFixed(2)) : null;
+          return { corr: corr, n: btcR.length, firstDate: firstDate, lastDate: lastDate };
+        };
+
+        // 2) Cloudflare Worker /qqq proxy — primary live source (APK + local).
+        //    Worker already returns { dates: [...ISO], closes: [...] } aligned 1:1.
+        try {
+          var proxyRes = await safeFetch(WORKER_URL + "/qqq", { timeout: 12000 });
+          var proxyDates  = (proxyRes && Array.isArray(proxyRes.dates))  ? proxyRes.dates  : [];
+          var proxyCloses = (proxyRes && Array.isArray(proxyRes.closes)) ? proxyRes.closes : [];
+          // Drop any (date,close) pairs where close is null — keeps arrays aligned.
+          var cleanDates = [], cleanCloses = [];
+          for (var ci = 0; ci < proxyCloses.length; ci++) {
+            var v = proxyCloses[ci];
+            if (v == null || isNaN(v)) continue;
+            cleanDates.push(proxyDates[ci]);
+            cleanCloses.push(v);
+          }
+          var proxyResult = pearsonOnReturnsByDate(btcDates, closes, cleanDates, cleanCloses);
+          if (proxyResult.corr != null) {
+            btcQqqCorr = proxyResult.corr;
+            corrWindowUsed = proxyResult.n;
+            console.info("[Correlation] Live BTC-QQQ " + proxyResult.n + "d Pearson (Worker /qqq " + (proxyRes.source || "?") + ") " + proxyResult.firstDate + "→" + proxyResult.lastDate + ":", btcQqqCorr);
+            try { addLog("QQQ ✓ Worker /qqq " + proxyResult.n + "d (" + (proxyRes.source || "?") + ") " + proxyResult.firstDate + "→" + proxyResult.lastDate + ": " + btcQqqCorr); } catch (_) {}
+          } else {
+            throw new Error("insufficient overlap — " + (proxyResult.reason || "unknown") + " [btcDates=" + (btcDates ? btcDates.length : 0) + " qqqDates=" + cleanDates.length + "]");
+          }
+        } catch (pErr) {
+          console.warn("[Correlation] Worker /qqq failed:", pErr.message);
+          try { addLog("QQQ ✗ Worker /qqq failed — " + pErr.message); } catch (_) {}
+        }
+
+        // 3) Vite /api/yahoo proxy — only works in `npm run dev`. Harmless in APK.
+        if (btcQqqCorr == null) {
+          try {
+            var qqqRes = await safeFetch(
+              "/api/yahoo/v8/finance/chart/QQQ?interval=1d&range=90d",
+              { timeout: 10000 }
+            );
+            var result0 = qqqRes && qqqRes.chart && qqqRes.chart.result && qqqRes.chart.result[0];
+            var qqqTimestamps = (result0 && result0.timestamp) || [];
+            var qqqClosesRaw  = (result0 && result0.indicators && result0.indicators.quote && result0.indicators.quote[0] && result0.indicators.quote[0].close) || [];
+            var yDates = [], yCloses = [];
+            for (var yi = 0; yi < qqqClosesRaw.length; yi++) {
+              var yc = qqqClosesRaw[yi];
+              if (yc == null || isNaN(yc)) continue;
+              yDates.push(new Date(qqqTimestamps[yi] * 1000).toISOString().slice(0, 10));
+              yCloses.push(yc);
+            }
+            var viteResult = pearsonOnReturnsByDate(btcDates, closes, yDates, yCloses);
+            if (viteResult.corr != null) {
+              btcQqqCorr = viteResult.corr;
+              corrWindowUsed = viteResult.n;
+              console.info("[Correlation] Live BTC-QQQ " + viteResult.n + "d Pearson (Vite /api/yahoo) " + viteResult.firstDate + "→" + viteResult.lastDate + ":", btcQqqCorr);
+              try { addLog("QQQ ✓ Vite /api/yahoo " + viteResult.n + "d " + viteResult.firstDate + "→" + viteResult.lastDate + ": " + btcQqqCorr); } catch (_) {}
+            }
+          } catch (corrErr) {
+            console.warn("[Correlation] Vite /api/yahoo failed:", corrErr.message);
+            try { addLog("QQQ ✗ Vite /api/yahoo failed — " + corrErr.message); } catch (_) {}
+          }
         }
       }
 
@@ -2146,11 +2276,12 @@ FROM realized r, spot s`;
         var cacheAgeH = Math.round((Date.now() - new Date(cachedAll.briefCachedAt || cachedAll.cachedAt).getTime()) / 3_600_000);
         addLog("Cache loaded ✓ — age: " + cacheAgeH + "h | brief: " + (cachedAll.brief ? "ready" : "missing"));
 
-        // If the Worker says a refresh was just triggered (first user of the
-        // day), poll in the background for up to 15 min and swap the brief in
-        // when the new one arrives. The user sees yesterday's brief meanwhile.
+        // If the Worker says a refresh was just triggered (first user to open
+        // after a new Dune cache cycle), poll in the background for up to 15
+        // min and swap the brief in when the new one arrives. Meanwhile the
+        // user sees the previous brief.
         if (cachedAll.regenerating) {
-          addLog("♻ First-use-of-day trigger fired — new brief generating (poll 15 min)");
+          addLog("♻ New Dune cycle trigger fired — brief regenerating (poll 15 min)");
           pollForFreshBrief(function(freshData) {
             allDataRef.current = freshData;
             if (freshData.brief) {
@@ -3872,6 +4003,28 @@ FROM realized r, spot s`;
                   Grading: ACCUMULATE/ADD correct if BTC +2%+ after 5 days. REDUCE/HEDGE correct if BTC -2%+. FLAT if within 2%. Outcome column shows days remaining until graded.
                 </div>
               </Card>
+            )}
+
+            {/* DEBUG LOG — persistent, collapsible. Useful for APK diagnosis since
+                the loading-screen LIVE STATUS LOG disappears when the brief is ready. */}
+            {debugLog.length > 0 && (
+              <div style={{ marginTop: 20 }}>
+                <button
+                  onClick={function() { setShowDebugLog(function(v) { return !v; }); }}
+                  style={{ background: "transparent", border: "1px solid " + C.border, color: C.textDim, fontSize: 10, fontFamily: "monospace", letterSpacing: 1.5, padding: "6px 10px", borderRadius: 4, cursor: "pointer" }}
+                >
+                  {showDebugLog ? "▾ HIDE DEBUG LOG" : "▸ SHOW DEBUG LOG (" + debugLog.length + " lines)"}
+                </button>
+                {showDebugLog && (
+                  <div style={{ marginTop: 8, background: C.surfaceHigh, borderRadius: 6, padding: "12px 16px", border: "1px solid " + C.border, maxHeight: 320, overflowY: "auto" }}>
+                    {debugLog.map(function(line, i) {
+                      return (
+                        <div key={i} style={{ color: line.indexOf("✗") >= 0 || line.indexOf("FAILED") >= 0 ? C.red : line.indexOf("✓") >= 0 ? C.green : C.textMid, fontSize: 10, fontFamily: "monospace", lineHeight: 1.8, wordBreak: "break-word" }}>{line}</div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             )}
 
             {/* FOOTER */}

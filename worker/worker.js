@@ -3,12 +3,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Responsibilities:
 //   1. Serve the latest `all_data.json` from GitHub Pages to the APK.
-//   2. On the first request of each calendar day (UTC) where the cached brief
-//      is stale, trigger the GitHub Actions `brief-generate` workflow via the
-//      workflow_dispatch REST API. The workflow runs `brief-worker.js`, which
-//      calls Anthropic and deploys a refreshed all_data.json to GitHub Pages.
-//   3. Use a KV flag `triggered:YYYY-MM-DD` (TTL ~20 min) to guarantee only
-//      ONE workflow run per day, even if 50 users open the APK simultaneously.
+//   2. When a user opens the app AND the Dune cache (`cachedAt`) is newer than
+//      the last generated brief (`briefCachedAt`), trigger the GitHub Actions
+//      `brief-generate` workflow via the workflow_dispatch REST API. The
+//      workflow runs `brief-worker.js`, which calls Anthropic and deploys a
+//      refreshed all_data.json to GitHub Pages.
+//   3. Use a KV flag `triggered:<cachedAt>` (TTL ~20 min) keyed on the Dune
+//      cache timestamp, so each 6h Dune refresh cycle gets exactly ONE
+//      workflow run — and only if a user actually opens the app that cycle.
+//      If nobody opens the app between refreshes, Anthropic is never called.
 //
 // Env bindings required (set via `wrangler secret put` or dashboard):
 //   - GITHUB_PAT        — fine-grained PAT with `Actions: write` on the repo
@@ -61,43 +64,56 @@ async function handleBrief(env, ctx) {
   if (!allData) {
     // If GitHub Pages is unreachable, we still try to trigger a refresh so that
     // next opens have data, and return an error to the APK.
-    ctx.waitUntil(maybeTriggerRefresh(env, todayUTC(), "pages-unreachable"));
+    ctx.waitUntil(maybeTriggerRefresh(env, `unreachable-${todayUTC()}`, "pages-unreachable"));
     return json({ error: "upstream unavailable", detail: fetchError }, 502);
   }
 
-  // 2. Check freshness. "Fresh" means the brief was generated today (UTC) AND
-  //    contains a non-empty `brief` object.
-  const today = todayUTC();
-  const briefDate = allData.briefCachedAt
-    ? allData.briefCachedAt.slice(0, 10) // "2026-04-17T..."
-    : null;
+  // 2. Check freshness. "Fresh" means the brief was generated AFTER the latest
+  //    Dune cache refresh AND contains a non-empty `brief` object. Each Dune
+  //    refresh (every 6h) pushes a new `cachedAt` — the first user to open
+  //    the app after that timestamp triggers a new brief. If no new Dune data
+  //    has arrived, no trigger fires no matter how many times users open.
+  const cacheKey = allData.cachedAt || allData.briefCachedAt || "no-cache";
   const hasBrief = allData.brief && typeof allData.brief === "object" && Object.keys(allData.brief).length > 0;
-  const isFresh = briefDate === today && hasBrief;
+  const briefMs = allData.briefCachedAt ? Date.parse(allData.briefCachedAt) : 0;
+  const cacheMs = allData.cachedAt ? Date.parse(allData.cachedAt) : 0;
+  // Brief is fresh if it exists and was generated at-or-after the current
+  // Dune cache timestamp. If cachedAt is missing (first-ever run), fall back
+  // to "has a brief at all" so we don't spam triggers on empty state.
+  const isFresh = hasBrief && (cacheMs === 0 || briefMs >= cacheMs);
 
   if (isFresh) {
     return json(allData, 200, { "Cache-Control": "public, max-age=60" });
   }
 
-  // 3. Stale. Try to trigger a refresh, but do it in the background so the
-  //    user still gets a response immediately with yesterday's brief.
-  ctx.waitUntil(maybeTriggerRefresh(env, today, "stale"));
+  // 3. Stale — new Dune data has arrived since the last brief. Try to trigger
+  //    a refresh in the background so the user still gets a response with
+  //    the previous brief immediately.
+  ctx.waitUntil(maybeTriggerRefresh(env, cacheKey, "stale"));
 
   // 4. Return the stale data with a `regenerating` flag so the APK can show
-  //    a banner and poll until briefCachedAt flips to today's date.
+  //    a banner and poll until briefCachedAt catches up to cachedAt.
+  const reason = allData.briefCachedAt
+    ? `brief from ${allData.briefCachedAt} older than dune cache ${allData.cachedAt || "?"}`
+    : "no brief yet";
   return json(
-    { ...allData, regenerating: true, regeneratingReason: briefDate ? `brief from ${briefDate}` : "no brief yet" },
+    { ...allData, regenerating: true, regeneratingReason: reason },
     200,
     { "Cache-Control": "no-store" }
   );
 }
 
-// ─── Trigger dispatch (idempotent per-day via KV lock) ────────────────────────
-async function maybeTriggerRefresh(env, today, reason) {
-  const lockKey = `triggered:${today}`;
+// ─── Trigger dispatch (idempotent per Dune-cache cycle via KV lock) ──────────
+async function maybeTriggerRefresh(env, cacheKey, reason) {
+  // Lock key is tied to the Dune cache timestamp (or fallback) so each 6h
+  // refresh cycle gets its own lock. Multiple users opening in the same
+  // cycle will share the single trigger; the next Dune refresh creates a
+  // new cache timestamp and therefore a fresh (unlocked) key.
+  const lockKey = `triggered:${cacheKey}`;
   const existing = await env.BRIEF_KV.get(lockKey);
   if (existing) {
-    // Already triggered today; another user's request beat us to it.
-    console.log(`[trigger] skipped — already triggered today (reason=${reason}, at=${existing})`);
+    // Already triggered for this Dune cycle; another user's request beat us to it.
+    console.log(`[trigger] skipped — already triggered this cycle (key=${lockKey}, reason=${reason}, at=${existing})`);
     return;
   }
 

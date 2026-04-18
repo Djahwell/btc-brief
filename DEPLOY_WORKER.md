@@ -1,6 +1,6 @@
 # Deploying the on-demand BTC Brief Worker
 
-This turns your architecture from "Anthropic called 4× per day on cron" into "Anthropic called 0× per day unless someone opens the app, and at most once across all users per day."
+This turns your architecture from "Anthropic called 4× per day on cron" into "Anthropic called 0× per day unless someone opens the app, and at most once per Dune refresh cycle across all users."
 
 ## New architecture at a glance
 
@@ -10,17 +10,17 @@ This turns your architecture from "Anthropic called 4× per day on cron" into "A
 │  (or browser)  │  →  │  Worker /brief   │ → │   brief-generate.yml │
 └────────────────┘     │                  │    │   (calls Anthropic)  │
                        │  KV lock:         │    └──────────────┬───────┘
-                       │  triggered:DATE  │                   │
-                       └─────────┬────────┘                   ▼
-                                 │                ┌──────────────────────┐
-                                 │                │   GitHub Pages        │
-                                 └─────────────── │   all_data.json      │
-                                   reads          └──────────────────────┘
+                       │  triggered:       │                   │
+                       │  <cachedAt>       │                   ▼
+                       └─────────┬────────┘        ┌──────────────────────┐
+                                 │                 │   GitHub Pages       │
+                                 └──────────────── │   all_data.json      │
+                                   reads           └──────────────────────┘
 ```
 
-* Workflow runs on `workflow_dispatch` only — **no cron**. If nobody opens the app on a vacation day, `brief-generate.yml` never runs, and Anthropic is never billed.
-* `dune-refresh.yml` still runs every 6h on cron. It calls **only** the Dune API (no Anthropic) so your on-chain cache stays warm without cost.
-* KV key `triggered:YYYY-MM-DD` (TTL 20 min) guarantees at most one workflow run per day even if 50 APK users open the app in the same second.
+* `brief-generate.yml` runs on `workflow_dispatch` only — **no cron**. If nobody opens the app, it never runs, and Anthropic is never billed.
+* `dune-refresh.yml` still runs every 6h on cron. It calls **only** the Dune API (no Anthropic) so your on-chain cache stays warm at zero Anthropic cost, writing a new `cachedAt` timestamp each cycle.
+* KV key `triggered:<cachedAt>` (TTL 20 min) guarantees at most one workflow run **per Dune refresh cycle**. 50 users opening the app in the same 6h window share a single trigger. If no new Dune data has arrived since the last brief, no trigger fires no matter how many times users open the app.
 
 ## One-time deployment steps
 
@@ -133,38 +133,52 @@ curl -s https://btc-brief.<your-subdomain>.workers.dev/brief | jq '.briefCachedA
 The `wrangler tail` command streams live logs from the Worker if you want to
 watch traffic.
 
-## How the "only 1 call per day" guarantee works
+## How the "1 call per Dune cycle, only if the app is used" guarantee works
 
 1. APK opens → calls `GET /brief`.
 2. Worker fetches the current `all_data.json` from GitHub Pages.
-3. If `briefCachedAt` starts with today's UTC date → return it, done. No trigger.
-4. If stale:
-   - Worker atomically checks KV `triggered:YYYY-MM-DD`.
-   - If already set → return stale data with `regenerating: true` (another user triggered it; Anthropic will only be called once).
+3. Worker compares two timestamps living inside that JSON:
+   - `cachedAt` — written by `dune-worker.js` every 6h on cron
+   - `briefCachedAt` — written by `brief-worker.js` the last time Claude was called
+4. If `briefCachedAt >= cachedAt` → brief is already synced with the latest Dune data → return it, done. **No trigger.**
+5. If `briefCachedAt < cachedAt` → new Dune data has arrived since the last brief:
+   - Worker atomically checks KV `triggered:<cachedAt>`.
+   - If already set → return stale data with `regenerating: true` (another user in this cycle already triggered; Anthropic will only be called once for this cycle).
    - If not set → set it with TTL 20 min, POST to GitHub `workflow_dispatch`, return stale data with `regenerating: true`.
-5. GitHub Actions runs `brief-generate.yml` (~3–5 min) → deploys new `all_data.json`.
-6. APK polls the Worker every 45s; on the next hit `briefCachedAt` now = today → auto-refresh.
+6. GitHub Actions runs `brief-generate.yml` (~3–5 min) → deploys new `all_data.json` whose `briefCachedAt` now matches the current `cachedAt`.
+7. APK polls the Worker every 45s; on the next hit the freshness check passes → auto-refresh in the UI.
+
+### Behavior cheat sheet
+
+| Scenario                                                           | Anthropic calls |
+|--------------------------------------------------------------------|-----------------|
+| 50 users open the app at 9am after an overnight Dune refresh       | 1               |
+| Those same 50 users open again at 11am (same Dune cycle)           | 0               |
+| One user opens at 3pm after a new Dune refresh                     | 1               |
+| Nobody opens the app all weekend                                   | 0               |
+| Cron pushes 4 Dune refreshes, 0 app opens                          | 0               |
+| Cron pushes 4 Dune refreshes, 1 user opens after each              | 4 (daily max)   |
 
 ## What happens on weekends / vacations
 
 Nobody opens the APK → `GET /brief` is never called → `workflow_dispatch` is never triggered → Anthropic is **not called**. You pay $0 for idle days.
 
-`dune-refresh.yml` still runs every 6h but that costs nothing (Dune API is already included in your plan; no Anthropic touch).
+`dune-refresh.yml` still runs every 6h but that costs nothing (Dune API is already included in your plan; no Anthropic touch). All those idle refreshes simply advance `cachedAt` on GitHub Pages — harmless until a user next opens the app.
 
 ## Disaster recovery
 
-- **Worker is down.** The APK's `loadAllData()` falls back to reading `ALL_DATA_URL` directly from GitHub Pages. Users get yesterday's brief with no regeneration; no Anthropic call.
-- **GitHub Actions fails.** The KV lock expires after 20 min; the next APK open will retry the trigger. Anthropic is still capped at 1 call per successful run.
+- **Worker is down.** The APK's `loadAllData()` falls back to reading `ALL_DATA_URL` directly from GitHub Pages. Users get the last published brief with no regeneration; no Anthropic call.
+- **GitHub Actions fails.** The KV lock expires after 20 min; the next APK open in the same Dune cycle will retry the trigger. Anthropic is still capped at 1 call per successful run per cycle.
 - **PAT leaked.** Revoke it in GitHub → Developer settings. Worst case an attacker can only trigger `brief-generate.yml` (bounded by the KV lock) — they cannot touch your repo contents or other workflows because the PAT is scoped `Actions: write` on this single repo.
-- **Daily Anthropic budget exceeded.** Set a monthly max in the Anthropic console; the lock plus the 1-per-day architecture makes billable runs deterministic (≤30 per month).
+- **Anthropic budget exceeded.** Set a monthly max in the Anthropic console. The architecture caps billable runs at ≤4 per day (one per Dune cycle) × ~30 days = ≤120/month worst case — and only if users actually open the app after every single refresh.
 
 ## Cost ceiling
 
 | Service             | Usage                | Cost   |
 |---------------------|----------------------|--------|
 | Cloudflare Worker   | <1,000 req/day       | $0     |
-| Cloudflare KV       | ~1 write/day, some reads | $0 |
-| GitHub Actions      | ~5 min × 30 days = 2.5h/mo | $0 (public repo) |
-| Anthropic API       | ≤1 call/day × `claude-sonnet-4-6` × ~7K tokens out | ~$0.05–0.10/call |
+| Cloudflare KV       | ≤4 writes/day, some reads | $0 |
+| GitHub Actions      | ≤4 × 5 min × 30 days ≈ 10h/mo | $0 (public repo) |
+| Anthropic API       | ≤4 calls/day × `claude-sonnet-4-6` × ~7K tokens out | ~$0.05–0.10/call |
 
-So the **monthly hard ceiling is roughly $3**, and vacation days cost zero.
+So the **monthly hard ceiling is roughly $12**, a typical month (1–2 daily opens) is ~$3–6, and vacation days cost zero.
