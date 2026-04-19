@@ -1008,6 +1008,15 @@ METHODOLOGY: Four normalization axes required.
   AXIS 4 - % Circ Supply    = BTC_flow / 20,000,000 x 100
 
 F. COMPOSITE SIGNAL SCORING (-10 to +10):
+  WHALE NETFLOW DATA SOURCES (use whichever is LIVE — do NOT estimate if live data present):
+    PRIMARY:   Exchange netflow from blockchain.info balance delta (labeled in data block above).
+               Negative = BTC leaving exchanges (accumulation/bullish). Positive = inflows (bearish).
+    SECONDARY: Binance large block trades (labeled BINANCE WHALE BLOCK TRADES above).
+               Use to CONFIRM or CONTRADICT on-chain direction. Not a substitute for netflow.
+    FALLBACK:  Only estimate from training knowledge if BOTH are UNAVAILABLE.
+  Populate whaleSignal.netflowBTC from the blockchain.info figure.
+  Populate binancePressure fields from the Binance aggTrades data.
+
   onChain (whale netflow + MVRV + LTH):  max ±3 points
   etfInstitutional (ETF flows vs baseline): max ±2 points
   derivatives (funding OR F&G — stronger only, NOT both): max ±1 point
@@ -1042,7 +1051,8 @@ Return ONLY valid JSON. No markdown fences. No preamble.
   "marketStatus": "ACCUMULATION PHASE | BREAKOUT WATCH | MOMENTUM | BULL RUN | DISTRIBUTION | DANGER ZONE",
   "correlationRegime": { "btcQqqCorrelation": "", "regime": "HIGH | MODERATE | LOW", "implication": "" },
   "priceAnalysis": { "trend": "", "keyLevel": "", "realizedPriceContext": "", "signal": "BULLISH | BEARISH | NEUTRAL | MIXED" },
-  "whaleSignal": { "status": "ACCUMULATING | DISTRIBUTING | NEUTRAL | MIXED", "netflowBTC": "", "netflowUSD": "", "netflowPctLiquid": "", "netflowPctVolume": "", "netflowPctMcap": "", "historicalContext": "", "detail": "", "actionable": "" },
+  "whaleSignal": { "status": "ACCUMULATING | DISTRIBUTING | NEUTRAL | MIXED", "netflowBTC": "use LIVE blockchain.info netflow if provided", "netflowUSD": "", "netflowPctLiquid": "", "netflowPctVolume": "", "netflowPctMcap": "", "historicalContext": "", "detail": "", "actionable": "", "dataQuality": "LIVE | ESTIMATED" },
+  "binancePressure": { "netWhaleBTC": "e.g. +312 BTC", "buyVolumeBTC": "", "sellVolumeBTC": "", "buyRatioPct": "e.g. 55%", "pressure": "BUY | SELL | NEUTRAL", "spanMinutes": "", "confluence": "1 sentence confirming/contradicting on-chain netflow", "dataQuality": "LIVE | UNAVAILABLE" },
   "fundingRates": { "rate8h": "", "annualized": "", "regime": "CAPITULATION | BEARISH | NEUTRAL | ELEVATED | EXTREME_LONG", "signal": "", "detail": "", "squeeze_risk": "LOW | MEDIUM | HIGH" },
   "openInterest": { "trend": "RISING | FALLING | STABLE", "regime": "", "detail": "", "leverageRisk": "LOW | MEDIUM | HIGH" },
   "mvrvSignal": { "estimatedZone": "", "implication": "", "cycleContext": "" },

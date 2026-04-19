@@ -144,6 +144,17 @@ F. CME FUTURES BASIS (institutional demand signal):
   Basis < -5%              -> Backwardation - institutional selling / risk-off
 
 F. COMPOSITE SIGNAL SCORING (-10 to +10):
+  WHALE NETFLOW DATA SOURCES (use whichever is LIVE — do NOT estimate if live data present):
+    PRIMARY:    Exchange netflow from blockchain.info balance delta (16 known exchange addresses)
+                Labeled "blockchain.info balance delta" in the data block above.
+                Negative = BTC leaving exchanges (accumulation/bullish). Positive = inflows (selling/bearish).
+    SECONDARY:  Binance large block trades (≥10 BTC aggTrades, order-flow pressure proxy)
+                Labeled "BINANCE WHALE BLOCK TRADES" in the data block above.
+                Use to CONFIRM or CONTRADICT the on-chain direction. Not a substitute for netflow.
+    FALLBACK:   Only estimate from training knowledge if BOTH sources are UNAVAILABLE.
+  Populate whaleSignal.netflowBTC from the blockchain.info netflow figure.
+  Populate binancePressure fields from the Binance block trade data.
+
   Score each component independently to avoid double-counting correlated signals:
     onChain (whale netflow + MVRV + LTH):  max ±3 points
     etfInstitutional (ETF flows vs baseline): max ±2 points
@@ -219,14 +230,25 @@ Return ONLY valid JSON. No markdown fences. No preamble. No text outside the JSO
   },
   "whaleSignal": {
     "status": "ACCUMULATING | DISTRIBUTING | NEUTRAL | MIXED",
-    "netflowBTC": "raw BTC",
-    "netflowUSD": "USD equivalent",
-    "netflowPctLiquid": "PRIMARY",
-    "netflowPctVolume": "AMPLIFIER",
-    "netflowPctMcap": "SECONDARY",
+    "netflowBTC": "on-chain exchange netflow in BTC (from blockchain.info balance delta or Dune — use LIVE data above, not training estimate)",
+    "netflowUSD": "USD equivalent at today's price",
+    "netflowPctLiquid": "PRIMARY normalization axis",
+    "netflowPctVolume": "AMPLIFIER normalization axis",
+    "netflowPctMcap": "SECONDARY normalization axis",
     "historicalContext": "validated cross-era comparison",
-    "detail": "2 sentences with normalized figures",
-    "actionable": "position sizing implication"
+    "detail": "2 sentences with normalized figures from LIVE exchange netflow data",
+    "actionable": "position sizing implication",
+    "dataQuality": "LIVE | ESTIMATED — use LIVE if exchange netflow data was provided above"
+  },
+  "binancePressure": {
+    "netWhaleBTC": "e.g. +312 BTC (net large-block buy pressure from Binance aggTrades ≥10 BTC)",
+    "buyVolumeBTC": "e.g. +1,840 BTC bought in whale-sized blocks",
+    "sellVolumeBTC": "e.g. -1,528 BTC sold in whale-sized blocks",
+    "buyRatioPct": "e.g. 55% buy-side (% of whale volume that was buy aggression)",
+    "pressure": "BUY | SELL | NEUTRAL",
+    "spanMinutes": "e.g. ~42 min window (last 1000 trades)",
+    "confluence": "1 sentence: does Binance order-flow pressure CONFIRM or CONTRADICT the on-chain exchange netflow direction?",
+    "dataQuality": "LIVE | UNAVAILABLE"
   },
   "fundingRates": {
     "rate8h": "e.g. -0.023% per 8h",
