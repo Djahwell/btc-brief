@@ -1525,13 +1525,23 @@ SELECT
 FROM realized r, spot s`;
 
     const fetchDuneMVRV = async () => {
-      // ── Primary path: read from dune-worker.js cache (public/dune_cache.json) ──
-      // dune-worker.js runs separately (npm run dune:watch) and writes the result
-      // of the expensive UTXO scan to public/dune_cache.json, which Vite serves
-      // as a static file.  The brief reads it instantly — zero polling, zero wait.
-      // Falls back to inline Dune API polling only when the worker cache is absent
-      // or older than 20 hours (e.g. worker wasn't started yet today).
-      const CACHE_STALE_HOURS = 20;
+      const CACHE_STALE_HOURS = 36;
+
+      // ── -1. all_data.json (already in memory) — works in APK ─────────────────
+      // In the APK, /dune_cache.json is frozen at build time. all_data.json is
+      // fetched live from GitHub Pages and contains mvrv at the top level.
+      try {
+        var adMvrv = allDataRef.current && allDataRef.current.mvrv;
+        if (adMvrv && adMvrv.mvrv && adMvrv.mvrv > 0 && adMvrv.mvrv < 50) {
+          var adMvrvAge = Date.now() - new Date(allDataRef.current.briefCachedAt || allDataRef.current.cachedAt).getTime();
+          if (adMvrvAge < CACHE_STALE_HOURS * 3_600_000) {
+            console.info('[Dune MVRV] ✓ From all_data.json (age:', Math.round(adMvrvAge/3_600_000) + 'h) — MVRV:', adMvrv.mvrv.toFixed(3));
+            return { mvrv: adMvrv.mvrv, realizedPrice: adMvrv.realizedPrice, marketCap: adMvrv.marketCap, realizedCap: adMvrv.realizedCap, mvrvDate: adMvrv.date || null };
+          }
+        }
+      } catch (_adm) { console.warn('[Dune MVRV] all_data check failed:', _adm.message); }
+
+      // ── Primary path: /dune_cache.json (local dev only — stale in APK) ────────
       try {
         var cacheRes = await safeFetch('/dune_cache.json', { timeout: 5000 });
         if (cacheRes && cacheRes.mvrv && cacheRes.cachedAt) {
@@ -1539,15 +1549,15 @@ FROM realized r, spot s`;
           if (ageMs < CACHE_STALE_HOURS * 3_600_000) {
             var m = cacheRes.mvrv;
             if (m.mvrv && m.mvrv > 0 && m.mvrv < 50) {
-              console.info('[Dune MVRV] ✓ From worker cache (age: ' + Math.round(ageMs / 3_600_000) + 'h) — MVRV:', m.mvrv.toFixed(3));
+              console.info('[Dune MVRV] ✓ From /dune_cache.json (age: ' + Math.round(ageMs / 3_600_000) + 'h) — MVRV:', m.mvrv.toFixed(3));
               return { mvrv: m.mvrv, realizedPrice: m.realizedPrice, marketCap: m.marketCap, realizedCap: m.realizedCap, mvrvDate: m.date || null };
             }
           } else {
-            console.info('[Dune MVRV] Worker cache stale (' + Math.round(ageMs / 3_600_000) + 'h) — falling back to inline Dune API');
+            console.info('[Dune MVRV] /dune_cache.json stale (' + Math.round(ageMs / 3_600_000) + 'h) — falling back to inline Dune API');
           }
         }
       } catch (cacheErr) {
-        console.info('[Dune MVRV] Worker cache not available (' + cacheErr.message + ') — falling back to inline Dune API');
+        console.info('[Dune MVRV] /dune_cache.json not available (' + cacheErr.message + ') — falling back to inline Dune API');
       }
 
       // ── Fallback: inline Dune execute+poll ────────────────────────────────────
@@ -1704,20 +1714,42 @@ FROM realized r, spot s`;
       source: "Dune Analytics (community queries)",
     };
 
-    // ── 0. Dune worker cache — exchange flows (if worker computed them) ────────
-    // dune-worker.js may write exchangeFlow data alongside MVRV. Check first.
+    // ── -1. all_data.json (already in memory) — works in APK, no extra fetch ────
+    // all_data.json contains exchangeFlow at the top level (written by brief-worker
+    // from dune_cache). This is the ONLY reliable path in the APK since the bundled
+    // /dune_cache.json is frozen at APK build time and is always stale.
     try {
+      var adEf = allDataRef.current && allDataRef.current.exchangeFlow;
+      if (adEf && adEf.netflow_btc != null) {
+        var adEfAgeMs = Date.now() - new Date(allDataRef.current.briefCachedAt || allDataRef.current.cachedAt).getTime();
+        if (adEfAgeMs < 36 * 3_600_000) {
+          out.exchangeNetflowBTC = adEf.netflow_btc;
+          out.exchangeInflowBTC  = adEf.inflow_btc  != null ? adEf.inflow_btc  : (adEf.netflow_btc > 0 ? adEf.netflow_btc : 0);
+          out.exchangeOutflowBTC = adEf.outflow_btc != null ? Math.abs(adEf.outflow_btc) : (adEf.netflow_btc < 0 ? Math.abs(adEf.netflow_btc) : 0);
+          out.source             = adEf.source || 'blockchain.info balance delta';
+          out.dataDate           = adEf.date || null;
+          console.info('[Dune] Exchange flow from all_data.json — Net:', adEf.netflow_btc.toFixed(1), 'BTC | src:', out.source);
+        } else {
+          console.info('[Dune] all_data exchangeFlow stale (' + Math.round(adEfAgeMs/3_600_000) + 'h) — trying fresher sources');
+        }
+      }
+    } catch (_adEf) { console.warn('[Dune] all_data exchangeFlow check failed:', _adEf.message); }
+
+    // ── 0. Dune worker cache (/dune_cache.json — local dev only, stale in APK) ──
+    // NOTE: In the APK this file is frozen at build time. The all_data.json path
+    // above is the correct path for the APK. This only helps local dev.
+    if (out.exchangeInflowBTC == null) try {
       var cacheCheck = await safeFetch('/dune_cache.json', { timeout: 4000 });
       if (cacheCheck && cacheCheck.exchangeFlow && cacheCheck.exchangeFlow.inflow_btc != null) {
         const ef = cacheCheck.exchangeFlow;
         const ageMs = Date.now() - new Date(cacheCheck.cachedAt).getTime();
-        if (ageMs < 20 * 3_600_000) { // fresh within 20h
+        if (ageMs < 20 * 3_600_000) {
           out.exchangeInflowBTC  = ef.inflow_btc;
           out.exchangeOutflowBTC = ef.outflow_btc != null ? Math.abs(ef.outflow_btc) : null;
           out.exchangeNetflowBTC = ef.netflow_btc;
           out.dataDate           = ef.day || null;
-          out.source             = "Dune worker cache (labeled exchange addresses)";
-          console.info("[Dune] Exchange flows from worker cache — Net:", (ef.netflow_btc || 0).toFixed(0), "BTC | addrs:", ef.exchange_addr_count || "?");
+          out.source             = ef.source || 'dune_cache (labeled exchange addresses)';
+          console.info('[Dune] Exchange flows from /dune_cache.json — Net:', (ef.netflow_btc||0).toFixed(0), 'BTC');
         }
       }
     } catch (_ce) { /* cache miss — continue */ }
