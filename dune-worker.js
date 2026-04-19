@@ -669,7 +669,7 @@ async function fetchExchangeFlowBlockchain() {
 // isBuyerMaker=false → taker BOUGHT through the ask (buy-side aggression)
 // No API key required. Public endpoint, generous rate limit.
 async function fetchBinanceLargeTrades() {
-  const WHALE_THRESHOLD_BTC = 10; // trades ≥ 10 BTC classified as whale
+  const WHALE_THRESHOLD_BTC = 2; // trades ≥ 2 BTC classified as whale (~$150K+ at current prices)
   const url = 'https://api.binance.com/api/v3/aggTrades?symbol=BTCUSDT&limit=1000';
   const r = await fetch(url, {
     headers: { 'User-Agent': UA },

@@ -934,13 +934,17 @@ ${normRef}`;
 
   // ── Binance large block trades (whale buy/sell pressure) ───────────────────
   const wt = dc?.binanceLargeTrades;
-  const binanceWhaleBlock = wt?.net_whale_btc!=null ? (() => {
-    const sign = wt.net_whale_btc >= 0 ? '+' : '';
-    const buyPct = wt.whale_buy_ratio != null ? `${(wt.whale_buy_ratio*100).toFixed(0)}% buy-side` : 'n/a';
-    return `\n\nBINANCE WHALE BLOCK TRADES (≥${wt.threshold_btc} BTC, last ~${wt.span_minutes}min):\n  Whale Buy Volume:  +${wt.whale_buy_btc} BTC (${wt.whale_buy_count} trades)\n  Whale Sell Volume: -${wt.whale_sell_btc} BTC (${wt.whale_sell_count} trades)\n  Net Whale Flow:    ${sign}${wt.net_whale_btc} BTC → ${wt.pressure}\n  Buy/Sell Ratio:    ${buyPct}\n  INSTRUCTION: Use as supplementary whale pressure signal. Net positive = buy-side aggression. Apply quad-normalization: ${p ? `${Math.abs(wt.net_whale_btc/4200000*100).toFixed(3)}% of liquid supply` : 'n/a'}. This is SPOT+FUTURES order flow — distinct from on-chain netflow.`;
+  // wt now contains 24h taker pressure from Binance klines (not last-1000 aggTrades)
+  // Fields: taker_buy_btc, taker_sell_btc, net_taker_btc, total_volume_btc, buy_ratio, span_hours
+  const binanceWhaleBlock = wt?.net_taker_btc != null ? (() => {
+    const net   = wt.net_taker_btc;
+    const sign  = net >= 0 ? '+' : '';
+    const buyPct = wt.buy_ratio != null ? `${(wt.buy_ratio * 100).toFixed(1)}%` : 'n/a';
+    const pctLiq = p ? `${Math.abs(net / 4200000 * 100).toFixed(3)}% of liquid supply` : 'n/a';
+    return `\n\nBINANCE 24H TAKER PRESSURE (BTCUSDT spot, last 24h klines — LIVE data):\n  Taker Buy Volume:   +${wt.taker_buy_btc.toFixed(0)} BTC\n  Taker Sell Volume:  -${wt.taker_sell_btc.toFixed(0)} BTC\n  Net Taker Flow:     ${sign}${net.toFixed(0)} BTC → ${wt.pressure}\n  Buy Ratio (24h):    ${buyPct} of volume were taker buys\n  Total Volume (24h): ${wt.total_volume_btc.toFixed(0)} BTC (${wt.trade_count?.toLocaleString()} trades)\n  Quad-norm net:      ${pctLiq}\n  INSTRUCTION: This is LIVE 24h data. Populate binancePressure with dataQuality LIVE. Net taker buy > 50% = buy-side dominance (bullish). Apply quad-normalization. Use as order-flow confirmation of on-chain signals.`;
   })() : '';
 
-  const qualitySummary = `\n\nDATA SOURCE QUALITY:\n- LIVE: price, funding, OI, F&G, options skew, gold, dominance, SMAs, CME basis${macros?.dxy!=null?', DXY':''}${macros?.vix!=null?', VIX':''}${macros?.tnxYield!=null?', 10Y yield':''}${tech?.btcQqqCorr!=null?', BTC-QQQ corr':''}${dc?.mvrv?.mvrv!=null?', MVRV':''}${etf?.total_million_usd!=null?', ETF flows':''}${lth?.lth_net_btc!=null?', LTH position':''}${st?.total_usd!=null?', stablecoin supply':''}${dc?.exchangeFlow?.netflow_btc!=null?', exchange netflow ('+( dc.exchangeFlow.source||'blockchain.info')+')':''}${wt?.net_whale_btc!=null?', Binance whale block trades':''}\n- ESTIMATED: STH SOPR${dc?.mvrv?.mvrv==null?', MVRV (use ~1.5 est.)':''}${etf?.total_million_usd==null?', ETF flows':''}${dc?.exchangeFlow?.netflow_btc==null?', exchange netflow':''}\n\nGenerate the full morning brief JSON now. Apply quad-normalization to all flows. Score each axis INDEPENDENTLY per Section F — do NOT double-count funding + F&G. Return ONLY valid JSON. No markdown. No preamble.`;
+  const qualitySummary = `\n\nDATA SOURCE QUALITY:\n- LIVE: price, funding, OI, F&G, options skew, gold, dominance, SMAs, CME basis${macros?.dxy!=null?', DXY':''}${macros?.vix!=null?', VIX':''}${macros?.tnxYield!=null?', 10Y yield':''}${tech?.btcQqqCorr!=null?', BTC-QQQ corr':''}${dc?.mvrv?.mvrv!=null?', MVRV':''}${etf?.total_million_usd!=null?', ETF flows':''}${lth?.lth_net_btc!=null?', LTH position':''}${st?.total_usd!=null?', stablecoin supply':''}${dc?.exchangeFlow?.netflow_btc!=null?', exchange netflow ('+( dc.exchangeFlow.source||'blockchain.info')+')':''}${wt?.net_taker_btc!=null?', Binance 24h taker pressure':''}\n- ESTIMATED: STH SOPR${dc?.mvrv?.mvrv==null?', MVRV (use ~1.5 est.)':''}${etf?.total_million_usd==null?', ETF flows':''}${dc?.exchangeFlow?.netflow_btc==null?', exchange netflow':''}\n\nGenerate the full morning brief JSON now. Apply quad-normalization to all flows. Score each axis INDEPENDENTLY per Section F — do NOT double-count funding + F&G. Return ONLY valid JSON. No markdown. No preamble.`;
 
   return marketBlock + phaseBlock + smaBlock + cmBlock + macroBlock + duneBlock + cmeBlock + etfBlock + lthBlock + stableBlock + volBlock + binanceWhaleBlock + qualitySummary;
 }
@@ -1015,7 +1019,7 @@ F. COMPOSITE SIGNAL SCORING (-10 to +10):
                Use to CONFIRM or CONTRADICT on-chain direction. Not a substitute for netflow.
     FALLBACK:  Only estimate from training knowledge if BOTH are UNAVAILABLE.
   Populate whaleSignal.netflowBTC from the blockchain.info figure.
-  Populate binancePressure fields from the Binance aggTrades data.
+  Populate binancePressure fields from the BINANCE 24H TAKER PRESSURE block above (24h klines data).
 
   onChain (whale netflow + MVRV + LTH):  max ±3 points
   etfInstitutional (ETF flows vs baseline): max ±2 points
@@ -1052,7 +1056,7 @@ Return ONLY valid JSON. No markdown fences. No preamble.
   "correlationRegime": { "btcQqqCorrelation": "", "regime": "HIGH | MODERATE | LOW", "implication": "" },
   "priceAnalysis": { "trend": "", "keyLevel": "", "realizedPriceContext": "", "signal": "BULLISH | BEARISH | NEUTRAL | MIXED" },
   "whaleSignal": { "status": "ACCUMULATING | DISTRIBUTING | NEUTRAL | MIXED", "netflowBTC": "use LIVE blockchain.info netflow if provided", "netflowUSD": "", "netflowPctLiquid": "", "netflowPctVolume": "", "netflowPctMcap": "", "historicalContext": "", "detail": "", "actionable": "", "dataQuality": "LIVE | ESTIMATED" },
-  "binancePressure": { "netWhaleBTC": "e.g. +312 BTC", "buyVolumeBTC": "", "sellVolumeBTC": "", "buyRatioPct": "e.g. 55%", "pressure": "BUY | SELL | NEUTRAL", "spanMinutes": "", "confluence": "1 sentence confirming/contradicting on-chain netflow", "dataQuality": "LIVE | UNAVAILABLE" },
+  "binancePressure": { "netTakerBTC": "e.g. +4,200 BTC (net 24h taker buys minus sells)", "buyVolumeBTC": "e.g. 32,100 BTC", "sellVolumeBTC": "e.g. 27,900 BTC", "buyRatioPct": "e.g. 53.5% taker buys", "totalVolumeBTC": "e.g. 60,000 BTC", "pressure": "BUY | SELL | NEUTRAL", "span": "24h", "confluence": "1 sentence confirming/contradicting on-chain netflow direction", "dataQuality": "LIVE | UNAVAILABLE" },
   "fundingRates": { "rate8h": "", "annualized": "", "regime": "CAPITULATION | BEARISH | NEUTRAL | ELEVATED | EXTREME_LONG", "signal": "", "detail": "", "squeeze_risk": "LOW | MEDIUM | HIGH" },
   "openInterest": { "trend": "RISING | FALLING | STABLE", "regime": "", "detail": "", "leverageRisk": "LOW | MEDIUM | HIGH" },
   "mvrvSignal": { "estimatedZone": "", "implication": "", "cycleContext": "" },

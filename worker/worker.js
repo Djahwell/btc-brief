@@ -202,57 +202,58 @@ async function handleEtf() {
   return json({ error: "etf-unavailable", detail: lastErr }, 502);
 }
 
-// ─── /whale handler — proxy Binance aggTrades for dune-worker (GHA blocked) ───
-// Binance blocks GitHub Actions runner IPs. Cloudflare edge IPs work fine.
-// dune-worker.js calls this endpoint instead of Binance directly.
-// Returns computed whale pressure data; cached 5 min at edge (trades are live).
+// ─── /whale handler — 24h taker buy/sell pressure via Binance klines ─────────
+// Uses 1-hour BTCUSDT klines (last 24 candles). Each candle includes
+// takerBuyBaseAssetVolume, so total taker buy vs sell can be computed for
+// the full day — far more useful for a daily brief than last-1000-trades.
+// Binance blocks GitHub Actions IPs; Cloudflare edge IPs are not blocked.
+// Cached 1h at edge (daily brief only needs one fetch per dune-refresh cycle).
 async function handleWhale() {
-  const WHALE_BTC = 10; // trades ≥ 10 BTC = whale
-  const url = "https://api.binance.com/api/v3/aggTrades?symbol=BTCUSDT&limit=1000";
-  let trades, lastErr;
+  // kline fields: [openTime, o, h, l, c, volume, closeTime, quoteVol,
+  //                trades, takerBuyBaseVol, takerBuyQuoteVol, ignore]
+  const url = "https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1h&limit=24";
+  let klines;
   try {
     const r = await fetch(url, {
       headers: { "User-Agent": "Mozilla/5.0", "Accept": "application/json" },
-      cf: { cacheTtl: 300, cacheEverything: true },
+      cf: { cacheTtl: 3600, cacheEverything: true },
     });
-    if (!r.ok) throw new Error(`Binance HTTP ${r.status}`);
-    trades = await r.json();
-    if (!Array.isArray(trades) || trades.length === 0) throw new Error("Empty response");
+    if (!r.ok) throw new Error(`Binance klines HTTP ${r.status}`);
+    klines = await r.json();
+    if (!Array.isArray(klines) || klines.length === 0) throw new Error("Empty klines response");
   } catch (e) {
     return json({ error: "whale-unavailable", detail: e.message }, 502);
   }
 
-  let buyBTC = 0, sellBTC = 0, buys = 0, sells = 0;
-  let firstTs = trades[0]?.T, lastTs = trades[trades.length - 1]?.T;
-
-  for (const t of trades) {
-    const qty = parseFloat(t.q);
-    if (qty >= WHALE_BTC) {
-      if (t.m) { sells++; sellBTC += qty; }   // maker=buyer → taker sold
-      else     { buys++;  buyBTC  += qty; }
-    }
+  let totalBTC = 0, takerBuyBTC = 0, totalTrades = 0;
+  for (const k of klines) {
+    totalBTC    += parseFloat(k[5]);   // volume (total BTC traded)
+    takerBuyBTC += parseFloat(k[9]);   // takerBuyBaseAssetVolume
+    totalTrades += parseInt(k[8], 10); // number of trades
   }
+  const takerSellBTC = totalBTC - takerBuyBTC;
+  const netBTC       = takerBuyBTC - takerSellBTC;
+  const buyRatio     = totalBTC > 0 ? parseFloat((takerBuyBTC / totalBTC).toFixed(3)) : null;
 
-  const netBTC      = buyBTC - sellBTC;
-  const spanMinutes = firstTs && lastTs ? Math.round((lastTs - firstTs) / 60000) : null;
-  const buyRatio    = (buys + sells) > 0 ? parseFloat((buyBTC / (buyBTC + sellBTC)).toFixed(3)) : null;
+  // Pressure: net taker buy > 1% of total volume = BUY, < -1% = SELL
+  const pctThreshold = totalBTC * 0.01;
+  const pressure     = netBTC > pctThreshold ? "BUY" : netBTC < -pctThreshold ? "SELL" : "NEUTRAL";
 
   return json(
     {
-      threshold_btc:    WHALE_BTC,
-      whale_buy_btc:    parseFloat(buyBTC.toFixed(2)),
-      whale_sell_btc:   parseFloat(sellBTC.toFixed(2)),
-      net_whale_btc:    parseFloat(netBTC.toFixed(2)),
-      whale_buy_count:  buys,
-      whale_sell_count: sells,
-      whale_buy_ratio:  buyRatio,
-      span_minutes:     spanMinutes,
-      pressure:         netBTC > 50 ? "BUY" : netBTC < -50 ? "SELL" : "NEUTRAL",
-      source:           "Binance aggTrades (BTCUSDT, last 1000 trades, via CF Worker)",
-      date:             new Date().toISOString().slice(0, 10),
+      taker_buy_btc:   parseFloat(takerBuyBTC.toFixed(2)),
+      taker_sell_btc:  parseFloat(takerSellBTC.toFixed(2)),
+      net_taker_btc:   parseFloat(netBTC.toFixed(2)),
+      total_volume_btc:parseFloat(totalBTC.toFixed(2)),
+      buy_ratio:       buyRatio,          // e.g. 0.523 = 52.3% taker buys
+      trade_count:     totalTrades,
+      span_hours:      24,
+      pressure,
+      source:          "Binance BTCUSDT klines 1h×24 (24h taker pressure, via CF Worker)",
+      date:            new Date().toISOString().slice(0, 10),
     },
     200,
-    { "Cache-Control": "public, max-age=300" }
+    { "Cache-Control": "public, max-age=3600" }
   );
 }
 
