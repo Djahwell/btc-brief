@@ -47,6 +47,10 @@ export default {
       return handleEtf();
     }
 
+    if (url.pathname === "/whale") {
+      return handleWhale();
+    }
+
     return json({ error: "not found" }, 404);
   },
 };
@@ -196,6 +200,60 @@ async function handleEtf() {
   }
 
   return json({ error: "etf-unavailable", detail: lastErr }, 502);
+}
+
+// ─── /whale handler — proxy Binance aggTrades for dune-worker (GHA blocked) ───
+// Binance blocks GitHub Actions runner IPs. Cloudflare edge IPs work fine.
+// dune-worker.js calls this endpoint instead of Binance directly.
+// Returns computed whale pressure data; cached 5 min at edge (trades are live).
+async function handleWhale() {
+  const WHALE_BTC = 10; // trades ≥ 10 BTC = whale
+  const url = "https://api.binance.com/api/v3/aggTrades?symbol=BTCUSDT&limit=1000";
+  let trades, lastErr;
+  try {
+    const r = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0", "Accept": "application/json" },
+      cf: { cacheTtl: 300, cacheEverything: true },
+    });
+    if (!r.ok) throw new Error(`Binance HTTP ${r.status}`);
+    trades = await r.json();
+    if (!Array.isArray(trades) || trades.length === 0) throw new Error("Empty response");
+  } catch (e) {
+    return json({ error: "whale-unavailable", detail: e.message }, 502);
+  }
+
+  let buyBTC = 0, sellBTC = 0, buys = 0, sells = 0;
+  let firstTs = trades[0]?.T, lastTs = trades[trades.length - 1]?.T;
+
+  for (const t of trades) {
+    const qty = parseFloat(t.q);
+    if (qty >= WHALE_BTC) {
+      if (t.m) { sells++; sellBTC += qty; }   // maker=buyer → taker sold
+      else     { buys++;  buyBTC  += qty; }
+    }
+  }
+
+  const netBTC      = buyBTC - sellBTC;
+  const spanMinutes = firstTs && lastTs ? Math.round((lastTs - firstTs) / 60000) : null;
+  const buyRatio    = (buys + sells) > 0 ? parseFloat((buyBTC / (buyBTC + sellBTC)).toFixed(3)) : null;
+
+  return json(
+    {
+      threshold_btc:    WHALE_BTC,
+      whale_buy_btc:    parseFloat(buyBTC.toFixed(2)),
+      whale_sell_btc:   parseFloat(sellBTC.toFixed(2)),
+      net_whale_btc:    parseFloat(netBTC.toFixed(2)),
+      whale_buy_count:  buys,
+      whale_sell_count: sells,
+      whale_buy_ratio:  buyRatio,
+      span_minutes:     spanMinutes,
+      pressure:         netBTC > 50 ? "BUY" : netBTC < -50 ? "SELL" : "NEUTRAL",
+      source:           "Binance aggTrades (BTCUSDT, last 1000 trades, via CF Worker)",
+      date:             new Date().toISOString().slice(0, 10),
+    },
+    200,
+    { "Cache-Control": "public, max-age=300" }
+  );
 }
 
 // ─── /brief handler ────────────────────────────────────────────────────────────

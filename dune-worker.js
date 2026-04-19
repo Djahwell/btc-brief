@@ -1181,12 +1181,26 @@ async function runFetch() {
   }
 
   // ── Binance Large Block Trades — whale buy/sell pressure proxy ────────────
+  // Binance blocks GitHub Actions runner IPs, so we route through the
+  // Cloudflare Worker's /whale endpoint (same CF edge IPs that Binance allows).
+  // fetchBinanceLargeTrades() is kept as a local fallback (works on Mac dev).
   try {
-    const wt = await fetchBinanceLargeTrades();
+    const WORKER_URL = 'https://btc-brief.joel-toe.workers.dev';
+    const wr = await fetch(`${WORKER_URL}/whale`, { signal: AbortSignal.timeout(12000) });
+    if (!wr.ok) throw new Error(`Worker /whale HTTP ${wr.status}`);
+    const wt = await wr.json();
+    if (wt.error) throw new Error(`Worker /whale error: ${wt.error}`);
     payload.binanceLargeTrades = wt;
-    console.log(`[Binance/Whales] ✓  Net: ${wt.net_whale_btc >= 0 ? '+' : ''}${wt.net_whale_btc} BTC | Pressure: ${wt.pressure}`);
+    console.log(`[Binance/Whales] ✓ (via Worker)  Net: ${wt.net_whale_btc >= 0 ? '+' : ''}${wt.net_whale_btc} BTC | Pressure: ${wt.pressure}`);
   } catch (e) {
-    console.error('[Binance/Whales] ✗ (non-fatal):', e.message);
+    console.warn('[Binance/Whales] Worker /whale failed:', e.message, '— trying direct Binance');
+    try {
+      const wt = await fetchBinanceLargeTrades();
+      payload.binanceLargeTrades = wt;
+      console.log(`[Binance/Whales] ✓ (direct)  Net: ${wt.net_whale_btc >= 0 ? '+' : ''}${wt.net_whale_btc} BTC | Pressure: ${wt.pressure}`);
+    } catch (e2) {
+      console.error('[Binance/Whales] ✗ (non-fatal):', e2.message);
+    }
   }
 
   writeCache(payload);
