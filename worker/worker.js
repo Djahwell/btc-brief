@@ -43,6 +43,10 @@ export default {
       return handleQqq();
     }
 
+    if (url.pathname === "/etf") {
+      return handleEtf();
+    }
+
     return json({ error: "not found" }, 404);
   },
 };
@@ -108,6 +112,90 @@ async function handleQqq() {
   } catch (e) {
     return json({ error: "qqq-unavailable", detail: `${lastErr || "yahoo failed"}; ${e.message}` }, 502);
   }
+}
+
+// ─── /etf handler — proxy SoSoValue ETF flow for APK + dune-worker ───────────
+// Farside (primary source) is behind Cloudflare anti-bot that blocks headless
+// Chrome and GitHub Actions IPs. Cloudflare Worker edge IPs are not blocked by
+// SoSoValue, so we proxy through here. Cached at edge for 1h (data is daily).
+// Returns: { total_million_usd, date, source } or { error }
+async function handleEtf() {
+  const YF_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+  const sosoEndpoints = [
+    "https://sosovalue.com/api/etf/us-btc-spot/fund-flow?type=total",
+    "https://sosovalue.com/api/etf/us-btc-spot/net-asset?type=total",
+    "https://sosovalue.com/api/index/indexDailyHistory?code=US-BTC-SPOT-ETF&range=1",
+  ];
+  let lastErr = null;
+
+  for (const ep of sosoEndpoints) {
+    try {
+      const r = await fetch(ep, {
+        headers: { "User-Agent": YF_UA, "Accept": "application/json", "Referer": "https://sosovalue.com/" },
+        cf: { cacheTtl: 3600, cacheEverything: true },
+      });
+      if (!r.ok) { lastErr = `SoSoValue ${ep} HTTP ${r.status}`; continue; }
+      const data = await r.json();
+      const ssvData = data?.data;
+      if (!ssvData) { lastErr = `SoSoValue ${ep} — no data field`; continue; }
+      const row = Array.isArray(ssvData) ? ssvData[ssvData.length - 1] : ssvData;
+      const netM = row?.totalNetInflow ?? row?.netInflow ?? row?.net_inflow ?? row?.totalFlow ?? null;
+      if (netM == null) { lastErr = `SoSoValue ${ep} — no flow field`; continue; }
+      // SoSoValue returns $M values; guard against raw-dollar responses
+      const netUSD = Math.abs(netM) > 1e6 ? netM : netM * 1e6;
+      const dateStr = row?.date || row?.time || new Date().toISOString().slice(0, 10);
+      return json(
+        { total_million_usd: netUSD / 1e6, date: dateStr, source: "SoSoValue" },
+        200,
+        { "Cache-Control": "public, max-age=3600" }
+      );
+    } catch (e) {
+      lastErr = `${ep}: ${e.message}`;
+    }
+  }
+
+  // Last resort: Yahoo Finance IBIT daily OHLCV (volume proxy, not actual flows)
+  try {
+    const r = await fetch(
+      "https://query1.finance.yahoo.com/v8/finance/chart/IBIT?interval=1d&range=5d",
+      {
+        headers: { "User-Agent": YF_UA, "Accept": "application/json" },
+        cf: { cacheTtl: 3600, cacheEverything: true },
+      }
+    );
+    if (!r.ok) throw new Error(`Yahoo IBIT HTTP ${r.status}`);
+    const data = await r.json();
+    const result0 = data?.chart?.result?.[0];
+    const meta = result0?.meta;
+    const closes = result0?.indicators?.quote?.[0]?.close ?? [];
+    const volumes = result0?.indicators?.quote?.[0]?.volume ?? [];
+    const timestamps = result0?.timestamp ?? [];
+    // Most recent non-null close + volume
+    let close = null, vol = null, ts = null;
+    for (let i = closes.length - 1; i >= 0; i--) {
+      if (closes[i] != null && volumes[i] != null && volumes[i] > 0) {
+        close = closes[i]; vol = volumes[i]; ts = timestamps[i]; break;
+      }
+    }
+    close = close ?? meta?.regularMarketPrice;
+    vol   = vol   ?? meta?.regularMarketVolume;
+    ts    = ts    ?? meta?.regularMarketTime;
+    if (close && vol && close > 0 && vol > 0) {
+      const dollarVol = close * vol;
+      const dateStr = ts ? new Date(ts * 1000).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+      // Return as a volume proxy — mark clearly so the brief doesn't treat it as actual flows
+      return json(
+        { total_million_usd: null, ibit_volume_usd: dollarVol, date: dateStr, source: "Yahoo IBIT vol (proxy — NOT actual flows)" },
+        200,
+        { "Cache-Control": "public, max-age=3600" }
+      );
+    }
+    throw new Error("IBIT OHLCV empty");
+  } catch (e) {
+    lastErr = `Yahoo IBIT: ${e.message}`;
+  }
+
+  return json({ error: "etf-unavailable", detail: lastErr }, 502);
 }
 
 // ─── /brief handler ────────────────────────────────────────────────────────────

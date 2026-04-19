@@ -1920,6 +1920,33 @@ FROM realized r, spot s`;
   //          net flows for every US Bitcoin spot ETF. Values in $M. Typically updated T+1.
   // FALLBACK: Yahoo Finance IBIT/FBTC trading volume (activity proxy, not actual flows).
   const fetchETFFlows = async () => {
+    // ── -2. all_data.json (already in memory) — fastest path, works in APK ───────
+    // all_data.json is fetched by loadAllData() and stored in allDataRef.current.
+    // It contains etfFlow at the top level (written by brief-worker.js from the
+    // dune cache). This is the ONLY reliable path in the APK since the APK has no
+    // Vite proxy and the bundled dune_cache.json may be stale.
+    try {
+      var adEtf = allDataRef.current && allDataRef.current.etfFlow;
+      if (adEtf && adEtf.total_million_usd != null && adEtf.total_million_usd !== 0) {
+        var adAgeMs = Date.now() - new Date(allDataRef.current.briefCachedAt || allDataRef.current.cachedAt).getTime();
+        if (adAgeMs < 36 * 3_600_000) { // 36h — same staleness threshold as the brief itself
+          var srcLabelAd = adEtf.source || 'Farside Investors';
+          console.info('[ETF] all_data cache ✓ — date:', adEtf.date, '| total: $' + (adEtf.total_million_usd >= 0 ? '+' : '') + adEtf.total_million_usd.toFixed(0) + 'M | src:', srcLabelAd);
+          return {
+            etfTotalNetUSD:   adEtf.total_million_usd * 1e6,
+            etfIBITvolumeUSD: null,
+            etfIBITclose:     null,
+            etfFlowSource:    srcLabelAd,
+            etfFlowDate:      adEtf.date,
+            etfFlowLive:      true,
+          };
+        }
+        console.info('[ETF] all_data etfFlow stale (' + Math.round(adAgeMs / 3_600_000) + 'h) — trying fresher sources');
+      }
+    } catch (_adce) {
+      console.warn('[ETF] all_data cache check failed:', _adce.message);
+    }
+
     // ── -1. Dune worker cache — ETF flow pre-fetched by Node.js worker ───────────
     // Worker tries SoSoValue → CoinGlass directly (residential IP, no Vite proxy).
     // Cached in public/dune_cache.json as { etfFlow: { total_million_usd, date, source } }.
@@ -1947,6 +1974,27 @@ FROM realized r, spot s`;
       }
     } catch (_wce) {
       console.warn('[ETF] Worker cache miss:', _wce.message);
+    }
+
+    // ── 0a. Cloudflare Worker /etf — SoSoValue via Worker edge IPs ───────────────
+    // Farside blocks headless Chrome + GitHub Actions IPs. Worker edge IPs are not
+    // blocked by SoSoValue. This path works in APK (no Vite proxy available there).
+    try {
+      var workerEtf = await safeFetch(WORKER_URL + '/etf', { timeout: 10000 });
+      if (workerEtf && workerEtf.total_million_usd != null) {
+        var totalUSD_w = workerEtf.total_million_usd * 1e6;
+        console.info('[ETF] Worker /etf ✓ — date:', workerEtf.date, '| total: $' + (workerEtf.total_million_usd >= 0 ? '+' : '') + workerEtf.total_million_usd.toFixed(0) + 'M | src:', workerEtf.source);
+        return {
+          etfTotalNetUSD:   totalUSD_w,
+          etfIBITvolumeUSD: null,
+          etfIBITclose:     null,
+          etfFlowSource:    (workerEtf.source || 'SoSoValue') + ' via Worker',
+          etfFlowDate:      workerEtf.date,
+          etfFlowLive:      true,
+        };
+      }
+    } catch (_we) {
+      console.warn('[ETF] Worker /etf failed:', _we.message);
     }
 
     // ── 0. Farside Investors — real daily ETF creation/redemption net flow ($M) ──

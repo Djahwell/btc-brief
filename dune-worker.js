@@ -914,6 +914,34 @@ async function runFetch() {
     }
   }
 
+  // ── Cloudflare Worker /etf fallback — SoSoValue via Worker edge IPs ─────────
+  // Farside blocks headless Chrome; GitHub Actions IPs are blocked by many ETF
+  // APIs. The Worker's edge IPs are not blocked by SoSoValue, so we route through.
+  if (!payload.etfFlow) {
+    const WORKER_URL = 'https://btc-brief.joel-toe.workers.dev';
+    try {
+      const r = await fetch(`${WORKER_URL}/etf`, { signal: AbortSignal.timeout(10000) });
+      if (r.ok) {
+        const etf = await r.json();
+        if (etf && etf.total_million_usd != null) {
+          payload.etfFlow = { total_million_usd: etf.total_million_usd, date: etf.date, source: etf.source || 'SoSoValue' };
+          const sign = etf.total_million_usd >= 0 ? '+' : '';
+          console.log(`[ETF] Worker /etf ✓  ETF net flow: ${sign}${etf.total_million_usd.toFixed(0)}M USD  (${etf.date})`);
+        } else if (etf && etf.ibit_volume_usd != null) {
+          // Volume proxy — still useful for the brief as a signal indicator
+          payload.etfFlow = { total_million_usd: null, ibit_volume_usd: etf.ibit_volume_usd, date: etf.date, source: etf.source };
+          console.log(`[ETF] Worker /etf ✓ (volume proxy)  IBIT vol: $${(etf.ibit_volume_usd/1e6).toFixed(0)}M  (${etf.date})`);
+        } else {
+          console.warn('[ETF] Worker /etf returned no usable data:', JSON.stringify(etf).slice(0, 100));
+        }
+      } else {
+        console.warn(`[ETF] Worker /etf HTTP ${r.status}`);
+      }
+    } catch (e) {
+      console.warn('[ETF] Worker /etf fallback failed:', e.message);
+    }
+  }
+
   // ── BMP LTH Net Position Change ───────────────────────────────────────────
   try {
     const lthData = await fetchBMPLTHData();
