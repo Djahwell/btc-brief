@@ -50,6 +50,20 @@ jobs:
       - name: Run Dune worker
         run: node dune-worker.js
 
+      # ── Preserve all_data.json so dune-refresh doesn't wipe it from gh-pages ──
+      # brief-generate.yml generates all_data.json and deploys it to gh-pages.
+      # dune-refresh only generates dune_cache.json, but the deploy action uses
+      # single-commit mode which replaces all gh-pages content with the public/
+      # folder. Without this step, all_data.json is deleted every 6h.
+      - name: Preserve all_data.json from GitHub Pages
+        run: |
+          mkdir -p public
+          curl --fail --silent --show-error \
+            -o public/all_data.json \
+            "https://djahwell.github.io/btc-brief/all_data.json" \
+            && echo "[ok] Preserved all_data.json from gh-pages" \
+            || echo "[warn] all_data.json not yet on gh-pages — will be created by brief-generate.yml"
+
       - name: Deploy dune_cache.json to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
