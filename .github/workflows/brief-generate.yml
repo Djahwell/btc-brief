@@ -47,14 +47,17 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
-      # Pull the latest dune_cache.json from GitHub Pages so brief-worker.js
-      # has fresh on-chain data without re-running the slow Dune queries.
+      # Pull the latest dune_cache.json directly from the gh-pages git branch.
+      # We use raw.githubusercontent.com (not djahwell.github.io) to bypass the
+      # GitHub Pages CDN cache — the CDN can serve a stale copy for up to 10 min
+      # after dune-refresh deploys, causing brief-worker to read old whale data.
       - name: Fetch latest dune_cache.json
         run: |
           mkdir -p public
           curl --fail --silent --show-error \
+            -H "Cache-Control: no-cache" \
             -o public/dune_cache.json \
-            "https://djahwell.github.io/btc-brief/dune_cache.json" || \
+            "https://raw.githubusercontent.com/Djahwell/btc-brief/gh-pages/dune_cache.json?t=$(date +%s)" || \
           echo "[warn] dune_cache.json unavailable — brief-worker will fall back to training-knowledge defaults"
 
       - name: Create .env from secrets
