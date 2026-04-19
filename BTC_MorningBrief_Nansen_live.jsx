@@ -37,7 +37,12 @@ Phase system:
   Phase B BREAKOUT: $68K-$79K - add 25% on confirmed daily close + ETF >$500M/day
   Phase C MOMENTUM: $79K-$98K - hold 55%, take 15% off at $95K
   Phase D BULL RUN: $98K+ - scale out 10% every $15K above $100K
-Hard stop: daily close below $58,500
+Hard stop: $58,500 absolute mandate floor (never breached). Dynamic trailing stop shown in the stop card — tightens as price advances through phases:
+  Phase A ($58.5K–$68K): 15% trail below 60d closing high (floor $58,500)
+  Phase B ($68K–$79K):   12% trail below 60d closing high (floor $62K)
+  Phase C ($79K–$98K):   10% trail below 60d closing high (floor $68K)
+  Phase D ($98K+):       10% trail below 30d closing high (floor $90K)
+  Stop RISES with price and NEVER falls — use the live stop card level in todayAction.dynamicStop.
 Key resistance: $72.5K (61.8% Fib) | $79K (bear flag invalidation) | $98K (200d SMA = true bull reversal)
 Key support:   $68K (20d SMA zone) | $65K (whale accumulation zone) | $60K (2026 cycle low)
 Key catalysts: CLARITY Act vote | Fed Chair appointment May 2026 | CA/Indiana pension laws Jul 1 | US Midterms Nov 2026
@@ -116,7 +121,23 @@ D. MVRV Z-SCORE:
   MVRV 3-5 -> Overvalued - begin reducing
   MVRV > 5 -> Extreme greed - historical distribution zone
 
-E. CME FUTURES BASIS (institutional demand signal):
+E. NVT SIGNAL (Network Value to Transactions — Burniske & Tatar, Cryptoassets Ch.12):
+  NVT Signal = Market Cap / 90-day MA of daily adjusted on-chain transfer volume (USD)
+  Think of it as the crypto P/E ratio: high NVT = price outpacing on-chain utility.
+  Use NVT Signal (90d MA), NOT raw NVT Ratio (today-only, too volatile for positioning).
+  Data source: CoinMetrics TxTfrValAdjUSD (community free tier, LIVE).
+
+  ZONES (higher NVT = price disconnecting from on-chain throughput):
+  NVT Signal < 25   -> DEEPLY_UNDERVALUED — accumulation signal (very rare in mature BTC)
+  NVT Signal 25-50  -> UNDERVALUED — historically bullish setup; add to on-chain score
+  NVT Signal 50-100 -> FAIR — price aligned with network utility; neutral on-chain weight
+  NVT Signal 100-150 -> OVERVALUED — price outpacing network use; reduce on-chain weight
+  NVT Signal > 150  -> BUBBLE — historical distribution zone (2017 peak approached ~200)
+
+  ANTI-DOUBLE-COUNT: NVT is a valuation metric, not a flow metric. It supplements MVRV
+  on the onChain axis — do not create a separate axis for it. Weight it alongside MVRV.
+
+F. CME FUTURES BASIS (institutional demand signal):
   Basis > +15% annualized  -> Strong institutional long demand - BULLISH
   Basis +5 to +15%         -> Healthy contango - mild bullish
   Basis -5 to +5%          -> Flat / neutral
@@ -225,6 +246,14 @@ Return ONLY valid JSON. No markdown fences. No preamble. No text outside the JSO
     "estimatedZone": "RED (<0) | UNDERVALUED (0-1) | FAIR (1-3) | OVERVALUED (3-5) | EXTREME (>5)",
     "implication": "1-2 sentences on what MVRV zone means for positioning",
     "cycleContext": "comparison to historical MVRV at prior cycle bottoms"
+  },
+  "nvtSignal": {
+    "ratio": "e.g. 47.3 (raw NVT — today's MC / today's tx vol, noisy)",
+    "signal90dMA": "e.g. 61.2 (NVT Signal — MC / 90d MA tx vol, primary signal)",
+    "zone": "DEEPLY_UNDERVALUED | UNDERVALUED | FAIR | OVERVALUED | BUBBLE",
+    "dataPoints": "e.g. '90d (full window)' or '43d (partial)' — note if <90",
+    "implication": "1-2 sentences: high NVT = price outpacing utility; low NVT = undervalued vs throughput",
+    "dataQuality": "LIVE | UNAVAILABLE"
   },
   "etfFlows": {
     "status": "INFLOW | OUTFLOW | NEUTRAL",
@@ -809,6 +838,9 @@ export default function MorningBrief() {
       var weights = closes.slice(-200).map(function(_, i, arr) { return Math.exp(-0.02 * (arr.length - 1 - i)); });
       var wSum = weights.reduce(function(a, b) { return a + b; }, 0);
       var realisedProxy = closes.slice(-200).reduce(function(acc, c, i) { return acc + c * weights[i]; }, 0) / wSum;
+      // Rolling closing highs — used by the phase-adaptive trailing stop
+      var high60 = closes.length >= 60 ? Math.max.apply(null, closes.slice(-60)) : null;
+      var high30 = closes.length >= 30 ? Math.max.apply(null, closes.slice(-30)) : null;
       // Live volume trend: compare 5-day avg vs 20-day avg from candle data
       var vols = (window.__btcVolumes && window.__btcVolumes.length >= 20) ? window.__btcVolumes : null;
       var avgVol5d  = null, avgVol20d = null, volTrendRatio = null, volTrend = "UNKNOWN";
@@ -989,6 +1021,9 @@ export default function MorningBrief() {
         // Live BTC-QQQ correlation
         btcQqqCorr: btcQqqCorr,
         corrWindow: corrWindowUsed,
+        // Rolling closing highs for phase-adaptive trailing stop
+        high60: high60 ? Math.round(high60) : null,
+        high30: high30 ? Math.round(high30) : null,
       };
     } catch (e) {
       console.warn("fetchTechnicalLevels SMA calc failed:", e.message);
@@ -1289,20 +1324,24 @@ export default function MorningBrief() {
   // Docs: https://docs.coinmetrics.io/api/v4
   const fetchCoinMetricsData = async () => {
     // Community-tier free metrics only (Pro metrics like MVRV, SOPR, exchange flows return 403)
+    // TxTfrValAdjUSD = adjusted on-chain transfer volume (USD) — needed for NVT computation.
+    // 90 rows fetched so we can compute the 90-day MA required for NVT Signal.
+    // The existing latest/prev logic is unchanged (still reads rows[last] and rows[last-2]).
     const metrics = [
-      "AdrActCnt",   // Active addresses — network health
-      "TxCnt",       // Transaction count — on-chain activity
-      "HashRate",    // Miner hash rate — security & miner confidence
-      "FeeTotNtv",   // Total fees in BTC — blockspace demand
-      "PriceUSD",    // Reference price for cross-check
+      "AdrActCnt",      // Active addresses — network health
+      "TxCnt",          // Transaction count — on-chain activity
+      "HashRate",       // Miner hash rate — security & miner confidence
+      "FeeTotNtv",      // Total fees in BTC — blockspace demand
+      "PriceUSD",       // Reference price for cross-check
+      "TxTfrValAdjUSD", // Adjusted on-chain transfer volume (USD) — NVT computation
     ].join(",");
 
     const url = "/api/coinmetrics/v4/timeseries/asset-metrics"
       + "?assets=btc&metrics=" + metrics
-      + "&frequency=1d&limit_per_asset=2&sort=time";
+      + "&frequency=1d&limit_per_asset=90&sort=time";
 
     try {
-      const raw = await safeFetch(url, { timeout: 12000 });
+      const raw = await safeFetch(url, { timeout: 15000 });
       const rows = raw && raw.data;
       if (!rows || !rows.length) throw new Error("no data rows");
 
@@ -1317,6 +1356,12 @@ export default function MorningBrief() {
       const hashRate        = n("HashRate");
       const totalFeesBTC    = n("FeeTotNtv");
       const refPrice        = n("PriceUSD");
+      const txVolumeUSD     = n("TxTfrValAdjUSD");  // today's adjusted transfer volume (USD)
+
+      // Build 90-day array for NVT Signal MA — filter out null/zero rows
+      const txVolumeArr90d = rows
+        .map(function(r) { return r.TxTfrValAdjUSD != null ? parseFloat(r.TxTfrValAdjUSD) : null; })
+        .filter(function(v) { return v != null && v > 0; });
 
       const out = {
         date:            latest.time ? latest.time.slice(0, 10) : null,
@@ -1325,11 +1370,16 @@ export default function MorningBrief() {
         hashRate:        hashRate,
         totalFeesBTC:    totalFeesBTC,
         refPrice:        refPrice,
+        txVolumeUSD:     txVolumeUSD,     // latest daily tx volume — NVT numerator
+        txVolumeArr90d:  txVolumeArr90d,  // 90d array — for NVT Signal 90d MA
         source: "CoinMetrics Community API (free tier)",
       };
 
       console.info("[CoinMetrics] OK — ActiveAddr:", activeAddresses,
-        "| TxCount:", txCount, "| HashRate:", hashRate ? (hashRate > 1e15 ? (hashRate / 1e18).toFixed(1) : hashRate > 5e7 ? (hashRate / 1e6).toFixed(1) : hashRate.toFixed(1)) + " EH/s" : "n/a");
+        "| TxCount:", txCount,
+        "| TxVolUSD:", txVolumeUSD ? "$" + (txVolumeUSD / 1e9).toFixed(2) + "B" : "n/a",
+        "| TxVolArr:", txVolumeArr90d.length + "d",
+        "| HashRate:", hashRate ? (hashRate > 1e15 ? (hashRate / 1e18).toFixed(1) : hashRate > 5e7 ? (hashRate / 1e6).toFixed(1) : hashRate.toFixed(1)) + " EH/s" : "n/a");
       return out;
     } catch (e) {
       console.warn("[CoinMetrics] Failed:", e.message);
@@ -2066,22 +2116,99 @@ FROM realized r, spot s`;
     return null;
   };
 
-  // ── Stablecoin Supply — reads from dune-worker.js cache ──────────────────────
-  // Worker fetches USDT+USDC from CoinGecko (free). 7d delta computed by worker.
-  // Cache key: stablecoinSupply = { total_usd, delta_7d_usd, delta_7d_pct, regime, date }
+  // ── Stablecoin Supply — three-tier fetch chain ───────────────────────────────
+  // Tier 1: worker cache (dune_cache.json written by dune-worker.js / brief-worker.js)
+  // Tier 2: DefiLlama direct browser call (stablecoins.llama.fi — CORS-enabled, free)
+  // Tier 3: DefiLlama via Vite proxy /api/defillama (fallback for strict networks)
+  //
+  // DefiLlama provides circulatingPrevWeek natively so 7d delta is computed in
+  // one round-trip without needing a cached prior snapshot.
+  //
+  // Return shape: { total_usd, usdt_supply_usd, usdc_supply_usd,
+  //                 delta_7d_usd, delta_7d_pct, regime, date, source }
   const fetchStablecoinData = async () => {
+
+    // ── Tier 1: worker cache ────────────────────────────────────────────────
     try {
       var cacheRes = await safeFetch('/dune_cache.json', { timeout: 5000 });
       if (cacheRes && cacheRes.stablecoinSupply && cacheRes.cachedAt) {
         var ageMs = Date.now() - new Date(cacheRes.cachedAt).getTime();
         if (ageMs < 20 * 3_600_000 && cacheRes.stablecoinSupply.total_usd != null) {
-          console.info('[Stable] ✓ From worker cache — Total: $' + (cacheRes.stablecoinSupply.total_usd / 1e9).toFixed(1) + 'B | Regime: ' + cacheRes.stablecoinSupply.regime);
+          console.info('[Stable] ✓ Tier-1 worker cache — $' + (cacheRes.stablecoinSupply.total_usd / 1e9).toFixed(1) + 'B | ' + cacheRes.stablecoinSupply.regime);
           return cacheRes.stablecoinSupply;
         }
       }
-    } catch (e) {
-      console.warn('[Stable] Cache read failed:', e.message);
+    } catch (cacheErr) {
+      console.warn('[Stable] Tier-1 cache read failed:', cacheErr.message);
     }
+
+    // ── Tier 2 + 3: DefiLlama live (direct → proxy) ─────────────────────────
+    // stablecoins.llama.fi/stablecoins returns peggedAssets[] with:
+    //   circulating.peggedUSD, circulatingPrevWeek.peggedUSD
+    // Locate USDT and USDC by symbol, sum supplies, derive 7d delta + regime.
+    var llamaRaw  = null;
+    var llamaSource = '';
+    try {
+      llamaRaw    = await safeFetch('https://stablecoins.llama.fi/stablecoins?includePrices=true', { timeout: 12000 });
+      llamaSource = 'DefiLlama';
+      console.info('[Stable] Tier-2 DefiLlama direct OK');
+    } catch (directErr) {
+      console.warn('[Stable] Tier-2 direct failed (' + directErr.message + ') — trying Tier-3 proxy...');
+      try {
+        llamaRaw    = await safeFetch('/api/defillama/stablecoins?includePrices=true', { timeout: 12000 });
+        llamaSource = 'DefiLlama (proxy)';
+        console.info('[Stable] Tier-3 DefiLlama proxy OK');
+      } catch (proxyErr) {
+        console.warn('[Stable] Tier-3 proxy also failed:', proxyErr.message);
+      }
+    }
+
+    if (llamaRaw && Array.isArray(llamaRaw.peggedAssets)) {
+      try {
+        var assets = llamaRaw.peggedAssets;
+        var usdt = assets.find(function(a) { return a.symbol && a.symbol.toUpperCase() === 'USDT'; });
+        var usdc = assets.find(function(a) { return a.symbol && a.symbol.toUpperCase() === 'USDC'; });
+        if (!usdt || !usdc) throw new Error('USDT or USDC missing from DefiLlama peggedAssets');
+
+        var usdtNow  = (usdt.circulating         && usdt.circulating.peggedUSD)         || 0;
+        var usdcNow  = (usdc.circulating         && usdc.circulating.peggedUSD)         || 0;
+        var usdtPrev = (usdt.circulatingPrevWeek && usdt.circulatingPrevWeek.peggedUSD) || null;
+        var usdcPrev = (usdc.circulatingPrevWeek && usdc.circulatingPrevWeek.peggedUSD) || null;
+
+        var totalNow   = usdtNow + usdcNow;
+        var totalPrev  = (usdtPrev != null && usdcPrev != null) ? (usdtPrev + usdcPrev) : null;
+        var delta7d    = totalPrev != null ? totalNow - totalPrev : null;
+        var delta7dPct = (delta7d != null && totalPrev > 0)
+          ? parseFloat((delta7d / totalPrev * 100).toFixed(3))
+          : null;
+
+        var regime = delta7d == null ? 'STABLE'
+                   : delta7d >  5e9  ? 'EXPANDING'
+                   : delta7d < -5e9  ? 'CONTRACTING'
+                   : 'STABLE';
+
+        var stableResult = {
+          total_usd:       totalNow,
+          usdt_supply_usd: usdtNow,
+          usdc_supply_usd: usdcNow,
+          delta_7d_usd:    delta7d,
+          delta_7d_pct:    delta7dPct,
+          regime:          regime,
+          date:            new Date().toISOString().slice(0, 10),
+          source:          llamaSource,
+        };
+
+        console.info('[Stable] ✓ ' + llamaSource
+          + ' — USDT: $' + (usdtNow  / 1e9).toFixed(1) + 'B'
+          + ' | USDC: $' + (usdcNow  / 1e9).toFixed(1) + 'B'
+          + ' | 7d Δ: '  + (delta7d != null ? (delta7d >= 0 ? '+' : '') + (delta7d / 1e9).toFixed(1) + 'B' : 'N/A')
+          + ' | Regime: ' + regime);
+        return stableResult;
+      } catch (parseErr) {
+        console.warn('[Stable] DefiLlama parse error:', parseErr.message);
+      }
+    }
+
     return null;
   };
 
@@ -2563,16 +2690,52 @@ FROM realized r, spot s`;
       "\nConvergence:    " + convergenceLabel + " (score " + convergenceScore + " | factors: " + (convergenceFactors.length ? convergenceFactors.join(", ") : "none") + ")" +
       normRef;
 
-    // CLIENT-SIDE STOP LOSS (deterministic - never from LLM)
+    // CLIENT-SIDE STOP LOSS — phase-adaptive trailing stop (deterministic — never from LLM)
+    // Uses 60-day and 30-day rolling closing highs computed in fetchTechnicalLevels.
+    // Stop RISES with each phase and never falls below the mandate absolute floor ($58,500).
+    //
+    //   Phase D  (≥$98K)  : 10% trail from 30d high, hard floor $90K
+    //   Phase C  (≥$79K)  : 10% trail from 60d high, hard floor $68K
+    //   Phase B  (≥$68K)  : 12% trail from 60d high, hard floor $62K
+    //   Phase A  (≥$58.5K): 15% trail from 60d high, hard floor $58,500
+    //   Below A           : mandate floor $58,500
     var stopData;
+    var ABS_FLOOR = HARD_STOP; // $58,500 — never breached
+    var high60d = tech && tech.high60;
+    var high30d = tech && tech.high30;
     if (!p) {
-      stopData = { level: "$58,500", method: "mandate floor", pct: null };
-    } else if (p > 74000) {
-      stopData = { level: "$" + Math.round(p * 0.88).toLocaleString(), method: "12% trailing", pct: "-12" };
-    } else if (p > 65000) {
-      stopData = { level: "$65,000", method: "$65K support cluster", pct: ((65000 - p) / p * 100).toFixed(1) };
+      stopData = { level: "$" + ABS_FLOOR.toLocaleString(), method: "mandate floor (no price)", pct: null };
     } else {
-      stopData = { level: "$58,500", method: "mandate floor", pct: ((58500 - p) / p * 100).toFixed(1) };
+      var trailStop, trailMethod;
+      if (p >= 98000) {
+        // Phase D — Bull Run: 10% trail from 30d high, never below $90K
+        var trail_d = high30d ? Math.round(high30d * 0.90) : Math.round(p * 0.90);
+        trailStop   = Math.max(trail_d, 90000);
+        trailMethod = "10% trailing · 30d high (Phase D)";
+      } else if (p >= 79000) {
+        // Phase C — Momentum: 10% trail from 60d high, never below $68K
+        var trail_c = high60d ? Math.round(high60d * 0.90) : Math.round(p * 0.90);
+        trailStop   = Math.max(trail_c, 68000);
+        trailMethod = "10% trailing · 60d high (Phase C)";
+      } else if (p >= 68000) {
+        // Phase B — Breakout: 12% trail from 60d high, never below $62K
+        var trail_b = high60d ? Math.round(high60d * 0.88) : Math.round(p * 0.88);
+        trailStop   = Math.max(trail_b, 62000);
+        trailMethod = "12% trailing · 60d high (Phase B)";
+      } else if (p >= ABS_FLOOR) {
+        // Phase A — Accumulation: 15% trail from 60d high, never below mandate floor
+        var trail_a = high60d ? Math.round(high60d * 0.85) : Math.round(p * 0.85);
+        trailStop   = Math.max(trail_a, ABS_FLOOR);
+        trailMethod = "15% trailing · 60d high (Phase A)";
+      } else {
+        trailStop   = ABS_FLOOR;
+        trailMethod = "mandate floor";
+      }
+      // Safety clamps: stop must stay strictly below current price and above floor
+      trailStop = Math.min(trailStop, Math.round(p * 0.985));
+      trailStop = Math.max(trailStop, ABS_FLOOR);
+      var pctFromPrice = ((trailStop - p) / p * 100).toFixed(1);
+      stopData = { level: "$" + trailStop.toLocaleString(), method: trailMethod, pct: pctFromPrice };
     }
     safeSet(setClientStop)(stopData);
 
@@ -2681,19 +2844,58 @@ FROM realized r, spot s`;
         liqBlock = "\nLiquidations (" + (market.liqWindow || "recent") + ", " + (market.liqSource || "exchange") + "):\n  Long liq:  $" + (ll / 1e6).toFixed(1) + "M\n  Short liq: $" + (ls / 1e6).toFixed(1) + "M\n  Liq ratio: " + liqRatio;
       }
 
+      // ── NVT RATIO + NVT SIGNAL ─────────────────────────────────────────────
+      // NVT Ratio  = Market Cap / Today's adjusted on-chain transfer volume (USD)
+      //              — raw / noisy, useful as spot check only
+      // NVT Signal = Market Cap / 90-day MA of transfer volume (USD)
+      //              — smoothed version popularised by Willy Woo; theorised by
+      //                Burniske & Tatar (Cryptoassets Ch.12) as the crypto P/E ratio
+      // Both computed client-side from live data — never estimated by Claude.
+      var nvtRatio  = null;
+      var nvtSignal = null;
+      var nvtZone   = null;
+      if (coinMetrics && coinMetrics.txVolumeUSD && coinMetrics.txVolumeUSD > 0 && mcap && mcap > 0) {
+        nvtRatio = mcap / coinMetrics.txVolumeUSD;
+        var arr90 = coinMetrics.txVolumeArr90d;
+        if (arr90 && arr90.length >= 14) {
+          var ma90 = arr90.reduce(function(s, v) { return s + v; }, 0) / arr90.length;
+          if (ma90 > 0) {
+            nvtSignal = mcap / ma90;
+            // Zone thresholds calibrated from Burniske/Tatar + Woo historical analysis
+            nvtZone = nvtSignal < 25  ? "DEEPLY_UNDERVALUED"   // near-impossible in mature BTC
+                    : nvtSignal < 50  ? "UNDERVALUED"          // historically bullish setup
+                    : nvtSignal < 100 ? "FAIR"                 // price aligned with utility
+                    : nvtSignal < 150 ? "OVERVALUED"           // price outpacing network use
+                    : "BUBBLE";                                 // 2017 peak was ~200+
+          }
+        }
+        console.info("[NVT] Ratio:", nvtRatio ? nvtRatio.toFixed(1) : "n/a",
+          "| Signal:", nvtSignal ? nvtSignal.toFixed(1) : "n/a (" + (arr90 ? arr90.length : 0) + "d data)",
+          "| Zone:", nvtZone || "n/a");
+      }
+
       // ── COINMETRICS FREE ON-CHAIN BLOCK ────────────────────────────────────
       var coinMetricsBlock = "";
       if (coinMetrics) {
         const cm = coinMetrics;
+        var nvtDataPoints = (cm.txVolumeArr90d ? cm.txVolumeArr90d.length : 0);
         coinMetricsBlock = "\n\nCOINMETRICS NETWORK HEALTH (live, free community tier — " + (cm.date || "recent") + "):";
         coinMetricsBlock += "\n  Active Addresses: " + (cm.activeAddresses != null ? Math.round(cm.activeAddresses).toLocaleString() : "n/a");
         coinMetricsBlock += "\n  Tx Count (24h):   " + (cm.txCount != null ? Math.round(cm.txCount).toLocaleString() : "n/a");
         coinMetricsBlock += "\n  Hash Rate:        " + (cm.hashRate != null ? (cm.hashRate > 1e15 ? (cm.hashRate / 1e18).toFixed(1) : cm.hashRate > 5e7 ? (cm.hashRate / 1e6).toFixed(1) : cm.hashRate.toFixed(1)) + " EH/s" : "n/a");
         coinMetricsBlock += "\n  Total Fees (BTC): " + (cm.totalFeesBTC != null ? cm.totalFeesBTC.toFixed(2) + " BTC" : "n/a");
         coinMetricsBlock += "\n  Ref Price:        " + (cm.refPrice != null ? "$" + Math.round(cm.refPrice).toLocaleString() : "n/a");
-        coinMetricsBlock += "\n  INSTRUCTION: Use active addresses and tx count as network adoption signals. Hash rate confirms miner confidence.";
+        coinMetricsBlock += "\n  On-Chain Tx Vol:  " + (cm.txVolumeUSD != null ? "$" + (cm.txVolumeUSD / 1e9).toFixed(2) + "B (adjusted, TxTfrValAdjUSD)" : "n/a");
+        coinMetricsBlock += "\n  NVT Ratio (daily):" + (nvtRatio != null ? " " + nvtRatio.toFixed(1) + " (MC / today's tx vol — noisy)" : " n/a");
+        coinMetricsBlock += "\n  NVT Signal (90dMA):" + (nvtSignal != null
+          ? " " + nvtSignal.toFixed(1) + " → " + (nvtZone || "?") + " (" + nvtDataPoints + "d window)"
+          : " n/a — " + nvtDataPoints + "d of 90 available (need ≥14)");
+        coinMetricsBlock += "\n  INSTRUCTION: Active addresses and tx count = network adoption. Hash rate = miner confidence."
+          + " NVT Signal (90d MA) is the primary valuation signal — use Section 3.E thresholds."
+          + " Do NOT use raw NVT Ratio for positioning (too noisy). Report both values in nvtSignal JSON field."
+          + " This is LIVE computed data — do NOT override with training knowledge.";
       } else {
-        coinMetricsBlock = "\n\nCOINMETRICS NETWORK HEALTH: Unavailable — use training knowledge for network estimates.";
+        coinMetricsBlock = "\n\nCOINMETRICS NETWORK HEALTH: Unavailable — use training knowledge for network estimates. Set nvtSignal.dataQuality = 'UNAVAILABLE'.";
       }
 
       // ── LIVE MACRO BLOCK (DXY / VIX / 10Y yield) ─────────────────────────
@@ -2821,7 +3023,7 @@ FROM realized r, spot s`;
         lthBlock = "\n\nLTH NET POSITION: Live data unavailable. Set lthSellingBTC = 'N/A' and lthSellingPctLiquid = null. Do NOT estimate from training knowledge.";
       }
 
-      // ── STABLECOIN SUPPLY BLOCK (CoinGecko via worker cache) ─────────────────
+      // ── STABLECOIN SUPPLY BLOCK (DefiLlama live or worker cache) ────────────
       var stablecoinBlock = "";
       if (stablecoinResult && stablecoinResult.total_usd != null) {
         var stTotalB  = (stablecoinResult.total_usd / 1e9).toFixed(1);
@@ -2833,7 +3035,8 @@ FROM realized r, spot s`;
         var stDeltaPct = stablecoinResult.delta_7d_pct != null
           ? (stablecoinResult.delta_7d_pct >= 0 ? '+' : '') + stablecoinResult.delta_7d_pct.toFixed(2) + '%'
           : "N/A";
-        stablecoinBlock  = "\n\nLIVE STABLECOIN SUPPLY (CoinGecko — " + stablecoinResult.date + "):";
+        var stSource = stablecoinResult.source || 'DefiLlama';
+        stablecoinBlock  = "\n\nLIVE STABLECOIN SUPPLY (" + stSource + " — " + stablecoinResult.date + "):";
         stablecoinBlock += "\n  USDT supply: $" + stUsdtB + "B";
         stablecoinBlock += "\n  USDC supply: $" + stUsdcB + "B";
         stablecoinBlock += "\n  USDT+USDC total: $" + stTotalB + "B";

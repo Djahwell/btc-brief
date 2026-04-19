@@ -87,6 +87,17 @@ export default defineConfig(({ mode }) => {
           },
         },
 
+        // ── DefiLlama — stablecoin circulating supply (USDT+USDC, free, no auth) ──
+        // stablecoins.llama.fi already sends CORS headers, so the browser direct
+        // call succeeds most of the time. This proxy is the belt-and-braces fallback
+        // used when the direct call is blocked (e.g. corporate network, strict CSP).
+        '/api/defillama': {
+          target: 'https://stablecoins.llama.fi',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/defillama/, ''),
+          configure: noCors,
+        },
+
         // ── Yahoo Finance (free public OHLCV — BTC=F CME futures, IBIT) ──
         '/api/yahoo': {
           target: 'https://query1.finance.yahoo.com',

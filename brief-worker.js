@@ -763,8 +763,8 @@ async function fetchCoinMetrics() {
   // Step 1: fetch community-tier base metrics (always free)
   let out = null;
   try {
-    const metrics = 'AdrActCnt,TxCnt,HashRate,FeeTotNtv,PriceUSD';
-    const url = `${base}?assets=btc&metrics=${metrics}&frequency=1d&limit_per_asset=2&sort=time`;
+    const metrics = 'AdrActCnt,TxCnt,HashRate,FeeTotNtv,PriceUSD,TxTfrValAdjUSD';
+    const url = `${base}?assets=btc&metrics=${metrics}&frequency=1d&limit_per_asset=90&sort=time`;
     const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(15000) });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const raw = await r.json();
@@ -772,9 +772,15 @@ async function fetchCoinMetrics() {
     if (!rows?.length) throw new Error('no data');
     const latest = rows[rows.length - 1];
     const n = k => latest[k] != null ? parseFloat(latest[k]) : null;
+    // Build 90-day adjusted tx volume array for NVT Signal MA
+    const txVolumeArr90d = rows
+      .map(r => r.TxTfrValAdjUSD != null ? parseFloat(r.TxTfrValAdjUSD) : null)
+      .filter(v => v != null && v > 0);
     out = { date: latest.time?.slice(0,10) ?? null, activeAddresses: n('AdrActCnt'),
             txCount: n('TxCnt'), hashRate: n('HashRate'), totalFeesBTC: n('FeeTotNtv'),
-            refPrice: n('PriceUSD'), mvrv: null, realizedPrice: null,
+            refPrice: n('PriceUSD'), txVolumeUSD: n('TxTfrValAdjUSD'),
+            txVolumeArr90d: txVolumeArr90d,
+            mvrv: null, realizedPrice: null,
             source: 'CoinMetrics Community API' };
     console.log(`[CoinMetrics] ActiveAddr: ${Math.round(out.activeAddresses||0).toLocaleString()}`);
   } catch (e) { console.warn('[CoinMetrics] Base fetch failed:', e.message); return null; }
@@ -857,7 +863,32 @@ ${normRef}`;
   const corrStr = tech?.btcQqqCorr != null ? `\n  BTC-QQQ Correlation (${tech.corrWindow}d Pearson): ${tech.btcQqqCorr} → ${Math.abs(tech.btcQqqCorr)>0.7?'HIGH — macro regime dominant':Math.abs(tech.btcQqqCorr)>0.4?'MODERATE — mixed signals':'LOW — on-chain signals dominate'}` : '\n  BTC-QQQ Correlation: unavailable';
   const smaBlock = tech ? `\n\nLIVE TECHNICAL LEVELS (Binance ${tech.candleCount}-day):\n  200d SMA: $${tech.sma200?.toLocaleString()||'n/a'}${p?` (${((p-tech.sma200)/tech.sma200*100).toFixed(1)}% from price)`:''}\n  50d SMA:  $${tech.sma50?.toLocaleString()||'n/a'}\n  20d SMA:  $${tech.sma20?.toLocaleString()||'n/a'}${corrStr}\n  OVERRIDE: Use these live values. Ignore Section 2 hardcoded figures.` : '\n\nTECHNICAL LEVELS: Unavailable.';
 
-  const cmBlock = coinMetrics ? `\n\nCOINMETRICS NETWORK HEALTH (${coinMetrics.date||'recent'}):\n  Active Addresses: ${coinMetrics.activeAddresses!=null?Math.round(coinMetrics.activeAddresses).toLocaleString():'n/a'}\n  Tx Count (24h):   ${coinMetrics.txCount!=null?Math.round(coinMetrics.txCount).toLocaleString():'n/a'}\n  Hash Rate:        ${coinMetrics.hashRate!=null?(coinMetrics.hashRate>1e15?(coinMetrics.hashRate/1e18).toFixed(1):(coinMetrics.hashRate/1e6).toFixed(1))+' EH/s':'n/a'}\n  INSTRUCTION: Use active addresses and tx count as network adoption signals.` : '\n\nCOINMETRICS: Unavailable.';
+  // ── NVT Signal computation (matches JSX live path) ───────────────────────────
+  let nvtRatio = null, nvtSignal = null, nvtZone = null, nvtDataPts = null;
+  if (coinMetrics && coinMetrics.txVolumeUSD && coinMetrics.txVolumeUSD > 0 && mcap && mcap > 0) {
+    nvtRatio = mcap / coinMetrics.txVolumeUSD;
+    const arr90 = coinMetrics.txVolumeArr90d;
+    if (arr90 && arr90.length >= 14) {
+      const ma90 = arr90.reduce((s, v) => s + v, 0) / arr90.length;
+      if (ma90 > 0) {
+        nvtSignal = mcap / ma90;
+        nvtZone   = nvtSignal < 25  ? 'DEEPLY_UNDERVALUED'
+                  : nvtSignal < 50  ? 'UNDERVALUED'
+                  : nvtSignal < 100 ? 'FAIR'
+                  : nvtSignal < 150 ? 'OVERVALUED'
+                  : 'BUBBLE';
+        nvtDataPts = arr90.length;
+      }
+    }
+  }
+  const cmBlock = coinMetrics ? (() => {
+    const txVolStr  = coinMetrics.txVolumeUSD != null ? `$${(coinMetrics.txVolumeUSD/1e9).toFixed(2)}B` : 'n/a';
+    const nvtRStr   = nvtRatio   != null ? nvtRatio.toFixed(1)   : 'n/a';
+    const nvtSStr   = nvtSignal  != null ? nvtSignal.toFixed(1)  : 'n/a';
+    const nvtZStr   = nvtZone    != null ? nvtZone               : 'n/a';
+    const nvtPStr   = nvtDataPts != null ? `${nvtDataPts}d window` : 'insufficient data';
+    return `\n\nCOINMETRICS NETWORK HEALTH (${coinMetrics.date||'recent'}):\n  Active Addresses: ${coinMetrics.activeAddresses!=null?Math.round(coinMetrics.activeAddresses).toLocaleString():'n/a'}\n  Tx Count (24h):   ${coinMetrics.txCount!=null?Math.round(coinMetrics.txCount).toLocaleString():'n/a'}\n  Hash Rate:        ${coinMetrics.hashRate!=null?(coinMetrics.hashRate>1e15?(coinMetrics.hashRate/1e18).toFixed(1):(coinMetrics.hashRate/1e6).toFixed(1))+' EH/s':'n/a'}\n  On-Chain Tx Vol:  ${txVolStr} (adjusted, TxTfrValAdjUSD)\n  NVT Ratio (daily): ${nvtRStr} (MC / today's tx vol — noisy)\n  NVT Signal (90dMA): ${nvtSStr} → ${nvtZStr} (${nvtPStr})\n  INSTRUCTION: Use active addresses, tx count, and NVT Signal as network adoption/valuation signals.`;
+  })() : '\n\nCOINMETRICS: Unavailable.';
 
   const macroBlock = (macros?.dxy!=null||macros?.vix!=null||macros?.tnxYield!=null) ? (() => {
     let b = '\n\nLIVE MACRO DATA (Yahoo Finance — overrides training estimates):';
@@ -897,7 +928,7 @@ ${normRef}`;
   const lthBlock = lth?.lth_net_btc!=null ? `\n\nLIVE LTH NET POSITION (Bitcoin Magazine Pro — ${lth.date}):\n  LTH Net: ${lth.lth_net_btc>=0?'+':''}${lth.lth_net_btc.toLocaleString()} BTC/day\n  % Liquid: ${((lth.lth_net_btc/LIQUID)*100).toFixed(3)}%\n  Regime: ${lth.lth_net_btc>=5000?'ACCUMULATING':lth.lth_net_btc<=-5000?'DISTRIBUTING':'NEUTRAL'}\n  INSTRUCTION: LIVE data — populate lthSellingBTC field.` : '\n\nLTH NET POSITION: Unavailable. Set lthSellingBTC = \'N/A\'.';
 
   const st = dc?.stablecoinSupply;
-  const stableBlock = st?.total_usd!=null ? `\n\nLIVE STABLECOIN SUPPLY (${st.date}):\n  USDT+USDC: $${(st.total_usd/1e9).toFixed(1)}B\n  7d delta: ${st.delta_7d_usd!=null?(st.delta_7d_usd>=0?'+':'')+( st.delta_7d_usd/1e9).toFixed(1)+'B':'N/A'}\n  Regime: ${st.regime||'STABLE'}\n  INSTRUCTION: EXPANDING = +1 stablecoin score. CONTRACTING = -1.` : '\n\nSTABLECOIN SUPPLY: Unavailable.';
+  const stableBlock = st?.total_usd!=null ? `\n\nLIVE STABLECOIN SUPPLY (${st.source||'DefiLlama'} — ${st.date}):\n  USDT+USDC: $${(st.total_usd/1e9).toFixed(1)}B\n  7d delta: ${st.delta_7d_usd!=null?(st.delta_7d_usd>=0?'+':'')+( st.delta_7d_usd/1e9).toFixed(1)+'B':'N/A'}\n  Regime: ${st.regime||'STABLE'}\n  INSTRUCTION: EXPANDING = +1 stablecoin score. CONTRACTING = -1.` : '\n\nSTABLECOIN SUPPLY: Unavailable.';
 
   const volBlock = tech?.volTrend&&tech.volTrend!=='UNKNOWN' ? `\n\nLIVE VOLUME TREND:\n  5d/20d ratio: ${tech.volTrendRatio} → ${tech.volTrend}\n  INSTRUCTION: Use for volumeTrend field.` : '';
 

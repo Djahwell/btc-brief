@@ -756,67 +756,121 @@ async function fetchETFFlowData_DISABLED() {
   return null;
 }
 
-// ── Stablecoin Supply — CoinGecko free API (no key required) ─────────────────
-// Fetches USDT + USDC circulating supply. Computes 7-day change by diffing
-// against the previous cached value. Positive delta = dry powder expanding = bullish.
+// ── Stablecoin Supply — DefiLlama primary, CoinGecko fallback ────────────────
+// DefiLlama's stablecoins endpoint returns circulating + prevDay/prevWeek deltas
+// in a single call — no cache-diffing needed, no API key required.
+// CoinGecko is kept as a fallback (two calls, no prevWeek, uses old cache-diff).
 async function fetchStablecoinSupply() {
-  const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+  const UA      = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
   const headers = { 'User-Agent': UA, 'Accept': 'application/json' };
+  const today   = new Date().toISOString().slice(0, 10);
 
-  const fetchCoin = async (id) => {
+  // ── Primary: DefiLlama stablecoins.llama.fi ────────────────────────────────
+  try {
     const res = await fetch(
-      `https://api.coingecko.com/api/v3/coins/${id}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false`,
+      'https://stablecoins.llama.fi/stablecoins?includePrices=true',
       { headers, signal: AbortSignal.timeout(15000) }
     );
-    if (!res.ok) throw new Error(`CoinGecko ${id}: HTTP ${res.status}`);
-    const j = await res.json();
-    return j?.market_data?.circulating_supply ?? null;
-  };
+    if (!res.ok) throw new Error(`DefiLlama HTTP ${res.status}`);
+    const data = await res.json();
 
-  const [usdtSupply, usdcSupply] = await Promise.all([
-    fetchCoin('tether').catch(() => null),
-    fetchCoin('usd-coin').catch(() => null),
-  ]);
+    if (!Array.isArray(data.peggedAssets)) throw new Error('peggedAssets missing');
 
-  if (usdtSupply == null && usdcSupply == null) return null;
+    const usdt = data.peggedAssets.find(a => a.symbol?.toUpperCase() === 'USDT');
+    const usdc = data.peggedAssets.find(a => a.symbol?.toUpperCase() === 'USDC');
+    if (!usdt || !usdc) throw new Error('USDT or USDC not found in peggedAssets');
 
-  const totalUSD = (usdtSupply || 0) + (usdcSupply || 0);
-  const today    = new Date().toISOString().slice(0, 10);
+    const usdtNow  = usdt.circulating?.peggedUSD         || 0;
+    const usdcNow  = usdc.circulating?.peggedUSD         || 0;
+    const usdtPrev = usdt.circulatingPrevWeek?.peggedUSD ?? null;
+    const usdcPrev = usdc.circulatingPrevWeek?.peggedUSD ?? null;
 
-  // Load previous snapshot from cache to compute 7d delta
-  let prev7dTotal = null;
-  let prevDate    = null;
+    const totalNow  = usdtNow + usdcNow;
+    const totalPrev = (usdtPrev != null && usdcPrev != null) ? usdtPrev + usdcPrev : null;
+    const delta7d   = totalPrev != null ? totalNow - totalPrev : null;
+    const delta7dPct = (delta7d != null && totalPrev > 0)
+      ? parseFloat((delta7d / totalPrev * 100).toFixed(3))
+      : null;
+
+    const regime = delta7d == null ? 'STABLE'
+                 : delta7d >  5e9  ? 'EXPANDING'
+                 : delta7d < -5e9  ? 'CONTRACTING'
+                 : 'STABLE';
+
+    console.log(`[Stable] ✓ DefiLlama — USDT: $${(usdtNow/1e9).toFixed(1)}B | USDC: $${(usdcNow/1e9).toFixed(1)}B | 7d Δ: ${delta7d != null ? (delta7d >= 0 ? '+' : '') + (delta7d/1e9).toFixed(1) + 'B' : 'N/A'} | ${regime}`);
+
+    return {
+      usdt_supply_usd: usdtNow,
+      usdc_supply_usd: usdcNow,
+      total_usd:       totalNow,
+      delta_7d_usd:    delta7d,
+      delta_7d_pct:    delta7dPct,
+      regime,
+      date:            today,
+      source:          'DefiLlama',
+    };
+  } catch (llamaErr) {
+    console.warn(`[Stable] DefiLlama failed (${llamaErr.message}) — falling back to CoinGecko...`);
+  }
+
+  // ── Fallback: CoinGecko (two calls, no prevWeek — diff against cache) ────
   try {
-    if (existsSync(CACHE_FILE)) {
-      const prev = JSON.parse(readFileSync(CACHE_FILE, 'utf8'));
-      if (prev.stablecoinSupply?.total_usd && prev.stablecoinSupply?.date) {
-        const ageDays = (Date.now() - new Date(prev.stablecoinSupply.date).getTime()) / 86400000;
-        if (ageDays >= 0.5 && ageDays <= 30) {
-          // snapshot is at least 12h old — use as baseline for 7d delta
-          prev7dTotal = prev.stablecoinSupply.total_usd;
-          prevDate    = prev.stablecoinSupply.date;
+    const fetchCoin = async (id) => {
+      const res = await fetch(
+        `https://api.coingecko.com/api/v3/coins/${id}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false`,
+        { headers, signal: AbortSignal.timeout(15000) }
+      );
+      if (!res.ok) throw new Error(`CoinGecko ${id}: HTTP ${res.status}`);
+      const j = await res.json();
+      return j?.market_data?.circulating_supply ?? null;
+    };
+
+    const [usdtSupply, usdcSupply] = await Promise.all([
+      fetchCoin('tether').catch(() => null),
+      fetchCoin('usd-coin').catch(() => null),
+    ]);
+
+    if (usdtSupply == null && usdcSupply == null) return null;
+
+    const totalUSD = (usdtSupply || 0) + (usdcSupply || 0);
+
+    // Compute 7d delta by diffing against the previous cache snapshot
+    let prev7dTotal = null;
+    try {
+      if (existsSync(CACHE_FILE)) {
+        const prev = JSON.parse(readFileSync(CACHE_FILE, 'utf8'));
+        if (prev.stablecoinSupply?.total_usd && prev.stablecoinSupply?.date) {
+          const ageDays = (Date.now() - new Date(prev.stablecoinSupply.date).getTime()) / 86400000;
+          if (ageDays >= 0.5 && ageDays <= 30) prev7dTotal = prev.stablecoinSupply.total_usd;
         }
       }
-    }
-  } catch (_) {}
+    } catch (_) {}
 
-  const delta7d    = prev7dTotal != null ? totalUSD - prev7dTotal : null;
-  const delta7dPct = prev7dTotal != null ? ((delta7d / prev7dTotal) * 100).toFixed(2) : null;
-  const regime     = delta7d == null ? 'STABLE'       // no prior snapshot yet — default neutral
-                   : delta7d >  5e9  ? 'EXPANDING'    // >$5B inflow = bullish dry powder
-                   : delta7d < -5e9  ? 'CONTRACTING'  // >$5B outflow = liquidity draining
-                   : 'STABLE';
+    const delta7d    = prev7dTotal != null ? totalUSD - prev7dTotal : null;
+    const delta7dPct = (delta7d != null && prev7dTotal > 0)
+      ? parseFloat((delta7d / prev7dTotal * 100).toFixed(3))
+      : null;
+    const regime = delta7d == null ? 'STABLE'
+                 : delta7d >  5e9  ? 'EXPANDING'
+                 : delta7d < -5e9  ? 'CONTRACTING'
+                 : 'STABLE';
 
-  return {
-    usdt_supply_usd: usdtSupply,
-    usdc_supply_usd: usdcSupply,
-    total_usd:       totalUSD,
-    delta_7d_usd:    delta7d,
-    delta_7d_pct:    delta7dPct != null ? parseFloat(delta7dPct) : null,
-    regime,
-    date:            today,
-    prev_date:       prevDate,
-  };
+    console.log(`[Stable] ✓ CoinGecko (fallback) — USDT+USDC: $${(totalUSD/1e9).toFixed(1)}B | ${regime}`);
+
+    return {
+      usdt_supply_usd: usdtSupply,
+      usdc_supply_usd: usdcSupply,
+      total_usd:       totalUSD,
+      delta_7d_usd:    delta7d,
+      delta_7d_pct:    delta7dPct,
+      regime,
+      date:            today,
+      source:          'CoinGecko',
+    };
+  } catch (cgErr) {
+    console.warn(`[Stable] CoinGecko fallback also failed: ${cgErr.message}`);
+    return null;
+  }
 }
 
 // ── Write cache to public/dune_cache.json ─────────────────────────────────────

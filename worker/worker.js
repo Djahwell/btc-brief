@@ -39,9 +39,76 @@ export default {
       return handleBrief(env, ctx);
     }
 
+    if (url.pathname === "/qqq") {
+      return handleQqq();
+    }
+
     return json({ error: "not found" }, 404);
   },
 };
+
+// ─── /qqq handler — proxy Yahoo Finance QQQ chart for APK + brief-worker ─────
+// Yahoo and Stooq both block GitHub Actions runners and CORS-gate browser
+// fetches, so neither brief-worker.js (GHA) nor the APK webview can reach them
+// directly. Cloudflare edge IPs don't hit the Yahoo block, and we can add CORS
+// headers here so the APK can consume the response. Cached at the edge for 1h.
+async function handleQqq() {
+  const YF_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+  const yahooHosts = ["query1.finance.yahoo.com", "query2.finance.yahoo.com"];
+  let lastErr = null;
+  for (const host of yahooHosts) {
+    try {
+      const url = `https://${host}/v8/finance/chart/QQQ?interval=1d&range=120d`;
+      const r = await fetch(url, {
+        headers: { "User-Agent": YF_UA, "Accept": "application/json" },
+        cf: { cacheTtl: 3600, cacheEverything: true },
+      });
+      if (!r.ok) { lastErr = `Yahoo ${host} HTTP ${r.status}`; continue; }
+      const data = await r.json();
+      // Return in a canonical shape the JSX already knows how to parse.
+      const result0 = data?.chart?.result?.[0];
+      const timestamps = result0?.timestamp || [];
+      const closes = (result0?.indicators?.quote?.[0]?.close || []).filter(v => v != null);
+      if (closes.length < 21) { lastErr = `Yahoo ${host} thin payload (${closes.length} closes)`; continue; }
+      const dates = timestamps.map(t => new Date(t * 1000).toISOString().slice(0, 10));
+      return json(
+        { source: `yahoo-${host}`, dates, closes, count: closes.length },
+        200,
+        { "Cache-Control": "public, max-age=3600" }
+      );
+    } catch (e) {
+      lastErr = `${host} ${e.message}`;
+    }
+  }
+  // Stooq fallback — CSV, parsed here so the APK gets a uniform JSON response.
+  try {
+    const fmt = d => `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}`;
+    const from = new Date(Date.now() - 120 * 86400000);
+    const to = new Date();
+    const r = await fetch(
+      `https://stooq.com/q/d/l/?s=qqq.us&d1=${fmt(from)}&d2=${fmt(to)}&i=d`,
+      { headers: { "User-Agent": YF_UA }, cf: { cacheTtl: 3600, cacheEverything: true } }
+    );
+    if (!r.ok) throw new Error(`Stooq HTTP ${r.status}`);
+    const csv = await r.text();
+    const rows = csv.trim().split("\n").slice(1);
+    const dates = [], closes = [];
+    for (const line of rows) {
+      const parts = line.split(",");
+      const dt = (parts[0] || "").trim();
+      const cl = parseFloat(parts[4]);
+      if (dt && cl > 0) { dates.push(dt); closes.push(cl); }
+    }
+    if (closes.length < 21) throw new Error(`Stooq thin payload (${closes.length})`);
+    return json(
+      { source: "stooq", dates, closes, count: closes.length },
+      200,
+      { "Cache-Control": "public, max-age=3600" }
+    );
+  } catch (e) {
+    return json({ error: "qqq-unavailable", detail: `${lastErr || "yahoo failed"}; ${e.message}` }, 502);
+  }
+}
 
 // ─── /brief handler ────────────────────────────────────────────────────────────
 async function handleBrief(env, ctx) {
