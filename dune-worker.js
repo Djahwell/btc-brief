@@ -577,6 +577,145 @@ async function fetchBMPLTHData() {
   }
 }
 
+// ── Exchange Flow via blockchain.info (Dune quota fallback) ──────────────────
+// Uses the same 16 legacy/P2SH addresses from EXCHANGE_FLOW_SQL.
+// blockchain.info does not support bech32 (bc1q...) addresses — those 4 are
+// skipped. The balance delta between consecutive runs = exchange netflow.
+// Free, no API key, no quota. Rate limit: ~30 req/s per IP (we send 1 bulk req).
+const EXCHANGE_ADDRS_LEGACY = [
+  // Binance (~570K BTC) — 2 of 6 are bc1q, use 4 legacy
+  '34xp4vRoCGJym3xR7yCVPFHoCNxv4Twseo',
+  '1P5ZEDWTKTFGxQjZphgWPQUpe554WKDfHQ',
+  '3M219KR5vEneNb47ewrPfWyb5jQ2DjxRP6',
+  '3LYJfcfHHeihJD2R9cFoHbDoNS5ScBEV3G',
+  // Coinbase / Coinbase Prime (~900K BTC AUM)
+  '3FupZp77ySr7jwoLYEJ9Ro4rakoBZPDhBY',
+  '3Cbq7aT1tY8kMxWLBkgmdar1Hz4HniFDz7',
+  '17XBj6iFEsf8kzDMGQk5ghZewDa3zKKbT6',
+  '1LPH7kHa1KAuyMKcRJKXnmNTSBXVFoGPMF',
+  // Kraken (~80K BTC)
+  '3AfP9nFSMRNMk9MkgVsmKG9sL2PGYQ9Lfr',
+  '39YnSQwjhKBUEQ1FHXKqMYKETJhU4FZVRJ',
+  '3HMJz7S4WFQcmE6FHWy7LE1TzLn59pSG5z',
+  // Bitfinex (~100K BTC)
+  '3D2oetdNuZUqQHPJmcMDDHYoqkyNVsFk9r',
+  '1HQ3Go3ggs8pFnXuHVHRytPCq5fGG8Hbhx',
+  // OKX (legacy only — bc1q skipped)
+  '3LQUu4v9z6KNch71j7kbj8GPeAGUo1FW6a',
+  // Gemini
+  '3BtxkGjCg37dBaLQc3P3M76bV5VFqyXyY4',
+  // Bitstamp
+  '3NAVjK57yugfiLaJPnZJTdVFNqiYUVEcVU',
+];
+
+async function fetchExchangeFlowBlockchain() {
+  // Load previous balances from existing cache for delta computation
+  let prevBalances = {};
+  let prevCachedAt = null;
+  try {
+    if (existsSync(CACHE_FILE)) {
+      const prev = JSON.parse(readFileSync(CACHE_FILE, 'utf8'));
+      prevBalances   = prev._exchangeAddressBalances || {};
+      prevCachedAt   = prev.cachedAt || null;
+    }
+  } catch (_) {}
+
+  const url = `https://blockchain.info/balance?active=${EXCHANGE_ADDRS_LEGACY.join('|')}`;
+  const r = await fetch(url, {
+    headers: { 'User-Agent': UA },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!r.ok) throw new Error(`blockchain.info HTTP ${r.status}`);
+  const data = await r.json();
+
+  // Sum current balances (satoshis → BTC)
+  let currentBalances = {}, totalBTC = 0, prevTotalBTC = 0, addrCount = 0;
+  for (const addr of EXCHANGE_ADDRS_LEGACY) {
+    const sat = data[addr]?.final_balance;
+    if (sat == null) continue;
+    const btc = sat / 1e8;
+    currentBalances[addr] = btc;
+    totalBTC += btc;
+    prevTotalBTC += prevBalances[addr] ?? btc; // first run: delta = 0
+    addrCount++;
+  }
+
+  // Positive netflow = coins arriving at exchanges (selling pressure / bearish)
+  // Negative netflow = coins leaving exchanges (accumulation / bullish)
+  const netflowBTC = parseFloat((totalBTC - prevTotalBTC).toFixed(4));
+  const elapsedH   = prevCachedAt
+    ? Math.round((Date.now() - new Date(prevCachedAt).getTime()) / 3_600_000)
+    : null;
+
+  console.log(`[ExFlow/blockchain] Net: ${netflowBTC >= 0 ? '+' : ''}${netflowBTC.toFixed(2)} BTC | Total on-exchange: ${totalBTC.toFixed(0)} BTC | Addrs: ${addrCount} | Δ window: ${elapsedH ?? '?'}h`);
+
+  return {
+    netflow_btc:         netflowBTC,
+    inflow_btc:          netflowBTC > 0 ? netflowBTC : 0,
+    outflow_btc:         netflowBTC < 0 ? Math.abs(netflowBTC) : 0,
+    total_exchange_btc:  parseFloat(totalBTC.toFixed(2)),
+    exchange_addr_count: addrCount,
+    elapsed_hours:       elapsedH,
+    source:              'blockchain.info balance delta (16 legacy exchange addresses)',
+    date:                new Date().toISOString().slice(0, 10),
+    // Store current balances back into cache so next run can diff
+    _currentBalances:    currentBalances,
+  };
+}
+
+// ── Binance large block trades — whale pressure proxy ─────────────────────────
+// Fetches the last 1000 aggregated trades for BTCUSDT and counts trades ≥ 50 BTC.
+// isBuyerMaker=true  → taker SOLD into the bid (sell-side aggression)
+// isBuyerMaker=false → taker BOUGHT through the ask (buy-side aggression)
+// No API key required. Public endpoint, generous rate limit.
+async function fetchBinanceLargeTrades() {
+  const WHALE_THRESHOLD_BTC = 10; // trades ≥ 10 BTC classified as whale
+  const url = 'https://api.binance.com/api/v3/aggTrades?symbol=BTCUSDT&limit=1000';
+  const r = await fetch(url, {
+    headers: { 'User-Agent': UA },
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!r.ok) throw new Error(`Binance aggTrades HTTP ${r.status}`);
+  const trades = await r.json();
+  if (!Array.isArray(trades) || trades.length === 0) throw new Error('Empty aggTrades response');
+
+  let whaleBuyBTC = 0, whaleSellBTC = 0, whaleBuys = 0, whaleSells = 0;
+  let totalBTC = 0, totalTrades = trades.length;
+  let firstTs = trades[0]?.T, lastTs = trades[trades.length - 1]?.T;
+
+  for (const t of trades) {
+    const qty  = parseFloat(t.q);
+    const sell = t.m; // maker was buyer → taker sold (bearish pressure)
+    totalBTC  += qty;
+    if (qty >= WHALE_THRESHOLD_BTC) {
+      if (sell) { whaleSells++; whaleSellBTC += qty; }
+      else      { whaleBuys++;  whaleBuyBTC  += qty; }
+    }
+  }
+
+  const netWhaleBTC  = whaleBuyBTC - whaleSellBTC;
+  const spanMinutes  = firstTs && lastTs ? Math.round((lastTs - firstTs) / 60000) : null;
+  const whaleRatio   = (whaleBuys + whaleSells) > 0
+    ? parseFloat((whaleBuyBTC / (whaleBuyBTC + whaleSellBTC)).toFixed(3))
+    : null;
+
+  console.log(`[Binance/Whales] Buy: +${whaleBuyBTC.toFixed(1)} BTC (${whaleBuys} trades) | Sell: -${whaleSellBTC.toFixed(1)} BTC (${whaleSells} trades) | Net: ${netWhaleBTC >= 0 ? '+' : ''}${netWhaleBTC.toFixed(1)} BTC | span: ~${spanMinutes}min`);
+
+  return {
+    threshold_btc:   WHALE_THRESHOLD_BTC,
+    whale_buy_btc:   parseFloat(whaleBuyBTC.toFixed(2)),
+    whale_sell_btc:  parseFloat(whaleSellBTC.toFixed(2)),
+    net_whale_btc:   parseFloat(netWhaleBTC.toFixed(2)),
+    whale_buy_count: whaleBuys,
+    whale_sell_count:whaleSells,
+    whale_buy_ratio: whaleRatio,   // 1.0 = all buys, 0.0 = all sells
+    span_minutes:    spanMinutes,
+    pressure:        netWhaleBTC > 50 ? 'BUY' : netWhaleBTC < -50 ? 'SELL' : 'NEUTRAL',
+    source:          'Binance aggTrades (BTCUSDT, last 1000 trades)',
+    date:            new Date().toISOString().slice(0, 10),
+  };
+}
+
 // ── Dead code: previous Node.js ETF fetch attempts (all gated/rate-limited) ──
 async function fetchETFFlowData_DISABLED() {
   const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
@@ -1004,38 +1143,50 @@ async function runFetch() {
     } catch (_) {}
   }
 
-  // ── Exchange Flows ─────────────────────────────────────────────────────────
+  // ── Exchange Flows — blockchain.info primary, Dune fallback ──────────────────
+  // blockchain.info balance delta requires NO quota and tracks the same 16 known
+  // exchange addresses as the Dune query. Dune is attempted only if blockchain.info
+  // fails AND quota is available.
   try {
-    const exQid = await getOrCreateExflowQueryId();
-    console.log(`[ExFlow] Triggering execution on query ${exQid}...`);
-    const exec2 = await dunePost(`/api/v1/query/${exQid}/execute`, {});
-    if (!exec2.execution_id) throw new Error('No execution_id: ' + JSON.stringify(exec2));
-    console.log(`[ExFlow] Execution: ${exec2.execution_id}  (max 5min)`);
-    const data2 = await pollExecution(exec2.execution_id, 'ExFlow', 300_000);
-    const ef    = parseExchangeFlow(data2);
-    if (ef) {
-      payload.exchangeFlow = ef;
-      console.log(`[ExFlow] ✓  Net: ${(ef.netflow_btc || 0).toFixed(0)} BTC | In: ${(ef.inflow_btc || 0).toFixed(0)} | Out: ${(ef.outflow_btc || 0).toFixed(0)} | Addrs: ${ef.exchange_addr_count ?? '?'}`);
-    } else {
-      console.warn('[ExFlow] No valid row returned');
-    }
+    const ef = await fetchExchangeFlowBlockchain();
+    payload.exchangeFlow = ef;
+    // Store current balances so the NEXT run can compute a fresh delta
+    payload._exchangeAddressBalances = ef._currentBalances;
+    delete payload.exchangeFlow._currentBalances; // keep cache clean
   } catch (e) {
-    console.error('[ExFlow] ✗ (non-fatal):', e.message);
-    if (e.message.includes('402')) {
-      console.error('[ExFlow] HTTP 402 — Dune quota exceeded. Carrying forward cached exchange flow.');
-    } else if (e.message.includes('address')) {
-      console.error('[ExFlow] Likely cause: bitcoin.outputs has no "address" column on this Dune plan.');
-    }
-    // Carry forward the last cached exchange flow so the brief still has a value
+    console.error('[ExFlow/blockchain] ✗:', e.message, '— falling back to Dune');
+    // Dune fallback (will fail gracefully if quota exceeded)
     try {
-      if (existsSync(CACHE_FILE)) {
+      const exQid = await getOrCreateExflowQueryId();
+      const exec2 = await dunePost(`/api/v1/query/${exQid}/execute`, {});
+      if (!exec2.execution_id) throw new Error('No execution_id');
+      const data2 = await pollExecution(exec2.execution_id, 'ExFlow', 300_000);
+      const ef2   = parseExchangeFlow(data2);
+      if (ef2) {
+        payload.exchangeFlow = ef2;
+        console.log(`[ExFlow/Dune] ✓  Net: ${(ef2.netflow_btc || 0).toFixed(0)} BTC`);
+      }
+    } catch (e2) {
+      console.error('[ExFlow/Dune] ✗ (non-fatal):', e2.message);
+      if (e2.message.includes('402')) console.error('[ExFlow] Dune quota exceeded — no exchange flow this cycle.');
+      // Carry forward last cached value as last resort
+      try {
         const prev = JSON.parse(readFileSync(CACHE_FILE, 'utf8'));
         if (prev.exchangeFlow?.netflow_btc != null) {
           payload.exchangeFlow = { ...prev.exchangeFlow, stale: true };
-          console.warn(`[ExFlow] Using cached value from ${prev.cachedAt}: Net ${prev.exchangeFlow.netflow_btc?.toFixed(0)} BTC (stale)`);
+          console.warn(`[ExFlow] Using stale cache: Net ${prev.exchangeFlow.netflow_btc?.toFixed(0)} BTC`);
         }
-      }
-    } catch (_) {}
+      } catch (_) {}
+    }
+  }
+
+  // ── Binance Large Block Trades — whale buy/sell pressure proxy ────────────
+  try {
+    const wt = await fetchBinanceLargeTrades();
+    payload.binanceLargeTrades = wt;
+    console.log(`[Binance/Whales] ✓  Net: ${wt.net_whale_btc >= 0 ? '+' : ''}${wt.net_whale_btc} BTC | Pressure: ${wt.pressure}`);
+  } catch (e) {
+    console.error('[Binance/Whales] ✗ (non-fatal):', e.message);
   }
 
   writeCache(payload);

@@ -3105,8 +3105,24 @@ FROM realized r, spot s`;
         volTrendBlock += "\n  INSTRUCTION: Use this for volumeTrend field in normalization block. RISING = participation increasing (confirms price moves). FALLING = conviction fading.";
       }
 
+      // ── Binance whale block trades (from all_data cache or dune_cache) ──────────
+      var binanceWhaleBlock2 = "";
+      var bwt = (allDataRef.current && allDataRef.current.binanceLargeTrades)
+             || (duneData && duneData.binanceLargeTrades);
+      if (bwt && bwt.net_whale_btc != null) {
+        var bwtSign = bwt.net_whale_btc >= 0 ? "+" : "";
+        var bwtBuyPct = bwt.whale_buy_ratio != null ? (bwt.whale_buy_ratio*100).toFixed(0) + "% buy-side" : "n/a";
+        var bwtPctLiq = market && market.price ? Math.abs(bwt.net_whale_btc/4200000*100).toFixed(3) + "% liquid" : "n/a";
+        binanceWhaleBlock2 = "\n\nBINANCE WHALE BLOCK TRADES (≥" + bwt.threshold_btc + " BTC, last ~" + bwt.span_minutes + "min):"
+          + "\n  Whale Buy Volume:  +" + bwt.whale_buy_btc + " BTC (" + bwt.whale_buy_count + " trades)"
+          + "\n  Whale Sell Volume: -" + bwt.whale_sell_btc + " BTC (" + bwt.whale_sell_count + " trades)"
+          + "\n  Net Whale Flow:    " + bwtSign + bwt.net_whale_btc + " BTC → " + bwt.pressure
+          + "\n  Buy/Sell Ratio:    " + bwtBuyPct
+          + "\n  INSTRUCTION: Supplementary whale pressure signal (" + bwtPctLiq + "). Net positive = buy-side aggression. This is order-flow pressure — distinct from on-chain exchange netflow. Use to corroborate whaleNetflow direction.";
+      }
+
       const finalPrompt = marketBlock + phaseBlock + smaBlock + liqBlock + coinMetricsBlock
-        + macroBlock2 + duneBlock + cmeBlock + etfLiveBlock + lthBlock + stablecoinBlock + volTrendBlock + feedbackBlock
+        + macroBlock2 + duneBlock + cmeBlock + etfLiveBlock + lthBlock + stablecoinBlock + volTrendBlock + binanceWhaleBlock2 + feedbackBlock
         + "\n\nDATA SOURCE QUALITY SUMMARY:"
         + "\n- LIVE (high confidence): price, funding, OI, fear/greed, options skew, gold, dominance, SMAs, vol trend, CME basis (front + second month)"
         + (macroFetch && macroFetch.dxy != null ? ", DXY" : "") + (macroFetch && macroFetch.vix != null ? ", VIX" : "") + (macroFetch && macroFetch.tnxYield != null ? ", 10Y yield" : "")
@@ -3114,14 +3130,16 @@ FROM realized r, spot s`;
         + (duneData && duneData.mvrv != null ? ", MVRV (Dune live)" : "")
         + (etfFlowData && etfFlowData.etfTotalNetUSD != null ? ", ETF flows" : etfFlowData ? ", IBIT vol proxy" : "")
         + (lthDataResult && lthDataResult.lth_net_btc != null ? ", LTH net position (BMP live)" : "")
-        + (stablecoinResult && stablecoinResult.total_usd != null ? ", stablecoin supply (CoinGecko live)" : "")
-        + "\n- ESTIMATED (training knowledge): whale netflows"
-        + (duneData && duneData.exchangeFlowSuspicious ? " (⚠ Dune flows suspicious — see flag above)" : "")
-        + (etfFlowData && etfFlowData.etfTotalNetUSD != null ? "" : ", ETF actual creation/redemption flows")
-        + (duneData && duneData.mvrv != null ? "" : ", MVRV (Dune executing — use ~1.5 estimate)")
-        + (lthDataResult && lthDataResult.lth_net_btc != null ? "" : ", LTH net position")
-        + (stablecoinResult && stablecoinResult.total_usd != null ? "" : ", stablecoin supply")
-        + ", STH SOPR"
+        + (stablecoinResult && stablecoinResult.total_usd != null ? ", stablecoin supply (DefiLlama live)" : "")
+        + (duneData && duneData.exchangeFlow && duneData.exchangeFlow.netflow_btc != null ? ", exchange netflow (" + (duneData.exchangeFlow.source || "blockchain.info") + ")" : "")
+        + (bwt && bwt.net_whale_btc != null ? ", Binance whale block trades" : "")
+        + "\n- ESTIMATED (training knowledge):"
+        + (duneData && duneData.exchangeFlow && duneData.exchangeFlow.netflow_btc != null ? "" : " exchange netflow,")
+        + (etfFlowData && etfFlowData.etfTotalNetUSD != null ? "" : " ETF actual creation/redemption flows,")
+        + (duneData && duneData.mvrv != null ? "" : " MVRV (use ~1.5 estimate),")
+        + (lthDataResult && lthDataResult.lth_net_btc != null ? "" : " LTH net position,")
+        + (stablecoinResult && stablecoinResult.total_usd != null ? "" : " stablecoin supply,")
+        + " STH SOPR"
         + "\n\nGenerate the full morning brief JSON now. Apply quad-normalization to all flows. Score each signal component INDEPENDENTLY per Section F — do NOT double-count funding + fear/greed. For correlationRegime use the live Pearson r above. Return ONLY valid JSON. No markdown. No preamble.";
 
       const jsonRaw = await callClaude(SYSTEM_PROMPT, finalPrompt, false, 7000);

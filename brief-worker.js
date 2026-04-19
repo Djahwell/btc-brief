@@ -932,9 +932,17 @@ ${normRef}`;
 
   const volBlock = tech?.volTrend&&tech.volTrend!=='UNKNOWN' ? `\n\nLIVE VOLUME TREND:\n  5d/20d ratio: ${tech.volTrendRatio} → ${tech.volTrend}\n  INSTRUCTION: Use for volumeTrend field.` : '';
 
-  const qualitySummary = `\n\nDATA SOURCE QUALITY:\n- LIVE: price, funding, OI, F&G, options skew, gold, dominance, SMAs, CME basis${macros?.dxy!=null?', DXY':''}${macros?.vix!=null?', VIX':''}${macros?.tnxYield!=null?', 10Y yield':''}${tech?.btcQqqCorr!=null?', BTC-QQQ corr':''}${dc?.mvrv?.mvrv!=null?', MVRV':''}${etf?.total_million_usd!=null?', ETF flows':''}${lth?.lth_net_btc!=null?', LTH position':''}${st?.total_usd!=null?', stablecoin supply':''}\n- ESTIMATED: whale netflows, STH SOPR${dc?.mvrv?.mvrv==null?', MVRV (use ~1.5 est.)':''}${etf?.total_million_usd==null?', ETF flows':''}\n\nGenerate the full morning brief JSON now. Apply quad-normalization to all flows. Score each axis INDEPENDENTLY per Section F — do NOT double-count funding + F&G. Return ONLY valid JSON. No markdown. No preamble.`;
+  // ── Binance large block trades (whale buy/sell pressure) ───────────────────
+  const wt = dc?.binanceLargeTrades;
+  const binanceWhaleBlock = wt?.net_whale_btc!=null ? (() => {
+    const sign = wt.net_whale_btc >= 0 ? '+' : '';
+    const buyPct = wt.whale_buy_ratio != null ? `${(wt.whale_buy_ratio*100).toFixed(0)}% buy-side` : 'n/a';
+    return `\n\nBINANCE WHALE BLOCK TRADES (≥${wt.threshold_btc} BTC, last ~${wt.span_minutes}min):\n  Whale Buy Volume:  +${wt.whale_buy_btc} BTC (${wt.whale_buy_count} trades)\n  Whale Sell Volume: -${wt.whale_sell_btc} BTC (${wt.whale_sell_count} trades)\n  Net Whale Flow:    ${sign}${wt.net_whale_btc} BTC → ${wt.pressure}\n  Buy/Sell Ratio:    ${buyPct}\n  INSTRUCTION: Use as supplementary whale pressure signal. Net positive = buy-side aggression. Apply quad-normalization: ${p ? `${Math.abs(wt.net_whale_btc/4200000*100).toFixed(3)}% of liquid supply` : 'n/a'}. This is SPOT+FUTURES order flow — distinct from on-chain netflow.`;
+  })() : '';
 
-  return marketBlock + phaseBlock + smaBlock + cmBlock + macroBlock + duneBlock + cmeBlock + etfBlock + lthBlock + stableBlock + volBlock + qualitySummary;
+  const qualitySummary = `\n\nDATA SOURCE QUALITY:\n- LIVE: price, funding, OI, F&G, options skew, gold, dominance, SMAs, CME basis${macros?.dxy!=null?', DXY':''}${macros?.vix!=null?', VIX':''}${macros?.tnxYield!=null?', 10Y yield':''}${tech?.btcQqqCorr!=null?', BTC-QQQ corr':''}${dc?.mvrv?.mvrv!=null?', MVRV':''}${etf?.total_million_usd!=null?', ETF flows':''}${lth?.lth_net_btc!=null?', LTH position':''}${st?.total_usd!=null?', stablecoin supply':''}${dc?.exchangeFlow?.netflow_btc!=null?', exchange netflow ('+( dc.exchangeFlow.source||'blockchain.info')+')':''}${wt?.net_whale_btc!=null?', Binance whale block trades':''}\n- ESTIMATED: STH SOPR${dc?.mvrv?.mvrv==null?', MVRV (use ~1.5 est.)':''}${etf?.total_million_usd==null?', ETF flows':''}${dc?.exchangeFlow?.netflow_btc==null?', exchange netflow':''}\n\nGenerate the full morning brief JSON now. Apply quad-normalization to all flows. Score each axis INDEPENDENTLY per Section F — do NOT double-count funding + F&G. Return ONLY valid JSON. No markdown. No preamble.`;
+
+  return marketBlock + phaseBlock + smaBlock + cmBlock + macroBlock + duneBlock + cmeBlock + etfBlock + lthBlock + stableBlock + volBlock + binanceWhaleBlock + qualitySummary;
 }
 
 // ── Call Anthropic Claude ─────────────────────────────────────────────────────
