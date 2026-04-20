@@ -202,71 +202,77 @@ async function handleEtf() {
   return json({ error: "etf-unavailable", detail: lastErr }, 502);
 }
 
-// ─── /whale handler — 24h taker buy/sell pressure via Binance ticker + klines ──
-// ticker/24hr  → accurate rolling 24h BTC volume (not cache-distorted)
-// klines 1d    → today's taker buy ratio (only field ticker/24hr lacks)
-// Combined     → real 24h taker buy/sell split for the daily brief
-// Binance blocks GitHub Actions IPs; Cloudflare edge IPs are not blocked.
-// No edge cache (ticker/24hr is already a live rolling window).
+// ─── /whale handler — 24h taker buy/sell pressure via Binance klines ──────────
+// Uses klines?interval=1d&limit=1 which contains both total volume (k[5]) and
+// taker buy base asset volume (k[9]) — everything needed in one request.
+// ticker/24hr was dropped because it returns HTTP 451 (geo-blocked) from some
+// Cloudflare edge PoPs. klines is not geo-blocked.
+// Tries api1→api2→api3→api4→api as fallback in case one base URL is blocked.
 async function handleWhale() {
   const UA = "Mozilla/5.0";
-  let ticker, kline;
+  // Binance has 5 identical base URLs — try them in order until one works
+  const BASES = [
+    "https://api1.binance.com",
+    "https://api2.binance.com",
+    "https://api3.binance.com",
+    "https://api4.binance.com",
+    "https://api.binance.com",
+  ];
 
-  try {
-    // Fetch both in parallel — no CF edge cache so we always get live data
-    const [tickerRes, klineRes] = await Promise.all([
-      fetch("https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT",
-            { headers: { "User-Agent": UA } }),
-      fetch("https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=1",
-            { headers: { "User-Agent": UA } }),
-    ]);
-    if (!tickerRes.ok) throw new Error(`ticker/24hr HTTP ${tickerRes.status}`);
-    if (!klineRes.ok)  throw new Error(`klines/1d HTTP ${klineRes.status}`);
-    ticker = await tickerRes.json();
-    const klines = await klineRes.json();
-    // kline fields: [openTime,o,h,l,c, volume, closeTime, quoteVol,
-    //                trades, takerBuyBaseVol, takerBuyQuoteVol, ignore]
-    kline = klines[0];
-    if (!kline) throw new Error("Empty klines response");
-  } catch (e) {
-    return json({ error: "whale-unavailable", detail: e.message }, 502);
+  let kline = null;
+  let lastErr = "no bases tried";
+
+  for (const base of BASES) {
+    try {
+      const url = `${base}/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=1`;
+      const r = await fetch(url, {
+        headers: { "User-Agent": UA },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!r.ok) { lastErr = `${base} HTTP ${r.status}`; continue; }
+      const klines = await r.json();
+      if (!klines[0]) { lastErr = `${base} empty response`; continue; }
+      kline = klines[0];
+      break;
+    } catch (e) {
+      lastErr = `${base}: ${e.message}`;
+    }
   }
 
-  // Rolling 24h volume from ticker (most accurate — live window, not cached)
-  const totalBTC24h  = parseFloat(ticker.volume);       // BTC traded in last 24h
-  const tradeCount   = parseInt(ticker.count, 10);      // number of trades
+  if (!kline) {
+    return json({ error: "whale-unavailable", detail: lastErr }, 502);
+  }
 
-  // Taker buy ratio from today's 1d candle (since UTC midnight)
-  const todayTotal   = parseFloat(kline[5]);            // BTC volume today
-  const todayTakerBuy= parseFloat(kline[9]);            // taker buy BTC today
-  const buyRatio     = todayTotal > 0
-    ? parseFloat((todayTakerBuy / todayTotal).toFixed(4))
-    : 0.5; // neutral fallback
+  // kline fields: [openTime,o,h,l,c, volume, closeTime, quoteVol,
+  //                numTrades, takerBuyBaseVol, takerBuyQuoteVol, ignore]
+  const totalBTC    = parseFloat(kline[5]);   // total BTC volume (today's candle)
+  const takerBuyBTC = parseFloat(kline[9]);   // taker buy BTC
+  const takerSellBTC= parseFloat((totalBTC - takerBuyBTC).toFixed(2));
+  const netBTC      = parseFloat((takerBuyBTC - takerSellBTC).toFixed(2));
+  const buyRatio    = totalBTC > 0
+    ? parseFloat((takerBuyBTC / totalBTC).toFixed(4))
+    : 0.5;
+  const tradeCount  = parseInt(kline[8], 10);
 
-  // Apply today's ratio to the accurate 24h rolling volume
-  const takerBuyBTC  = parseFloat((totalBTC24h * buyRatio).toFixed(2));
-  const takerSellBTC = parseFloat((totalBTC24h * (1 - buyRatio)).toFixed(2));
-  const netBTC       = parseFloat((takerBuyBTC - takerSellBTC).toFixed(2));
-
-  // Pressure: net buy > 1% of 24h volume = BUY signal
-  const threshold = totalBTC24h * 0.01;
+  // Pressure: net buy > 1% of session volume = BUY signal
+  const threshold = totalBTC * 0.01;
   const pressure  = netBTC > threshold ? "BUY" : netBTC < -threshold ? "SELL" : "NEUTRAL";
 
   return json(
     {
-      taker_buy_btc:    takerBuyBTC,
+      taker_buy_btc:    parseFloat(takerBuyBTC.toFixed(2)),
       taker_sell_btc:   takerSellBTC,
       net_taker_btc:    netBTC,
-      total_volume_btc: parseFloat(totalBTC24h.toFixed(2)),
+      total_volume_btc: parseFloat(totalBTC.toFixed(2)),
       buy_ratio:        buyRatio,
       trade_count:      tradeCount,
       span_hours:       24,
       pressure,
-      source:           "Binance ticker/24hr + 1d kline taker ratio (via CF Worker)",
+      source:           "Binance klines-1d taker split (via CF Worker)",
       date:             new Date().toISOString().slice(0, 10),
     },
     200,
-    { "Cache-Control": "public, max-age=900" }  // 15 min cache — brief runs every 6h
+    { "Cache-Control": "public, max-age=900" }
   );
 }
 
