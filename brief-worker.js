@@ -1069,7 +1069,7 @@ Return ONLY valid JSON. No markdown fences. No preamble.
   "catalystWatch": [{"event": "", "timing": "", "impact": "BULLISH | BEARISH | BINARY", "note": ""}],
   "analystNote": "4-5 sentences.",
   "riskWarning": "the ONE risk that could invalidate today thesis",
-  "normalization": { "currentPrice": "", "marketCap": "", "dailyVolumeBTC": "", "volumeTrend": "", "lthSellingBTC": "N/A or live value", "lthSellingPctLiquid": null, "whaleNetflowBTC": "e.g. -6,200 BTC (negative = outflow from exchanges = accumulation)", "whaleNetflowPctLiquid": "e.g. -0.148%", "whaleNetflowPctVolume": "e.g. -1.63%", "whaleNetflowPctMcap": "e.g. -0.031%", "etfFlowBTC": "e.g. +4,282 BTC (convert from USD using today's price)" }
+  "normalization": { "currentPrice": "", "marketCap": "", "dailyVolumeBTC": "", "volumeTrend": "", "lthSellingBTC": "N/A or live value", "lthSellingPctLiquid": null, "whaleNetflowBTC": "e.g. -6,200 BTC (negative = outflow from exchanges = accumulation)", "whaleNetflowPctLiquid": "e.g. -0.148%", "whaleNetflowPctVolume": "e.g. -1.63%", "whaleNetflowPctMcap": "e.g. -0.031%", "etfFlowUSD": "e.g. +$664M", "etfFlowBTC": "e.g. +4,282 BTC (convert from USD using today's price)", "etfFlowPctLiquid": "e.g. +0.102%" }
 }`;
 
 // ── Main run ──────────────────────────────────────────────────────────────────

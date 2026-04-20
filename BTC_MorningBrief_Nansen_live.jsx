@@ -3780,14 +3780,28 @@ FROM realized r, spot s`;
                   </div>
                   <div style={{ background: C.bg, borderRadius: 5, padding: "10px 12px", borderTop: "2px solid " + C.blue }}>
                     <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", letterSpacing: 1, marginBottom: 5 }}>ETF ABSORPTION</div>
-                    <div style={{ color: C.blue, fontSize: 13, fontWeight: 800, fontFamily: "monospace" }}>{brief.normalization.etfFlowUSD}</div>
-                    <div style={{ color: C.textDim, fontSize: 11, fontFamily: "monospace", marginBottom: 4 }}>{brief.normalization.etfFlowBTC} BTC absorbed</div>
-                    {brief.normalization.etfFlowPctLiquid && (
-                      <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span style={{ color: C.purple, fontSize: 10, fontFamily: "monospace" }}>% LIQUID (PRIMARY)</span>
-                        <span style={{ color: C.purple, fontSize: 10, fontWeight: 700, fontFamily: "monospace" }}>{brief.normalization.etfFlowPctLiquid}</span>
-                      </div>
-                    )}
+                    {(() => {
+                      // Prefer live etfFlowData; fall back to brief.normalization fields
+                      var liveUSD = etfFlowData && etfFlowData.etfTotalNetUSD != null ? etfFlowData.etfTotalNetUSD : null;
+                      var price   = marketData && marketData.price;
+                      var etfUSD  = brief.normalization.etfFlowUSD  || (liveUSD != null ? (liveUSD >= 0 ? '+' : '') + '$' + Math.abs(liveUSD / 1e6).toFixed(0) + 'M' : null);
+                      var etfBTC  = brief.normalization.etfFlowBTC  || (liveUSD != null && price ? (liveUSD >= 0 ? '+' : '') + Math.round(Math.abs(liveUSD) / price).toLocaleString() : null);
+                      var etfPct  = brief.normalization.etfFlowPctLiquid || (liveUSD != null && price ? (liveUSD >= 0 ? '+' : '') + (Math.abs(liveUSD) / price / 4200000 * 100).toFixed(3) + '%' : null);
+                      var dateLbl = etfFlowData && etfFlowData.etfFlowDate ? etfFlowData.etfFlowDate : null;
+                      return (
+                        <>
+                          <div style={{ color: C.blue, fontSize: 13, fontWeight: 800, fontFamily: "monospace" }}>{etfUSD || '—'}</div>
+                          <div style={{ color: C.textDim, fontSize: 11, fontFamily: "monospace", marginBottom: 4 }}>{etfBTC ? etfBTC + ' BTC absorbed' : 'BTC absorbed'}</div>
+                          {dateLbl && <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginBottom: 4 }}>{dateLbl}</div>}
+                          {etfPct && (
+                            <div style={{ display: "flex", justifyContent: "space-between" }}>
+                              <span style={{ color: C.purple, fontSize: 10, fontFamily: "monospace" }}>% LIQUID (PRIMARY)</span>
+                              <span style={{ color: C.purple, fontSize: 10, fontWeight: 700, fontFamily: "monospace" }}>{etfPct}</span>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                   <div style={{ background: C.bg, borderRadius: 5, padding: "10px 12px", borderTop: "2px solid " + C.orange }}>
                     <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", letterSpacing: 1, marginBottom: 5 }}>LTH NET POSITION</div>
