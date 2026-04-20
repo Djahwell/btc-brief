@@ -3762,21 +3762,33 @@ FROM realized r, spot s`;
                 <div className="grid-quad">
                   <div style={{ background: C.bg, borderRadius: 5, padding: "10px 12px", borderTop: "2px solid " + C.teal }}>
                     <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", letterSpacing: 1, marginBottom: 5 }}>WHALE NETFLOW</div>
-                    <div style={{ color: C.teal, fontSize: 13, fontWeight: 800, fontFamily: "monospace" }}>{brief.normalization.whaleNetflowBTC}</div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 6 }}>
-                      {[
-                        { l: "% LIQUID (PRIMARY)", v: brief.normalization.whaleNetflowPctLiquid, c: C.purple },
-                        { l: "% VOLUME", v: brief.normalization.whaleNetflowPctVolume, c: C.gold },
-                        { l: "% MCAP", v: brief.normalization.whaleNetflowPctMcap, c: C.textMid },
-                      ].map(function(r, i) {
-                        return r.v ? (
-                          <div key={i} style={{ display: "flex", justifyContent: "space-between" }}>
-                            <span style={{ color: r.c, fontSize: 10, fontFamily: "monospace" }}>{r.l}</span>
-                            <span style={{ color: r.c, fontSize: 10, fontWeight: 700, fontFamily: "monospace" }}>{r.v}</span>
+                    {(() => {
+                      // Prefer brief.normalization fields; fall back to brief.whaleSignal
+                      var ws = brief.whaleSignal || {};
+                      var netBTC  = brief.normalization.whaleNetflowBTC       || ws.netflowBTC       || null;
+                      var pctLiq  = brief.normalization.whaleNetflowPctLiquid  || ws.netflowPctLiquid  || null;
+                      var pctVol  = brief.normalization.whaleNetflowPctVolume  || ws.netflowPctVolume  || null;
+                      var pctMcap = brief.normalization.whaleNetflowPctMcap    || ws.netflowPctMcap    || null;
+                      return (
+                        <>
+                          <div style={{ color: C.teal, fontSize: 13, fontWeight: 800, fontFamily: "monospace" }}>{netBTC || '—'}</div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 6 }}>
+                            {[
+                              { l: "% LIQUID (PRIMARY)", v: pctLiq,  c: C.purple },
+                              { l: "% VOLUME",           v: pctVol,  c: C.gold },
+                              { l: "% MCAP",             v: pctMcap, c: C.textMid },
+                            ].map(function(r, i) {
+                              return r.v ? (
+                                <div key={i} style={{ display: "flex", justifyContent: "space-between" }}>
+                                  <span style={{ color: r.c, fontSize: 10, fontFamily: "monospace" }}>{r.l}</span>
+                                  <span style={{ color: r.c, fontSize: 10, fontWeight: 700, fontFamily: "monospace" }}>{r.v}</span>
+                                </div>
+                              ) : null;
+                            })}
                           </div>
-                        ) : null;
-                      })}
-                    </div>
+                        </>
+                      );
+                    })()}
                   </div>
                   <div style={{ background: C.bg, borderRadius: 5, padding: "10px 12px", borderTop: "2px solid " + C.blue }}>
                     <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", letterSpacing: 1, marginBottom: 5 }}>ETF ABSORPTION</div>
