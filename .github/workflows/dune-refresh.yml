@@ -56,10 +56,21 @@ jobs:
       # the result into the already-written dune_cache.json so it's included in the deploy.
       - name: Fetch Binance whale data via Worker
         run: |
-          curl --silent --max-time 20 \
+          echo "=== Fetching whale data from CF Worker ==="
+          HTTP_CODE=$(curl --max-time 20 --write-out "%{http_code}" \
+            --silent \
             "https://btc-brief.joel-toe.workers.dev/whale" \
-            -o /tmp/whale.json || true
-          python3 scripts/merge_whale.py || echo "[warn] Whale merge failed — continuing without it"
+            -o /tmp/whale.json) || HTTP_CODE="CURL_FAILED"
+          echo "HTTP status: $HTTP_CODE"
+          if [ -f /tmp/whale.json ]; then
+            echo "=== /tmp/whale.json contents ==="
+            cat /tmp/whale.json
+            echo ""
+            echo "================================"
+            python3 scripts/merge_whale.py
+          else
+            echo "[warn] curl did not create /tmp/whale.json"
+          fi
 
       # ── Preserve all_data.json so dune-refresh doesn't wipe it from gh-pages ──
       # brief-generate.yml generates all_data.json and deploys it to gh-pages.
