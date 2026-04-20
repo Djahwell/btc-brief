@@ -15,6 +15,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join, dirname }                                       from 'path';
 import { fileURLToPath }                                       from 'url';
+import { execSync }                                            from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
@@ -1078,6 +1079,30 @@ async function runBriefWorker() {
 
   const duneCache = loadDuneCache();
   console.log(`[Brief] Dune cache loaded — cachedAt: ${duneCache.cachedAt || 'unknown'}`);
+
+  // ── Whale data fallback — curl is reliable on GHA; Node fetch silently fails ──
+  // If dune-refresh.yml didn't populate binanceLargeTrades, fetch it here via curl
+  // so the brief always has live Binance taker pressure data.
+  if (!duneCache.binanceLargeTrades) {
+    console.log('[Brief/Whale] binanceLargeTrades missing — fetching via curl...');
+    try {
+      const raw = execSync(
+        'curl --silent --max-time 20 "https://btc-brief.joel-toe.workers.dev/whale"',
+        { encoding: 'utf8', timeout: 25000 }
+      );
+      const wt = JSON.parse(raw);
+      if (wt && !wt.error && wt.net_taker_btc != null) {
+        duneCache.binanceLargeTrades = wt;
+        console.log(`[Brief/Whale] ✓ net=${wt.net_taker_btc} BTC  pressure=${wt.pressure}`);
+      } else {
+        console.warn('[Brief/Whale] Worker returned error:', JSON.stringify(wt).slice(0, 200));
+      }
+    } catch (e) {
+      console.warn('[Brief/Whale] curl fallback failed:', e.message);
+    }
+  } else {
+    console.log(`[Brief/Whale] Already in cache — pressure=${duneCache.binanceLargeTrades.pressure}`);
+  }
 
   console.log('[Brief] Fetching market snapshot...');
   const market = await fetchMarketSnapshot();
