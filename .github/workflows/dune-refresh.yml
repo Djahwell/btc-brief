@@ -52,32 +52,14 @@ jobs:
 
       # ── Binance 24h whale pressure — curl Worker directly (Node fetch unreliable on GHA) ──
       # dune-worker.js attempts this via Node fetch but it silently fails on GHA runners.
-      # curl to Cloudflare Workers is reliable from GHA. Python merges the result into
-      # the already-written dune_cache.json so it's included in the gh-pages deploy.
+      # curl to Cloudflare Workers is reliable from GHA. scripts/merge_whale.py merges
+      # the result into the already-written dune_cache.json so it's included in the deploy.
       - name: Fetch Binance whale data via Worker
         run: |
           curl --silent --max-time 20 \
             "https://btc-brief.joel-toe.workers.dev/whale" \
             -o /tmp/whale.json || true
-          if [ -f /tmp/whale.json ]; then
-            python3 -c '
-import json, sys
-with open("public/dune_cache.json") as f:
-    cache = json.load(f)
-with open("/tmp/whale.json") as f:
-    whale = json.load(f)
-if whale.get("error"):
-    print("[warn] Whale error: " + str(whale["error"]))
-    sys.exit(0)
-cache["binanceLargeTrades"] = whale
-print("[Binance/Whales] net=" + str(whale.get("net_taker_btc")) + "  ratio=" + str(whale.get("buy_ratio")) + "  pressure=" + str(whale.get("pressure")))
-with open("public/dune_cache.json", "w") as f:
-    json.dump(cache, f, indent=2)
-print("[ok] dune_cache.json updated with whale data")
-'
-          else
-            echo "[warn] Whale fetch failed — continuing without it"
-          fi
+          python3 scripts/merge_whale.py || echo "[warn] Whale merge failed — continuing without it"
 
       # ── Preserve all_data.json so dune-refresh doesn't wipe it from gh-pages ──
       # brief-generate.yml generates all_data.json and deploys it to gh-pages.
