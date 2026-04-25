@@ -1,12 +1,16 @@
 """
-Merge /tmp/whale.json into public/dune_cache.json.
-Called by dune-refresh.yml after fetching whale data from the Cloudflare Worker.
+Merge /tmp/whale.json into public/all_data.json.
+Called by data-refresh.yml after fetching whale data from the Cloudflare Worker.
+
+Renamed from dune_cache.json -> all_data.json on 2026-04-25 as part of the
+lean refactor: a single all_data.json now holds every non-Claude data field
+(written by data-worker.js) plus the brief (written by brief-worker.js).
 """
 import json
 import sys
 import os
 
-CACHE_PATH = "public/dune_cache.json"
+CACHE_PATH = "public/all_data.json"
 WHALE_PATH = "/tmp/whale.json"
 
 if not os.path.exists(WHALE_PATH):
@@ -14,7 +18,7 @@ if not os.path.exists(WHALE_PATH):
     sys.exit(0)
 
 if not os.path.exists(CACHE_PATH):
-    print("[error] dune_cache.json not found — cannot merge")
+    print("[error] all_data.json not found — cannot merge")
     sys.exit(1)
 
 with open(CACHE_PATH) as f:
@@ -33,7 +37,7 @@ with open(CACHE_PATH, "w") as f:
     json.dump(cache, f, indent=2)
 
 print(
-    "[ok] dune_cache.json updated with whale data — "
+    "[ok] all_data.json updated with whale data — "
     "net=" + str(whale.get("net_taker_btc")) +
     " BTC  ratio=" + str(whale.get("buy_ratio")) +
     "  pressure=" + str(whale.get("pressure"))

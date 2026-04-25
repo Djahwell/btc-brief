@@ -9,10 +9,14 @@ name: Generate Brief (on-demand · calls Anthropic)
 # Anthropic API is never called.
 #
 # Flow:
-#   1. Pulls the latest dune_cache.json from GitHub Pages (kept fresh by
-#      dune-refresh.yml every 6h).
-#   2. Runs brief-worker.js — fetches live market data + calls Claude.
-#   3. Deploys updated public/all_data.json to GitHub Pages.
+#   1. Pulls the latest all_data.json from GitHub Pages (kept fresh by
+#      data-refresh.yml every 6h — contains market, tech, options, macros,
+#      cme, coinMetrics, mvrv, etfFlow, lthData, stablecoinSupply,
+#      exchangeFlow, binanceLargeTrades).
+#   2. Runs brief-worker.js — reads all_data.json and calls Claude ONCE.
+#      Aborts WITHOUT calling Anthropic if all_data.json is missing or
+#      market.price is missing (lean refactor 2026-04-25).
+#   3. Deploys updated public/all_data.json to GitHub Pages with the brief.
 #   4. The Worker's next GET /brief returns the fresh data; APK clients
 #      polling with `regenerating: true` see briefCachedAt flip to today
 #      and auto-refresh.
@@ -32,7 +36,7 @@ env:
 jobs:
   generate-brief:
     runs-on: ubuntu-latest
-    timeout-minutes: 15       # Market fetches ~1min + Claude ~3min + headroom
+    timeout-minutes: 15       # all_data.json read ~5s + Claude ~3min + headroom
 
     steps:
       - name: Checkout repository
@@ -47,24 +51,24 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
-      # Pull the latest dune_cache.json directly from the gh-pages git branch.
+      # Pull the latest all_data.json directly from the gh-pages git branch.
       # We use raw.githubusercontent.com (not djahwell.github.io) to bypass the
       # GitHub Pages CDN cache — the CDN can serve a stale copy for up to 10 min
-      # after dune-refresh deploys, causing brief-worker to read old whale data.
-      - name: Fetch latest dune_cache.json
+      # after data-refresh deploys, causing brief-worker to read old data.
+      - name: Fetch latest all_data.json
         run: |
           mkdir -p public
           curl --fail --silent --show-error \
             -H "Cache-Control: no-cache" \
-            -o public/dune_cache.json \
-            "https://raw.githubusercontent.com/Djahwell/btc-brief/gh-pages/dune_cache.json?t=$(date +%s)" || \
-          echo "[warn] dune_cache.json unavailable — brief-worker will fall back to training-knowledge defaults"
+            -o public/all_data.json \
+            "https://raw.githubusercontent.com/Djahwell/btc-brief/gh-pages/all_data.json?t=$(date +%s)" || \
+          { echo "[fatal] all_data.json unavailable — brief-worker will abort without calling Anthropic"; exit 1; }
 
       - name: Create .env from secrets
         run: |
           echo "VITE_ANTHROPIC_API_KEY=${{ secrets.VITE_ANTHROPIC_API_KEY }}" > .env
 
-      - name: Run Brief worker (market data + Claude brief)
+      - name: Run Brief worker (Claude brief only)
         run: node brief-worker.js
 
       - name: Deploy all_data.json to GitHub Pages

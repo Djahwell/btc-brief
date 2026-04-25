@@ -1528,7 +1528,7 @@ FROM realized r, spot s`;
       const CACHE_STALE_HOURS = 36;
 
       // ── -1. all_data.json (already in memory) — works in APK ─────────────────
-      // In the APK, /dune_cache.json is frozen at build time. all_data.json is
+      // In the APK, /all_data.json is frozen at build time. all_data.json is
       // fetched live from GitHub Pages and contains mvrv at the top level.
       try {
         var adMvrv = allDataRef.current && allDataRef.current.mvrv;
@@ -1541,23 +1541,23 @@ FROM realized r, spot s`;
         }
       } catch (_adm) { console.warn('[Dune MVRV] all_data check failed:', _adm.message); }
 
-      // ── Primary path: /dune_cache.json (local dev only — stale in APK) ────────
+      // ── Primary path: /all_data.json (local dev only — stale in APK) ────────
       try {
-        var cacheRes = await safeFetch('/dune_cache.json', { timeout: 5000 });
+        var cacheRes = await safeFetch('/all_data.json', { timeout: 5000 });
         if (cacheRes && cacheRes.mvrv && cacheRes.cachedAt) {
           var ageMs = Date.now() - new Date(cacheRes.cachedAt).getTime();
           if (ageMs < CACHE_STALE_HOURS * 3_600_000) {
             var m = cacheRes.mvrv;
             if (m.mvrv && m.mvrv > 0 && m.mvrv < 50) {
-              console.info('[Dune MVRV] ✓ From /dune_cache.json (age: ' + Math.round(ageMs / 3_600_000) + 'h) — MVRV:', m.mvrv.toFixed(3));
+              console.info('[Dune MVRV] ✓ From /all_data.json (age: ' + Math.round(ageMs / 3_600_000) + 'h) — MVRV:', m.mvrv.toFixed(3));
               return { mvrv: m.mvrv, realizedPrice: m.realizedPrice, marketCap: m.marketCap, realizedCap: m.realizedCap, mvrvDate: m.date || null };
             }
           } else {
-            console.info('[Dune MVRV] /dune_cache.json stale (' + Math.round(ageMs / 3_600_000) + 'h) — falling back to inline Dune API');
+            console.info('[Dune MVRV] /all_data.json stale (' + Math.round(ageMs / 3_600_000) + 'h) — falling back to inline Dune API');
           }
         }
       } catch (cacheErr) {
-        console.info('[Dune MVRV] /dune_cache.json not available (' + cacheErr.message + ') — falling back to inline Dune API');
+        console.info('[Dune MVRV] /all_data.json not available (' + cacheErr.message + ') — falling back to inline Dune API');
       }
 
       // ── Fallback: inline Dune execute+poll ────────────────────────────────────
@@ -1715,9 +1715,9 @@ FROM realized r, spot s`;
     };
 
     // ── -1. all_data.json (already in memory) — works in APK, no extra fetch ────
-    // all_data.json contains exchangeFlow at the top level (written by brief-worker
-    // from dune_cache). This is the ONLY reliable path in the APK since the bundled
-    // /dune_cache.json is frozen at APK build time and is always stale.
+    // all_data.json contains exchangeFlow at the top level (written by data-worker.js
+    // every 6h via cron). This is the ONLY reliable path in the APK since the
+    // bundled /all_data.json is frozen at APK build time and is always stale.
     try {
       var adEf = allDataRef.current && allDataRef.current.exchangeFlow;
       if (adEf && adEf.netflow_btc != null) {
@@ -1735,11 +1735,11 @@ FROM realized r, spot s`;
       }
     } catch (_adEf) { console.warn('[Dune] all_data exchangeFlow check failed:', _adEf.message); }
 
-    // ── 0. Dune worker cache (/dune_cache.json — local dev only, stale in APK) ──
+    // ── 0. Dune worker cache (/all_data.json — local dev only, stale in APK) ──
     // NOTE: In the APK this file is frozen at build time. The all_data.json path
     // above is the correct path for the APK. This only helps local dev.
     if (out.exchangeInflowBTC == null) try {
-      var cacheCheck = await safeFetch('/dune_cache.json', { timeout: 4000 });
+      var cacheCheck = await safeFetch('/all_data.json', { timeout: 4000 });
       if (cacheCheck && cacheCheck.exchangeFlow && cacheCheck.exchangeFlow.inflow_btc != null) {
         const ef = cacheCheck.exchangeFlow;
         const ageMs = Date.now() - new Date(cacheCheck.cachedAt).getTime();
@@ -1748,8 +1748,8 @@ FROM realized r, spot s`;
           out.exchangeOutflowBTC = ef.outflow_btc != null ? Math.abs(ef.outflow_btc) : null;
           out.exchangeNetflowBTC = ef.netflow_btc;
           out.dataDate           = ef.day || null;
-          out.source             = ef.source || 'dune_cache (labeled exchange addresses)';
-          console.info('[Dune] Exchange flows from /dune_cache.json — Net:', (ef.netflow_btc||0).toFixed(0), 'BTC');
+          out.source             = ef.source || 'all_data cache (labeled exchange addresses)';
+          console.info('[Dune] Exchange flows from /all_data.json — Net:', (ef.netflow_btc||0).toFixed(0), 'BTC');
         }
       }
     } catch (_ce) { /* cache miss — continue */ }
@@ -1976,9 +1976,9 @@ FROM realized r, spot s`;
   const fetchETFFlows = async () => {
     // ── -2. all_data.json (already in memory) — fastest path, works in APK ───────
     // all_data.json is fetched by loadAllData() and stored in allDataRef.current.
-    // It contains etfFlow at the top level (written by brief-worker.js from the
-    // dune cache). This is the ONLY reliable path in the APK since the APK has no
-    // Vite proxy and the bundled dune_cache.json may be stale.
+    // It contains etfFlow at the top level (written by data-worker.js every 6h
+    // via cron). This is the ONLY reliable path in the APK since the APK has no
+    // Vite proxy and the bundled all_data.json may be stale.
     try {
       var adEtf = allDataRef.current && allDataRef.current.etfFlow;
       if (adEtf && adEtf.total_million_usd != null && adEtf.total_million_usd !== 0) {
@@ -2003,10 +2003,10 @@ FROM realized r, spot s`;
 
     // ── -1. Dune worker cache — ETF flow pre-fetched by Node.js worker ───────────
     // Worker tries SoSoValue → CoinGlass directly (residential IP, no Vite proxy).
-    // Cached in public/dune_cache.json as { etfFlow: { total_million_usd, date, source } }.
+    // Cached in public/all_data.json as { etfFlow: { total_million_usd, date, source } }.
     // Max cache age: 20h (same as exchange flow).
     try {
-      var etfCache = await safeFetch('/dune_cache.json', { timeout: 4000 });
+      var etfCache = await safeFetch('/all_data.json', { timeout: 4000 });
       if (etfCache && etfCache.etfFlow && etfCache.etfFlow.total_million_usd != null && etfCache.etfFlow.total_million_usd !== 0) {
         var ageMs = Date.now() - new Date(etfCache.cachedAt).getTime();
         if (ageMs < 20 * 3_600_000) {
@@ -2204,7 +2204,7 @@ FROM realized r, spot s`;
   // Cache key: lthData = { lth_net_btc, date, source_url }
   const fetchLTHData = async () => {
     try {
-      var cacheRes = await safeFetch('/dune_cache.json', { timeout: 5000 });
+      var cacheRes = await safeFetch('/all_data.json', { timeout: 5000 });
       if (cacheRes && cacheRes.lthData && cacheRes.cachedAt) {
         var ageMs = Date.now() - new Date(cacheRes.cachedAt).getTime();
         if (ageMs < 20 * 3_600_000 && cacheRes.lthData.lth_net_btc != null) {
@@ -2219,7 +2219,7 @@ FROM realized r, spot s`;
   };
 
   // ── Stablecoin Supply — three-tier fetch chain ───────────────────────────────
-  // Tier 1: worker cache (dune_cache.json written by dune-worker.js / brief-worker.js)
+  // Tier 1: worker cache (all_data.json written by data-worker.js)
   // Tier 2: DefiLlama direct browser call (stablecoins.llama.fi — CORS-enabled, free)
   // Tier 3: DefiLlama via Vite proxy /api/defillama (fallback for strict networks)
   //
@@ -2232,7 +2232,7 @@ FROM realized r, spot s`;
 
     // ── Tier 1: worker cache ────────────────────────────────────────────────
     try {
-      var cacheRes = await safeFetch('/dune_cache.json', { timeout: 5000 });
+      var cacheRes = await safeFetch('/all_data.json', { timeout: 5000 });
       if (cacheRes && cacheRes.stablecoinSupply && cacheRes.cachedAt) {
         var ageMs = Date.now() - new Date(cacheRes.cachedAt).getTime();
         if (ageMs < 20 * 3_600_000 && cacheRes.stablecoinSupply.total_usd != null) {
@@ -3159,7 +3159,7 @@ FROM realized r, spot s`;
         volTrendBlock += "\n  INSTRUCTION: Use this for volumeTrend field in normalization block. RISING = participation increasing (confirms price moves). FALLING = conviction fading.";
       }
 
-      // ── Binance whale block trades (from all_data cache or dune_cache) ──────────
+      // ── Binance whale block trades (from all_data cache) ───────────────────────
       var binanceWhaleBlock2 = "";
       var bwt = (allDataRef.current && allDataRef.current.binanceLargeTrades)
              || (duneData && duneData.binanceLargeTrades);

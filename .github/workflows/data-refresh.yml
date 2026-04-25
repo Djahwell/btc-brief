@@ -1,12 +1,18 @@
-name: Refresh Dune Cache (no Claude call)
+name: Refresh All Data Cache (no Claude call)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Keeps public/dune_cache.json warm for the on-demand brief-generate workflow.
+# Keeps public/all_data.json warm for the on-demand brief-generate workflow.
 # Does NOT call Anthropic — that's done by brief-generate.yml on first use
 # of the day, triggered by the Cloudflare Worker.
 #
-# Runs every 6h so the Dune MVRV query (which takes ~10 min) isn't a
-# bottleneck when the user opens the app for the first time that day.
+# Lean refactor (2026-04-25): runs node data-worker.js (renamed from
+# dune-worker.js) which now fetches Dune + Binance + DefiLlama + Yahoo +
+# Stooq + Coinbase + Deribit + FRED + CME + CoinMetrics — i.e. ALL non-Claude
+# data — into a single public/all_data.json. brief-worker.js then reads
+# that file, calls Claude once, and writes the brief back.
+#
+# Runs every 6h so the slow Dune MVRV query (~10 min) isn't a bottleneck
+# when the user opens the app for the first time that day.
 # ─────────────────────────────────────────────────────────────────────────────
 
 on:
@@ -23,7 +29,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  refresh-dune:
+  refresh-data:
     runs-on: ubuntu-latest
     timeout-minutes: 30       # Dune MVRV ~10min + Playwright ~2min
 
@@ -47,13 +53,29 @@ jobs:
         run: |
           echo "VITE_DUNE_API_KEY=${{ secrets.VITE_DUNE_API_KEY }}" > .env
 
-      - name: Run Dune worker
-        run: node dune-worker.js
+      # ── Pull the existing all_data.json from gh-pages BEFORE running data-worker ──
+      # data-worker.js's writeCache reads the existing file to preserve
+      # `brief` + `briefCachedAt` across cron cycles (so an interrupted
+      # data-worker run never clobbers the most recent Claude brief, and the
+      # brief stays visible on the dashboard between Claude runs).
+      # We deploy via single-commit mode below, which replaces gh-pages content,
+      # so we must seed the local public/ folder with the live deployed copy.
+      - name: Seed public/all_data.json from GitHub Pages
+        run: |
+          mkdir -p public
+          curl --fail --silent --show-error \
+            -o public/all_data.json \
+            "https://djahwell.github.io/btc-brief/all_data.json" \
+            && echo "[ok] Seeded public/all_data.json from gh-pages (preserves brief + briefCachedAt)" \
+            || echo "[warn] all_data.json not yet on gh-pages — data-worker will create it fresh"
+
+      - name: Run data worker
+        run: node data-worker.js
 
       # ── Binance 24h whale pressure — curl Worker directly (Node fetch unreliable on GHA) ──
-      # dune-worker.js attempts this via Node fetch but it silently fails on GHA runners.
+      # data-worker.js attempts this via Node fetch but it silently fails on GHA runners.
       # curl to Cloudflare Workers is reliable from GHA. scripts/merge_whale.py merges
-      # the result into the already-written dune_cache.json so it's included in the deploy.
+      # the result into the already-written all_data.json so it's included in the deploy.
       - name: Fetch Binance whale data via Worker
         run: |
           echo "=== Fetching whale data from CF Worker ==="
@@ -72,24 +94,10 @@ jobs:
             echo "[warn] curl did not create /tmp/whale.json"
           fi
 
-      # ── Preserve all_data.json so dune-refresh doesn't wipe it from gh-pages ──
-      # brief-generate.yml generates all_data.json and deploys it to gh-pages.
-      # dune-refresh only generates dune_cache.json, but the deploy action uses
-      # single-commit mode which replaces all gh-pages content with the public/
-      # folder. Without this step, all_data.json is deleted every 6h.
-      - name: Preserve all_data.json from GitHub Pages
-        run: |
-          mkdir -p public
-          curl --fail --silent --show-error \
-            -o public/all_data.json \
-            "https://djahwell.github.io/btc-brief/all_data.json" \
-            && echo "[ok] Preserved all_data.json from gh-pages" \
-            || echo "[warn] all_data.json not yet on gh-pages — will be created by brief-generate.yml"
-
-      - name: Deploy dune_cache.json to GitHub Pages
+      - name: Deploy all_data.json to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: gh-pages
           folder: public
-          commit-message: 'chore: refresh dune_cache [skip ci]'
+          commit-message: 'chore: refresh all_data [skip ci]'
           single-commit: true

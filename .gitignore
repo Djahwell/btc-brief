@@ -1,15 +1,24 @@
 # Environment — contains real API keys, NEVER commit this
 .env
 env.env
+*.textClipping
 
 # Dependencies
 node_modules/
 
 # Build output
 dist/
+android-build/
 
 # OS
 .DS_Store
 
-# Vite
+# Vite — auto-generated config timestamp files
 *.local
+*.timestamp-*.mjs
+
+# Android bug reports (often >MB and never want to commit)
+bugreport-*.zip
+
+# Project backups (kept locally, never pushed)
+/backups/

@@ -118,7 +118,7 @@ async function handleQqq() {
   }
 }
 
-// ─── /etf handler — proxy SoSoValue ETF flow for APK + dune-worker ───────────
+// ─── /etf handler — proxy SoSoValue ETF flow for APK + data-worker ───────────
 // Farside (primary source) is behind Cloudflare anti-bot that blocks headless
 // Chrome and GitHub Actions IPs. Cloudflare Worker edge IPs are not blocked by
 // SoSoValue, so we proxy through here. Cached at edge for 1h (data is daily).
