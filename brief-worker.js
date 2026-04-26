@@ -42,17 +42,52 @@ function loadEnv() {
 const ENV           = loadEnv();
 const ANTHROPIC_KEY = ENV.VITE_ANTHROPIC_API_KEY || process.env.VITE_ANTHROPIC_API_KEY;
 
-// ── Trading phase ─────────────────────────────────────────────────────────────
-const PHASES = [
-  { id: 'A', label: 'ACCUMULATION', low: 60000, high: 68000 },
-  { id: 'B', label: 'BREAKOUT',     low: 68000, high: 79000 },
-  { id: 'C', label: 'MOMENTUM',     low: 79000, high: 98000 },
-  { id: 'D', label: 'BULL RUN',     low: 98000, high: 200000 },
-];
-function computePhase(price) {
-  if (!price) return null;
-  if (price < 58500) return { id: 'STOP', label: 'STOP TRIGGERED', action: 'Hard stop — exit per mandate', pctToNext: null, progress: 0 };
-  for (const ph of PHASES) {
+// ── Trading phase (Phase 2 of PHASE_BOUNDARY_AUTOANCHOR.md) ───────────────────
+// Anchors are derived from data in data-worker.js (see computePhaseAnchors).
+// If the cache is missing them (first run, or all upstream sources empty),
+// fall back to the late-2025 legacy levels so the brief still ships sane
+// numbers — but log loudly so it's obvious in CI.
+const LEGACY_ANCHORS = {
+  hardStop:    58500,
+  phaseA_low:  60000,
+  phaseA_high: 68000,
+  phaseB_high: 79000,
+  phaseC_high: 98000,
+  derivationStatus: 'LEGACY_HARDCODED',
+  derivationReason: 'all_data.json had no phaseAnchors — fell back to late-2025 hardcoded levels',
+  regime:           'NORMAL',
+  regimeReason:     'no history available for regime classification',
+};
+
+function effectiveAnchors(allData) {
+  const a = allData?.phaseAnchors;
+  if (a && a.hardStop != null && a.phaseA_low != null && a.phaseA_high != null && a.phaseB_high != null && a.phaseC_high != null) {
+    // Backfill missing fields for older snapshots that predate Phase 3.
+    return {
+      derivationStatus: a.derivationStatus ?? 'NORMAL',
+      regime:           a.regime           ?? 'NORMAL',
+      regimeReason:     a.regimeReason     ?? 'no regime data',
+      ...a,
+    };
+  }
+  console.warn('[Brief] WARNING: phaseAnchors missing/incomplete in all_data.json — using LEGACY_ANCHORS');
+  return LEGACY_ANCHORS;
+}
+
+function getPhases(a) {
+  return [
+    { id: 'A', label: 'ACCUMULATION', low: a.phaseA_low,  high: a.phaseA_high },
+    { id: 'B', label: 'BREAKOUT',     low: a.phaseA_high, high: a.phaseB_high },
+    { id: 'C', label: 'MOMENTUM',     low: a.phaseB_high, high: a.phaseC_high },
+    // Phase D ceiling: nominally "no upper bound" — pad ×2 so range math doesn't blow up.
+    { id: 'D', label: 'BULL RUN',     low: a.phaseC_high, high: a.phaseC_high * 2 },
+  ];
+}
+
+function computePhase(price, a) {
+  if (!price || !a) return null;
+  if (price < a.hardStop) return { id: 'STOP', label: 'STOP TRIGGERED', action: 'Hard stop — exit per mandate', pctToNext: null, progress: 0 };
+  for (const ph of getPhases(a)) {
     if (price >= ph.low && price < ph.high) {
       const progress = ((price - ph.low) / (ph.high - ph.low)) * 100;
       const pctToNext = ((ph.high - price) / price * 100).toFixed(1);
@@ -62,9 +97,24 @@ function computePhase(price) {
   return { id: 'D+', label: 'EXTENDED BULL RUN', progress: 100, pctToNext: null };
 }
 
+// Render an "anchors" block for the user message so Claude sees how the
+// phase ranges were derived and can echo it in analystNote when relevant.
+function buildAnchorsBlock(a) {
+  const fmt = n => n != null ? '$' + Math.round(n).toLocaleString() : 'n/a';
+  const dF = a.derivedFrom || {};
+  const derivedLine = a.derivationStatus === 'LEGACY_HARDCODED'
+    ? '  Source: hardcoded fallback (data-worker did not produce phaseAnchors)'
+    : `  Derived from: realized=${fmt(dF.realized)} · sma200=${fmt(dF.sma200)} · ATH(rolling)=${fmt(dF.ath)}`;
+  const derivLine    = `\n  Derivation:       ${a.derivationStatus || 'NORMAL'}${a.derivationReason ? ' — '+a.derivationReason : ''}`;
+  const regimeLine   = `\n  Market regime:    ${a.regime || 'NORMAL'}${a.regimeReason ? ' — '+a.regimeReason : ''}`;
+  const modulation   = a.regimeModulation ? `\n  Regime modulation: ${a.regimeModulation}` : '';
+  const histCycles   = a.historyCycles != null ? `\n  History cycles:   ${a.historyCycles}` : '';
+  return `\n\nLIVE PHASE ANCHORS (auto-derived from indicators — Phase 2/3 auto-anchor):\n  Hard stop:        ${fmt(a.hardStop)}\n  Phase A low:      ${fmt(a.phaseA_low)}\n  Phase A → B at:   ${fmt(a.phaseA_high)}\n  Phase B → C at:   ${fmt(a.phaseB_high)}\n  Phase C → D at:   ${fmt(a.phaseC_high)}${derivLine}${regimeLine}${modulation}${histCycles}\n${derivedLine}\n  INSTRUCTION: These anchors OVERRIDE the dollar amounts shown in the system prompt's phase definitions. Reference these levels (not the system prompt's numbers) when writing biasReason, todayAction, dynamicStop, and analystNote. If derivation is LEGACY_HARDCODED or *_FALLBACK, or if market regime is NEW_ATH_CYCLE / SUSTAINED_BEAR, mention it once in analystNote with one sentence on the implication.`;
+}
+
 // ── Build Claude user message ──────────────────────────────────────────────────
 function buildUserMessage(d) {
-  const { market, tech, coinMetrics, macros, cme, duneCache, options } = d;
+  const { market, tech, coinMetrics, macros, cme, duneCache, options, anchors } = d;
   const p = market?.price;
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const LIQUID = 4_200_000, CIRC = 20_000_000;
@@ -87,8 +137,9 @@ BTC Dominance:  ${market?.btcDominance != null ? market.btcDominance+'%' : 'unav
 Options Skew:   ${options?.optionsSkew != null ? options.optionsSkew+' (put IV '+options.optionsPutIV+'% vs call IV '+options.optionsCallIV+'%)' : 'unavailable'}
 ${normRef}`;
 
-  const phase = computePhase(p);
+  const phase = computePhase(p, anchors);
   const phaseBlock = phase ? `\n\nLIVE PHASE STATUS:\n  Active Phase: ${phase.id} - ${phase.label}${phase.pctToNext ? '\n  Distance to next phase ($'+phase.nextPhaseAt?.toLocaleString()+'): +'+phase.pctToNext+'%' : ''}\n  Phase progress: ${phase.progress.toFixed(0)}% through range` : '';
+  const anchorsBlock = anchors ? buildAnchorsBlock(anchors) : '';
 
   const corrStr = tech?.btcQqqCorr != null ? `\n  BTC-QQQ Correlation (${tech.corrWindow}d Pearson): ${tech.btcQqqCorr} → ${Math.abs(tech.btcQqqCorr)>0.7?'HIGH — macro regime dominant':Math.abs(tech.btcQqqCorr)>0.4?'MODERATE — mixed signals':'LOW — on-chain signals dominate'}` : '\n  BTC-QQQ Correlation: unavailable';
   const smaBlock = tech ? `\n\nLIVE TECHNICAL LEVELS (Binance ${tech.candleCount}-day):\n  200d SMA: $${tech.sma200?.toLocaleString()||'n/a'}${p?` (${((p-tech.sma200)/tech.sma200*100).toFixed(1)}% from price)`:''}\n  50d SMA:  $${tech.sma50?.toLocaleString()||'n/a'}\n  20d SMA:  $${tech.sma20?.toLocaleString()||'n/a'}${corrStr}\n  OVERRIDE: Use these live values. Ignore Section 2 hardcoded figures.` : '\n\nTECHNICAL LEVELS: Unavailable.';
@@ -176,7 +227,7 @@ ${normRef}`;
 
   const qualitySummary = `\n\nDATA SOURCE QUALITY:\n- LIVE: price, funding, OI, F&G, options skew, gold, dominance, SMAs, CME basis${macros?.dxy!=null?', DXY':''}${macros?.vix!=null?', VIX':''}${macros?.tnxYield!=null?', 10Y yield':''}${tech?.btcQqqCorr!=null?', BTC-QQQ corr':''}${dc?.mvrv?.mvrv!=null?', MVRV':''}${etf?.total_million_usd!=null?', ETF flows':''}${lth?.lth_net_btc!=null?', LTH position':''}${st?.total_usd!=null?', stablecoin supply':''}${dc?.exchangeFlow?.netflow_btc!=null?', exchange netflow ('+( dc.exchangeFlow.source||'blockchain.info')+')':''}${wt?.net_taker_btc!=null?', Binance 24h taker pressure':''}\n- ESTIMATED: STH SOPR${dc?.mvrv?.mvrv==null?', MVRV (use ~1.5 est.)':''}${etf?.total_million_usd==null?', ETF flows':''}${dc?.exchangeFlow?.netflow_btc==null?', exchange netflow':''}\n\nGenerate the full morning brief JSON now. Apply quad-normalization to all flows. Score each axis INDEPENDENTLY per Section F — do NOT double-count funding + F&G. Return ONLY valid JSON. No markdown. No preamble.`;
 
-  return marketBlock + phaseBlock + smaBlock + cmBlock + macroBlock + duneBlock + cmeBlock + etfBlock + lthBlock + stableBlock + volBlock + binanceWhaleBlock + qualitySummary;
+  return marketBlock + phaseBlock + anchorsBlock + smaBlock + cmBlock + macroBlock + duneBlock + cmeBlock + etfBlock + lthBlock + stableBlock + volBlock + binanceWhaleBlock + qualitySummary;
 }
 
 // ── Call Anthropic Claude ─────────────────────────────────────────────────────
@@ -214,18 +265,33 @@ function parseClaudeJSON(raw) {
 }
 
 // ── SYSTEM PROMPT ─────────────────────────────────────────────────────────────
-const SYSTEM_PROMPT = `You are a senior Bitcoin strategist at Maison Toé's Digital Assets Division.
+// Phase boundary numbers come from `anchors` (Phase 2 of PHASE_BOUNDARY_AUTOANCHOR.md).
+// The user message ALSO surfaces these via buildAnchorsBlock — that block is the
+// authoritative copy with full provenance metadata. The values here exist so the
+// system prompt itself reads coherently without forcing Claude to look two places.
+function buildSystemPrompt(anchors) {
+  const fmt = n => '$' + Math.round(n).toLocaleString();
+  const A_LOW  = fmt(anchors.phaseA_low);
+  const A_HIGH = fmt(anchors.phaseA_high);
+  const B_HIGH = fmt(anchors.phaseB_high);
+  const C_HIGH = fmt(anchors.phaseC_high);
+  const STOP   = fmt(anchors.hardStop);
+  // Take-profit + scale-out steps are derived from the anchors so the
+  // strategy stays internally consistent when boundaries shift.
+  const TP_C   = fmt(Math.round(anchors.phaseB_high + (anchors.phaseC_high - anchors.phaseB_high) * 0.85)); // ~85% through C
+  const D_STEP = Math.max(5000, Math.round((anchors.phaseC_high * 0.15) / 1000) * 1000); // ~15% of C-high, rounded to $1k
+  return `You are a senior Bitcoin strategist at Maison Toé's Digital Assets Division.
 Every morning you produce the definitive institutional daily intelligence brief for a firm with a 1-2 year BTC horizon.
 You reason with precision. You cite numbers. You are contrarian when data warrants it.
 
 SECTION 1 - PORTFOLIO MANDATE
 Allocation: 50% IBIT/FBTC ETFs | 20% COIN + BTC infrastructure equities | 20% cash/stables DCA reserve | 10% put options hedge
-Phase system:
-  Phase A ACCUMULATION: $60K-$68K - max conviction buy zone
-  Phase B BREAKOUT: $68K-$79K - add 25% on confirmed daily close + ETF >$500M/day
-  Phase C MOMENTUM: $79K-$98K - hold 55%, take 15% off at $95K
-  Phase D BULL RUN: $98K+ - scale out 10% every $15K above $100K
-Hard stop: daily close below $58,500
+Phase system (anchors auto-derived from realized price + SMA200 + rolling ATH — see "LIVE PHASE ANCHORS" block in user message for provenance):
+  Phase A ACCUMULATION: ${A_LOW}-${A_HIGH} - max conviction buy zone
+  Phase B BREAKOUT: ${A_HIGH}-${B_HIGH} - add 25% on confirmed daily close + ETF >$500M/day
+  Phase C MOMENTUM: ${B_HIGH}-${C_HIGH} - hold 55%, take 15% off at ${TP_C}
+  Phase D BULL RUN: ${C_HIGH}+ - scale out 10% every $${D_STEP.toLocaleString()} above ${C_HIGH}
+Hard stop: daily close below ${STOP}
 
 SECTION 2 - BACKGROUND CONTEXT (as of April 2026)
 NOTE: Live data in user message ALWAYS overrides this.
@@ -300,6 +366,7 @@ Return ONLY valid JSON. No markdown fences. No preamble.
   "riskWarning": "the ONE risk that could invalidate today thesis",
   "normalization": { "currentPrice": "", "marketCap": "", "dailyVolumeBTC": "", "volumeTrend": "", "lthSellingBTC": "N/A or live value", "lthSellingPctLiquid": null, "whaleNetflowBTC": "e.g. -6,200 BTC (negative = outflow from exchanges = accumulation)", "whaleNetflowPctLiquid": "e.g. -0.148%", "whaleNetflowPctVolume": "e.g. -1.63%", "whaleNetflowPctMcap": "e.g. -0.031%", "etfFlowUSD": "e.g. +$664M", "etfFlowBTC": "e.g. +4,282 BTC (convert from USD using today's price)", "etfFlowPctLiquid": "e.g. +0.102%" }
 }`;
+}
 
 // ── Main run ──────────────────────────────────────────────────────────────────
 async function runBriefWorker() {
@@ -338,6 +405,13 @@ async function runBriefWorker() {
     process.exit(1);
   }
 
+  // ── Resolve effective phase anchors (Phase 2 auto-anchor) ───────────────────
+  // Single source of truth: data-worker writes phaseAnchors into all_data.json.
+  // If absent, fall back to LEGACY_ANCHORS so the brief still ships sensible
+  // numbers — effectiveAnchors logs a warning when that happens.
+  const anchors = effectiveAnchors(allData);
+  console.log(`[Brief] Phase anchors (deriv=${anchors.derivationStatus || 'NORMAL'}, regime=${anchors.regime || 'NORMAL'}): stop=$${anchors.hardStop?.toLocaleString()} | A=[$${anchors.phaseA_low?.toLocaleString()}-$${anchors.phaseA_high?.toLocaleString()}] | B<$${anchors.phaseB_high?.toLocaleString()} | C<$${anchors.phaseC_high?.toLocaleString()}${anchors.regimeModulation ? ' | '+anchors.regimeModulation : ''}`);
+
   // ── Build user message + call Claude ────────────────────────────────────────
   // Pass duneCache=allData so buildUserMessage's `dc.etfFlow`, `dc.mvrv`,
   // `dc.exchangeFlow`, `dc.lthData`, `dc.stablecoinSupply`, and
@@ -352,11 +426,13 @@ async function runBriefWorker() {
       cme:         allData.cme,
       coinMetrics: allData.coinMetrics,
       duneCache:   allData,
+      anchors,
     });
 
     console.log('[Brief] Calling Claude...');
     const t0 = Date.now();
-    const rawBrief = await callClaude(SYSTEM_PROMPT, userMessage);
+    const systemPrompt = buildSystemPrompt(anchors);
+    const rawBrief = await callClaude(systemPrompt, userMessage);
     console.log(`[Brief] Claude responded in ${((Date.now()-t0)/1000).toFixed(1)}s`);
 
     const parsedBrief = parseClaudeJSON(rawBrief);

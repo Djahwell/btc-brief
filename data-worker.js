@@ -31,9 +31,10 @@
 // Renamed from dune-worker.js on 2026-04-25 as part of the lean refactor.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
-import { join, dirname }                                       from 'path';
-import { fileURLToPath }                                       from 'url';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 'fs';
+import { join, dirname }                                                     from 'path';
+import { fileURLToPath }                                                     from 'url';
+import { classifyRegime, applyRegimeToAnchors }                              from './scripts/regime_check.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
@@ -1081,12 +1082,19 @@ async function fetchTechnicalData() {
   const volTrendRatio = avgVol20d > 0 ? avgVol5d / avgVol20d : null;
   const volTrend = !volTrendRatio ? 'UNKNOWN' : volTrendRatio > 1.2 ? 'RISING' : volTrendRatio < 0.8 ? 'FALLING' : 'STABLE';
 
-  console.log(`[Tech] 200d SMA: $${sma200 ? Math.round(sma200).toLocaleString() : 'n/a'} | BTC-QQQ: ${btcQqqCorr} | VolTrend: ${volTrend}`);
+  // High in the available candle window. Used by the phase-anchor logic in
+  // writeCache — combined with a monotonic "rolling ATH" carried across runs
+  // via prev.phaseAnchors.derivedFrom.ath, this gives Phase D a sensible
+  // upper-bound source even though we don't have a true ATH feed.
+  const cycleHigh = closes.length ? Math.round(Math.max(...closes)) : null;
+
+  console.log(`[Tech] 200d SMA: $${sma200 ? Math.round(sma200).toLocaleString() : 'n/a'} | BTC-QQQ: ${btcQqqCorr} | VolTrend: ${volTrend} | cycleHigh: $${cycleHigh ? cycleHigh.toLocaleString() : 'n/a'}`);
   return {
     sma200: sma200 ? Math.round(sma200) : null,
     sma50:  sma50  ? Math.round(sma50)  : null,
     sma20:  sma20  ? Math.round(sma20)  : null,
     candleCount: closes.length,
+    cycleHigh,                                     // max close in window (~200d)
     avgVol5d: Math.round(avgVol5d), avgVol20d: Math.round(avgVol20d),
     volTrendRatio: volTrendRatio ? parseFloat(volTrendRatio.toFixed(2)) : null,
     volTrend, btcQqqCorr, corrWindow,
@@ -1374,6 +1382,80 @@ async function fetchCoinMetrics() {
 // new fetched fields, and writes back. brief and briefCachedAt are NEVER written
 // here — only by brief-worker.js. This means an interrupted data-worker run
 // won't clobber the most recent Claude brief.
+// ── Phase-boundary auto-anchor (Phase 1 of PHASE_BOUNDARY_AUTOANCHOR.md) ────
+// Derives the five phase anchor prices from indicators already in the cache:
+//   floor      = realizedPrice (only floor source we currently have)
+//   trend line = tech.sma200
+//   peak       = monotonic ATH (max of cycleHigh and prev anchor's ath)
+//
+// Falls back to prev anchors when:
+//   • required inputs missing (first run won't have a stable derivation)
+//   • computed anchors invert (post-rally SMA200 below realized — rare but
+//     would scramble phase order if we let it ship)
+//
+// The output is a self-describing object: `regime` says NORMAL or which
+// fallback path was taken; `derivedFrom` shows the raw inputs so brief-worker
+// (Phase 2) and a human can sanity-check why levels moved.
+function computePhaseAnchors(d, prevAnchors) {
+  const realized = d?.coinMetrics?.realizedPrice ?? d?.mvrv?.realizedPrice ?? null;
+  const sma200   = d?.tech?.sma200 ?? null;
+  const cycleHigh = d?.tech?.cycleHigh ?? null;
+  const prevAth  = prevAnchors?.derivedFrom?.ath ?? null;
+
+  // Monotonic ATH — never decrease across runs. If neither source has a value
+  // yet, return null (caller will reuse prev anchors entirely).
+  const ath = (cycleHigh != null || prevAth != null)
+    ? Math.max(cycleHigh ?? 0, prevAth ?? 0)
+    : null;
+
+  const haveAll = realized != null && sma200 != null && ath != null;
+  if (!haveAll) {
+    if (prevAnchors) {
+      return {
+        ...prevAnchors,
+        derivationStatus: 'STALE_FALLBACK',
+        derivationReason: `missing inputs (realized=${realized}, sma200=${sma200}, ath=${ath}) — reused previous anchors`,
+        computedAt:       new Date().toISOString(),
+      };
+    }
+    return null;
+  }
+
+  const floor = realized;
+  const anchors = {
+    hardStop:    Math.round(floor * 0.97),
+    phaseA_low:  Math.round(floor),
+    phaseA_high: Math.round(sma200),
+    phaseB_high: Math.round(sma200 * 1.15),
+    phaseC_high: Math.round(ath * 0.98),
+  };
+
+  // Sanity: anchors must be strictly ascending. After a sharp rally SMA200
+  // can sit below realized; post-bear ath*0.98 can sit below sma200*1.15.
+  // Either case scrambles phase order — keep prev anchors instead.
+  const ordered = anchors.hardStop    < anchors.phaseA_low
+               && anchors.phaseA_low  < anchors.phaseA_high
+               && anchors.phaseA_high < anchors.phaseB_high
+               && anchors.phaseB_high < anchors.phaseC_high;
+
+  if (!ordered && prevAnchors) {
+    return {
+      ...prevAnchors,
+      derivationStatus: 'INVERTED_FALLBACK',
+      derivationReason: `Computed anchors out of order (floor=$${anchors.phaseA_low} sma200=$${anchors.phaseA_high} ath*0.98=$${anchors.phaseC_high}) — reused previous anchors`,
+      attempted:        anchors,
+      computedAt:       new Date().toISOString(),
+    };
+  }
+
+  return {
+    ...anchors,
+    derivedFrom:      { realized, sma200, cycleHigh, ath },
+    derivationStatus: ordered ? 'NORMAL' : 'INVERTED_NO_FALLBACK',
+    computedAt:       new Date().toISOString(),
+  };
+}
+
 function writeCache(payload) {
   let prev = {};
   try {
@@ -1398,9 +1480,56 @@ function writeCache(payload) {
   if (preservedBriefCachedAt !== undefined) out.briefCachedAt = preservedBriefCachedAt;
   if (preservedBriefError !== undefined)   out.brief_error    = preservedBriefError;
 
+  // ── Phase anchors (computed AFTER merge so we see fresh tech + coinMetrics) ─
+  // Re-runs every writeCache, including the early write at line ~1485 — that's
+  // fine: the early write may produce a stale-fallback object (no fresh
+  // tech/coinMetrics yet); the late write at line ~1610 will overwrite it
+  // with NORMAL anchors derived from the fresh data.
+  let newAnchors = computePhaseAnchors(out, prev.phaseAnchors);
+
+  // ── Phase 3: regime detection from history archive ──────────────────────────
+  // Reads prior snapshots, classifies regime with hysteresis, modulates anchors.
+  // History is seeded into public/history/ in CI (data-refresh.yml's "Seed
+  // public/ from gh-pages" step) BEFORE data-worker runs — so snapshots 1..N-1
+  // are visible here when classifying cycle N. Locally there's no archive,
+  // so this gracefully degrades to NORMAL.
+  if (newAnchors) {
+    const histDir = join(__dirname, 'public', 'history');
+    let snapshots = [];
+    if (existsSync(histDir)) {
+      try {
+        const files = readdirSync(histDir)
+          .filter(f => /^\d{4}-\d{2}-\d{2}-\d{2}\.json$/.test(f))
+          .sort();
+        for (const f of files) {
+          try { snapshots.push(JSON.parse(readFileSync(join(histDir, f), 'utf8'))); }
+          catch { /* skip corrupted snapshot */ }
+        }
+      } catch (e) {
+        console.warn(`[Regime] Could not enumerate ${histDir}: ${e.message}`);
+      }
+    }
+    const prevRegimeState = prev.phaseAnchors?.regimeState ?? null;
+    const regimeResult = classifyRegime(snapshots, prevRegimeState);
+    newAnchors = {
+      ...applyRegimeToAnchors(newAnchors, regimeResult.regime),
+      regime:       regimeResult.regime,
+      regimeReason: regimeResult.regimeReason,
+      rawRegime:    regimeResult.raw,
+      regimeState:  regimeResult.regimeState,
+      historyCycles: snapshots.length,
+    };
+    console.log(`[Regime] ${regimeResult.regime} (raw=${regimeResult.raw}, history=${snapshots.length} cycles): ${regimeResult.regimeReason}`);
+  }
+
+  if (newAnchors) out.phaseAnchors = newAnchors;
+
   mkdirSync(join(__dirname, 'public'), { recursive: true });
   writeFileSync(CACHE_FILE, JSON.stringify(out, null, 2));
   console.log(`[Worker] ✓ Cache written → ${CACHE_FILE}`);
+  if (newAnchors) {
+    console.log(`[Worker]   PhaseAnchors (deriv=${newAnchors.derivationStatus}, regime=${newAnchors.regime || 'NORMAL'}): stop=$${newAnchors.hardStop?.toLocaleString()} A=[$${newAnchors.phaseA_low?.toLocaleString()}-$${newAnchors.phaseA_high?.toLocaleString()}] B<$${newAnchors.phaseB_high?.toLocaleString()} C<$${newAnchors.phaseC_high?.toLocaleString()}${newAnchors.regimeModulation ? ' | '+newAnchors.regimeModulation : ''}`);
+  }
   if (payload.mvrv) console.log(`[Worker]   MVRV: ${payload.mvrv.mvrv?.toFixed(3)}  |  cachedAt: ${out.cachedAt}`);
   if (payload.exchangeFlow) {
     const ef = payload.exchangeFlow;

@@ -22,3 +22,7 @@ bugreport-*.zip
 
 # Project backups (kept locally, never pushed)
 /backups/
+
+# Snapshot history is built fresh in CI from gh-pages, never committed to main.
+# (data-refresh.yml seeds it from the gh-pages branch, snapshots, and redeploys.)
+/public/history/

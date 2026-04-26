@@ -11,13 +11,18 @@ name: Refresh All Data Cache (no Claude call)
 # data — into a single public/all_data.json. brief-worker.js then reads
 # that file, calls Claude once, and writes the brief back.
 #
+# History archive (2026-04-25): every cron cycle ALSO snapshots all_data.json
+# to public/history/YYYY-MM-DD-HH.json (UTC) for back-testing and trend
+# visualization. The history/ folder is preserved across deploys by checking
+# out the existing gh-pages branch first and copying its history/ in.
+#
 # Runs every 6h so the slow Dune MVRV query (~10 min) isn't a bottleneck
 # when the user opens the app for the first time that day.
 # ─────────────────────────────────────────────────────────────────────────────
 
 on:
   schedule:
-    - cron: '0 */6 * * *'   # every 6 hours
+    - cron: '0 */6 * * *'   # every 6 hours (00, 06, 12, 18 UTC)
   workflow_dispatch:
 
 permissions:
@@ -37,6 +42,45 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # ── Checkout gh-pages branch into _gh-pages/ for cache + history seed ──
+      # We need both:
+      #   1. The current all_data.json (to preserve `brief` + `briefCachedAt`
+      #      across cron cycles via data-worker.js's writeCache).
+      #   2. The full history/ folder (every prior snapshot), since the deploy
+      #      below uses single-commit mode which REPLACES gh-pages content
+      #      with whatever's in public/. Without re-seeding history/, we'd
+      #      wipe the archive on every cron run.
+      # continue-on-error: true so the very first deploy (when gh-pages
+      # doesn't exist yet) doesn't fail the workflow.
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: _gh-pages
+        continue-on-error: true
+
+      - name: Seed public/ from gh-pages (all_data.json + history/)
+        run: |
+          mkdir -p public public/history
+          if [ -d "_gh-pages" ]; then
+            if [ -f "_gh-pages/all_data.json" ]; then
+              cp _gh-pages/all_data.json public/all_data.json
+              echo "[ok] Seeded public/all_data.json (preserves brief + briefCachedAt)"
+            else
+              echo "[info] No prior all_data.json on gh-pages — data-worker will create it fresh"
+            fi
+            if [ -d "_gh-pages/history" ]; then
+              cp -r _gh-pages/history/. public/history/
+              SEEDED=$(find public/history -name '*.json' -not -name 'index.json' | wc -l)
+              echo "[ok] Seeded $SEEDED prior snapshots into public/history/"
+            else
+              echo "[info] No prior history/ on gh-pages — starting archive from scratch"
+            fi
+            rm -rf _gh-pages
+          else
+            echo "[warn] _gh-pages/ checkout failed — first-time deploy?"
+          fi
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -52,22 +96,6 @@ jobs:
       - name: Create .env from secrets
         run: |
           echo "VITE_DUNE_API_KEY=${{ secrets.VITE_DUNE_API_KEY }}" > .env
-
-      # ── Pull the existing all_data.json from gh-pages BEFORE running data-worker ──
-      # data-worker.js's writeCache reads the existing file to preserve
-      # `brief` + `briefCachedAt` across cron cycles (so an interrupted
-      # data-worker run never clobbers the most recent Claude brief, and the
-      # brief stays visible on the dashboard between Claude runs).
-      # We deploy via single-commit mode below, which replaces gh-pages content,
-      # so we must seed the local public/ folder with the live deployed copy.
-      - name: Seed public/all_data.json from GitHub Pages
-        run: |
-          mkdir -p public
-          curl --fail --silent --show-error \
-            -o public/all_data.json \
-            "https://djahwell.github.io/btc-brief/all_data.json" \
-            && echo "[ok] Seeded public/all_data.json from gh-pages (preserves brief + briefCachedAt)" \
-            || echo "[warn] all_data.json not yet on gh-pages — data-worker will create it fresh"
 
       - name: Run data worker
         run: node data-worker.js
@@ -94,10 +122,17 @@ jobs:
             echo "[warn] curl did not create /tmp/whale.json"
           fi
 
-      - name: Deploy all_data.json to GitHub Pages
+      # ── Snapshot to history/ ────────────────────────────────────────────────
+      # Captures all_data.json (now containing fresh data + whale + preserved
+      # brief from prior cycle) into public/history/YYYY-MM-DD-HH.json and
+      # rebuilds public/history/index.json.
+      - name: Snapshot all_data.json to history/
+        run: node scripts/snapshot_history.js
+
+      - name: Deploy all_data.json + history/ to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: gh-pages
           folder: public
-          commit-message: 'chore: refresh all_data [skip ci]'
+          commit-message: 'chore: refresh all_data + snapshot [skip ci]'
           single-commit: true
