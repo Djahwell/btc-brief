@@ -1397,16 +1397,30 @@ async function fetchCoinMetrics() {
 // fallback path was taken; `derivedFrom` shows the raw inputs so brief-worker
 // (Phase 2) and a human can sanity-check why levels moved.
 function computePhaseAnchors(d, prevAnchors) {
-  const realized = d?.coinMetrics?.realizedPrice ?? d?.mvrv?.realizedPrice ?? null;
-  const sma200   = d?.tech?.sma200 ?? null;
+  let   realized  = d?.coinMetrics?.realizedPrice ?? d?.mvrv?.realizedPrice ?? null;
+  const sma200    = d?.tech?.sma200 ?? null;
   const cycleHigh = d?.tech?.cycleHigh ?? null;
-  const prevAth  = prevAnchors?.derivedFrom?.ath ?? null;
+  const prevAth   = prevAnchors?.derivedFrom?.ath ?? null;
+  const price     = d?.market?.price ?? null;
 
   // Monotonic ATH — never decrease across runs. If neither source has a value
   // yet, return null (caller will reuse prev anchors entirely).
   const ath = (cycleHigh != null || prevAth != null)
     ? Math.max(cycleHigh ?? 0, prevAth ?? 0)
     : null;
+
+  // ── Heuristic realizedPrice fallback ───────────────────────────────────────
+  // When neither Dune (HTTP 402 / quota) nor CoinMetrics (community tier
+  // doesn't expose CapRealUSD) returns realizedPrice, derive a proxy floor
+  // from price + sma200. Historical realizedPrice/sma200 ≈ 0.65 mid-cycle.
+  // Clamp to min(price, sma200) so the heuristic floor never sits above
+  // current price (which would make hardStop nonsensical post-drawdown).
+  // Stamps HEURISTIC_FLOOR so the brief can flag the proxy in analystNote.
+  let realizedSource = 'realizedPrice';
+  if (realized == null && sma200 != null && price != null) {
+    realized = Math.round(Math.min(price, sma200) * 0.65);
+    realizedSource = 'heuristic_min(price,sma200)*0.65';
+  }
 
   const haveAll = realized != null && sma200 != null && ath != null;
   if (!haveAll) {
@@ -1448,10 +1462,19 @@ function computePhaseAnchors(d, prevAnchors) {
     };
   }
 
+  // Heuristic floor takes precedence over NORMAL/INVERTED_NO_FALLBACK in the
+  // status, so the brief flags the proxy in analystNote even when ordering OK.
+  const statusFromFloor = realizedSource.startsWith('heuristic') ? 'HEURISTIC_FLOOR' : null;
+  const orderingStatus  = ordered ? 'NORMAL' : 'INVERTED_NO_FALLBACK';
+  const finalStatus     = statusFromFloor || orderingStatus;
+
   return {
     ...anchors,
-    derivedFrom:      { realized, sma200, cycleHigh, ath },
-    derivationStatus: ordered ? 'NORMAL' : 'INVERTED_NO_FALLBACK',
+    derivedFrom:      { realized, sma200, cycleHigh, ath, realizedSource },
+    derivationStatus: finalStatus,
+    ...(statusFromFloor
+      ? { derivationReason: `realizedPrice unavailable from Dune & CoinMetrics — using ${realizedSource}` }
+      : {}),
     computedAt:       new Date().toISOString(),
   };
 }
