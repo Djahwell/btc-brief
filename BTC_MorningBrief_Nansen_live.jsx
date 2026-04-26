@@ -435,19 +435,54 @@ function Skeleton({ w, h, mb }) {
 }
 
 // ─── Module-level constants (no state deps — defined once at load) ─────────────
-const PHASES = [
-  { id: "A", label: "ACCUMULATION", low: 60000,  high: 68000,  color: "#00d4a0", action: "Deploy 30% of DCA reserve" },
-  { id: "B", label: "BREAKOUT",     low: 68000,  high: 79000,  color: "#06b6d4", action: "Add 25% on confirmed daily close" },
-  { id: "C", label: "MOMENTUM",     low: 79000,  high: 98000,  color: "#fbbf24", action: "Hold 55%, take 15% off at $95K" },
-  { id: "D", label: "BULL RUN",     low: 98000,  high: 200000, color: "#8b5cf6", action: "Scale out 10% every $15K above $100K" },
-];
-const HARD_STOP = 58500;
 // 5-day grading window — aligns with 1-2yr mandate; avoids FLAT-heavy 24h noise
 const GRADE_AFTER_MS = 5 * 24 * 60 * 60 * 1000;
 
-function computeActivePhase(price) {
+// ── Phase-anchor system (mirrors brief-worker.js) ────────────────────────────
+// Phase boundaries are derived per-cycle by data-worker.js into all_data.json.
+// LEGACY_ANCHORS is the pre-auto-anchor hardcoded ladder, used as a fallback
+// when all_data.json is missing the phaseAnchors block (older snapshots,
+// offline mode, or first-load before a fetch completes).
+const LEGACY_ANCHORS = {
+  hardStop:    58500,
+  phaseA_low:  60000,
+  phaseA_high: 68000,
+  phaseB_high: 79000,
+  phaseC_high: 98000,
+  derivationStatus: 'LEGACY_HARDCODED',
+  regime:           'NORMAL',
+};
+
+// Pull the live anchors out of allData if complete, else fall back. Older
+// all_data.json snapshots may have phaseAnchors without the regime field —
+// backfill so downstream consumers don't have to null-check.
+function effectiveAnchors(allData) {
+  const a = allData && allData.phaseAnchors;
+  if (a && a.hardStop && a.phaseA_low && a.phaseA_high && a.phaseB_high && a.phaseC_high) {
+    return Object.assign({}, a, {
+      derivationStatus: a.derivationStatus || 'NORMAL',
+      regime:           a.regime           || 'NORMAL',
+    });
+  }
+  return LEGACY_ANCHORS;
+}
+
+// Build the phase ladder dynamically from anchors. Phase D upper bound is
+// effectively unbounded — kept as a high integer so progress math doesn't NaN.
+function getPhases(a) {
+  return [
+    { id: "A", label: "ACCUMULATION", low: a.phaseA_low,  high: a.phaseA_high, color: "#00d4a0", action: "Deploy 30% of DCA reserve" },
+    { id: "B", label: "BREAKOUT",     low: a.phaseA_high, high: a.phaseB_high, color: "#06b6d4", action: "Add 25% on confirmed daily close" },
+    { id: "C", label: "MOMENTUM",     low: a.phaseB_high, high: a.phaseC_high, color: "#fbbf24", action: "Hold 55%, take 15% off near top" },
+    { id: "D", label: "BULL RUN",     low: a.phaseC_high, high: 1000000,       color: "#8b5cf6", action: "Scale out 10% per +15K above C" },
+  ];
+}
+
+function computeActivePhase(price, anchors) {
   if (!price) return null;
-  if (price < HARD_STOP) return { id: "STOP", label: "STOP TRIGGERED", color: "#ff3355", action: "Hard stop — exit per mandate", pctToNext: null, pctToPrev: null, progress: 0 };
+  var a = anchors || LEGACY_ANCHORS;
+  if (price < a.hardStop) return { id: "STOP", label: "STOP TRIGGERED", color: "#ff3355", action: "Hard stop — exit per mandate", pctToNext: null, pctToPrev: null, progress: 0 };
+  var PHASES = getPhases(a);
   for (var i = 0; i < PHASES.length; i++) {
     var ph = PHASES[i];
     if (price >= ph.low && price < ph.high) {
@@ -643,6 +678,9 @@ export default function MorningBrief() {
   const [lthData, setLthData] = useState(null);
   const [stablecoinData, setStablecoinData] = useState(null);
   const [macroData, setMacroData] = useState(null);
+  // Phase anchors — populated from all_data.json.phaseAnchors on every load,
+  // falls back to LEGACY_ANCHORS until the first fetch completes.
+  const [phaseAnchors, setPhaseAnchors] = useState(LEGACY_ANCHORS);
   const intervalRef = useRef(null);
   const allDataRef  = useRef(null); // caches all_data.json for the current generateBrief() run
   const isMounted = { current: true };
@@ -672,6 +710,7 @@ export default function MorningBrief() {
         var d = await r.json();
         if (d && (d.briefCachedAt || d.cachedAt)) {
           allDataRef.current = d;
+          safeSet(setPhaseAnchors)(effectiveAnchors(d));
           var ageH = Math.round((Date.now() - new Date(d.briefCachedAt || d.cachedAt).getTime()) / 3_600_000);
           var regenNote = d.regenerating ? " · REGENERATING (new brief queued)" : "";
           console.info("[AllData] Loaded from", src.url, "— age:", ageH + "h" + regenNote);
@@ -706,6 +745,7 @@ export default function MorningBrief() {
         var d = await r.json();
         if (d && d.brief && !d.regenerating) {
           allDataRef.current = d;
+          safeSet(setPhaseAnchors)(effectiveAnchors(d));
           console.info("[Poll] ✓ Fresh brief arrived after " + ((attempt + 1) * 45) + "s");
           if (onUpdate) onUpdate(d);
           return d;
@@ -2417,6 +2457,7 @@ FROM realized r, spot s`;
           var _rHasPrice = retryJson.market && retryJson.market.price != null;
           if (_rHasPrice) {
             allDataRef.current = retryJson;
+            safeSet(setPhaseAnchors)(effectiveAnchors(retryJson));
             console.info("[Claude] ✓ Retry from", _rUrl, "— using pre-generated brief");
             return JSON.stringify(retryJson.brief);
           }
@@ -2513,6 +2554,7 @@ FROM realized r, spot s`;
           addLog("♻ New Dune cycle trigger fired — brief regenerating (poll 15 min)");
           pollForFreshBrief(function(freshData) {
             allDataRef.current = freshData;
+            safeSet(setPhaseAnchors)(effectiveAnchors(freshData));
             if (freshData.brief) {
               try {
                 safeSet(setBrief)(freshData.brief);
@@ -2677,8 +2719,10 @@ FROM realized r, spot s`;
 
     const normRef = (p && mcap && volBTC) ? "\nNORMALIZATION REFERENCE:\n  1,000 BTC = " + (1000 / LIQUID * 100).toFixed(3) + "% of liquid supply\n  1,000 BTC = " + (1000 / volBTC * 100).toFixed(3) + "% of volume\n  Liquid: " + LIQUID.toLocaleString() + " BTC | Circ: " + CIRC.toLocaleString() + " BTC | Daily vol: ~" + volBTC.toLocaleString() + " BTC" : "";
 
-    // Live phase determination
-    const activePhase = computeActivePhase(p);
+    // Live phase determination — anchors come from all_data.json.phaseAnchors,
+    // recomputed by data-worker each cycle. Falls back to LEGACY_ANCHORS.
+    const _localAnchors = effectiveAnchors(allDataRef.current);
+    const activePhase = computeActivePhase(p, _localAnchors);
 
     // Technical levels — live if available, hardcoded fallbacks otherwise
     const sma200 = (tech && tech.sma200) ? tech.sma200 : 98000;
@@ -2794,35 +2838,41 @@ FROM realized r, spot s`;
 
     // CLIENT-SIDE STOP LOSS — phase-adaptive trailing stop (deterministic — never from LLM)
     // Uses 60-day and 30-day rolling closing highs computed in fetchTechnicalLevels.
-    // Stop RISES with each phase and never falls below the mandate absolute floor ($58,500).
+    // Stop RISES with each phase and never falls below the mandate absolute floor.
     //
-    //   Phase D  (≥$98K)  : 10% trail from 30d high, hard floor $90K
-    //   Phase C  (≥$79K)  : 10% trail from 60d high, hard floor $68K
-    //   Phase B  (≥$68K)  : 12% trail from 60d high, hard floor $62K
-    //   Phase A  (≥$58.5K): 15% trail from 60d high, hard floor $58,500
-    //   Below A           : mandate floor $58,500
+    //   Phase D  (≥phaseC_high) : 10% trail from 30d high, floor = phaseC_high*0.92
+    //   Phase C  (≥phaseB_high) : 10% trail from 60d high, floor = phaseA_high
+    //   Phase B  (≥phaseA_high) : 12% trail from 60d high, floor = phaseA_low + 25% of A range
+    //   Phase A  (≥hardStop)    : 15% trail from 60d high, floor = hardStop
+    //   Below A                 : floor = hardStop
+    //
+    // Floors are derived proportionally from the live anchors, so the ladder
+    // self-rebalances when phase boundaries shift cycle-to-cycle.
     var stopData;
-    var ABS_FLOOR = HARD_STOP; // $58,500 — never breached
+    var ABS_FLOOR = _localAnchors.hardStop; // never breached
     var high60d = tech && tech.high60;
     var high30d = tech && tech.high30;
     if (!p) {
       stopData = { level: "$" + ABS_FLOOR.toLocaleString(), method: "mandate floor (no price)", pct: null };
     } else {
       var trailStop, trailMethod;
-      if (p >= 98000) {
-        // Phase D — Bull Run: 10% trail from 30d high, never below $90K
+      var floor_d = Math.round(_localAnchors.phaseC_high * 0.92);
+      var floor_c = _localAnchors.phaseA_high;
+      var floor_b = Math.round(_localAnchors.phaseA_low + (_localAnchors.phaseA_high - _localAnchors.phaseA_low) * 0.25);
+      if (p >= _localAnchors.phaseC_high) {
+        // Phase D — Bull Run: 10% trail from 30d high, floor = ~92% of phaseC_high
         var trail_d = high30d ? Math.round(high30d * 0.90) : Math.round(p * 0.90);
-        trailStop   = Math.max(trail_d, 90000);
+        trailStop   = Math.max(trail_d, floor_d);
         trailMethod = "10% trailing · 30d high (Phase D)";
-      } else if (p >= 79000) {
-        // Phase C — Momentum: 10% trail from 60d high, never below $68K
+      } else if (p >= _localAnchors.phaseB_high) {
+        // Phase C — Momentum: 10% trail from 60d high, floor = phaseA_high
         var trail_c = high60d ? Math.round(high60d * 0.90) : Math.round(p * 0.90);
-        trailStop   = Math.max(trail_c, 68000);
+        trailStop   = Math.max(trail_c, floor_c);
         trailMethod = "10% trailing · 60d high (Phase C)";
-      } else if (p >= 68000) {
-        // Phase B — Breakout: 12% trail from 60d high, never below $62K
+      } else if (p >= _localAnchors.phaseA_high) {
+        // Phase B — Breakout: 12% trail from 60d high, floor = phaseA_low + 25% of A range
         var trail_b = high60d ? Math.round(high60d * 0.88) : Math.round(p * 0.88);
-        trailStop   = Math.max(trail_b, 62000);
+        trailStop   = Math.max(trail_b, floor_b);
         trailMethod = "12% trailing · 60d high (Phase B)";
       } else if (p >= ABS_FLOOR) {
         // Phase A — Accumulation: 15% trail from 60d high, never below mandate floor
@@ -3358,7 +3408,7 @@ FROM realized r, spot s`;
 
 
   // Phase indicator — activePhase computed here, JSX rendered inline in return()
-  var _ap = computeActivePhase(marketData && marketData.price);
+  var _ap = computeActivePhase(marketData && marketData.price, phaseAnchors);
 
   return (
     <div style={{ background: C.bg, minHeight: "100vh", color: C.text, fontFamily: "Georgia, serif" }}>
@@ -3602,7 +3652,7 @@ FROM realized r, spot s`;
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
-                    {PHASES.map(function(ph) {
+                    {getPhases(phaseAnchors).map(function(ph) {
                       var isActive = ph.id === _ap.id;
                       var priceNow = marketData && marketData.price;
                       var isPast = priceNow && ph.high <= priceNow;
