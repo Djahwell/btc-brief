@@ -689,18 +689,26 @@ export default function MorningBrief() {
 
   const safeSet = function(setter) { return function(val) { if (isMounted.current) setter(val); }; };
 
-  // ── Load all_data.json — Worker first, then GitHub Pages, then local ─────────
+  // ── Load all_data.json — Worker first, then GitHub Pages, then (dev only) local
   // Worker URL: goes through Cloudflare Worker, which triggers the
   //             brief-generate workflow on the first open of each Dune cycle.
   //             Returns { ..., regenerating: true } while the workflow runs.
   // ALL_DATA_URL: direct GitHub Pages read — bypasses the worker (no trigger).
   //               Used as a fallback if the worker is down or unreachable.
-  // /all_data.json: local Vite copy for `npm run dev`.
+  // /all_data.json: local Vite copy for `npm run dev` ONLY. In production this
+  //   path resolves to the snapshot bundled into the APK at build time
+  //   (Vite copies public/ → dist/ → android assets via cap sync), which
+  //   would silently bypass the Worker and freeze the brief at build time.
+  //   Gated on import.meta.env.DEV so production always goes Worker → Pages.
   const loadAllData = async function() {
     const sources = [
-      { url: "/all_data.json",  timeout: 3000,  triggers: false },  // local dev
+      // Worker first in production so the brief-generate trigger can fire.
       { url: WORKER_URL,        timeout: 20000, triggers: true  },  // Worker (can trigger refresh)
       { url: ALL_DATA_URL,      timeout: 15000, triggers: false },  // GitHub Pages direct (fallback)
+      // Dev-only local fast path — Vite serves public/all_data.json at /all_data.json
+      ...(import.meta.env.DEV
+        ? [{ url: "/all_data.json", timeout: 3000, triggers: false }]
+        : []),
     ];
     for (var i = 0; i < sources.length; i++) {
       var src = sources[i];
