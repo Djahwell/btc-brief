@@ -116,7 +116,7 @@ function buildAnchorsBlock(a) {
 function buildUserMessage(d) {
   const { market, tech, coinMetrics, macros, cme, duneCache, options, anchors } = d;
   const p = market?.price;
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Europe/Paris' });
   const LIQUID = 4_200_000, CIRC = 20_000_000;
   const vol24hUSD = market?.volume24hUSD, mcap = market?.marketCap;
   const volBTC = (p && vol24hUSD) ? Math.round(vol24hUSD / p) : null;

@@ -2711,7 +2711,7 @@ FROM realized r, spot s`;
     }
     safeSet(setTechLevels)(tech);
 
-    const today = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+    const today = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "Europe/Paris" });
     const p = market.price;
     const vol24hUSD = market.volume24h;
     const mcap = market.marketCap;
