@@ -5,8 +5,12 @@
  * Called by GitHub Actions daily or manually via: npm run sync-accuracy
  */
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const ACCURACY_HISTORY_PATH = path.join(__dirname, '../accuracy-history.json');
 const ACCURACY_CACHE_PATH = path.join(__dirname, '../public/accuracy-cache.json');
@@ -71,4 +75,6 @@ async function syncAccuracy() {
   }
 }
 
-syncAccuracy();
+(async () => {
+  await syncAccuracy();
+})();
