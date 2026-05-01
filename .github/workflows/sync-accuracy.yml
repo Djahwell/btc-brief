@@ -7,6 +7,10 @@ on:
   workflow_dispatch:
     # Allow manual trigger
 
+permissions:
+  contents: write
+  actions: read
+
 jobs:
   sync-accuracy:
     runs-on: ubuntu-latest
