@@ -679,6 +679,7 @@ export default function MorningBrief() {
   const [stablecoinData, setStablecoinData] = useState(null);
   const [macroData, setMacroData] = useState(null);
   const [showRegenMessage, setShowRegenMessage] = useState(false);
+  const [showTestGrading, setShowTestGrading] = useState(false);
   // Phase anchors — populated from all_data.json.phaseAnchors on every load,
   // falls back to LEGACY_ANCHORS until the first fetch completes.
   const [phaseAnchors, setPhaseAnchors] = useState(LEGACY_ANCHORS);
@@ -4464,6 +4465,180 @@ FROM realized r, spot s`;
                 )}
               </div>
             )}
+
+            {/* TEST GRADING PANEL — for development/testing only */}
+            <div style={{ marginTop: 20 }}>
+              <button
+                onClick={function() { setShowTestGrading(function(v) { return !v; }); }}
+                style={{ background: "transparent", border: "1px solid " + C.gold, color: C.gold, fontSize: 10, fontFamily: "monospace", letterSpacing: 1.5, padding: "6px 10px", borderRadius: 4, cursor: "pointer" }}
+              >
+                {showTestGrading ? "▾ HIDE TEST GRADING" : "▸ SHOW TEST GRADING"}
+              </button>
+              {showTestGrading && (
+                <Card accent={C.gold} style={{ marginTop: 12 }}>
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ color: C.gold, fontSize: 11, fontWeight: 700, fontFamily: "monospace", letterSpacing: 2, marginBottom: 12 }}>TEST GRADING TOOLS</div>
+
+                    {/* Inject test data */}
+                    <div style={{ marginBottom: 16, padding: 12, background: C.surfaceHigh, borderRadius: 4 }}>
+                      <div style={{ color: C.textMid, fontSize: 10, fontFamily: "monospace", marginBottom: 8 }}>Inject test data with various grades:</div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        <button
+                          onClick={function() {
+                            const log = [];
+                            const now = Date.now();
+                            const btcPrice = marketData && marketData.price ? marketData.price : 50000;
+                            // 70% hit rate test: 7 correct, 3 wrong
+                            for (let i = 0; i < 10; i++) {
+                              const isCorrect = i < 7;
+                              const pctMove = isCorrect
+                                ? (Math.random() > 0.5 ? 3 : -3) + Math.random() * 2
+                                : (Math.random() > 0.5 ? -3 : 3) - Math.random() * 2;
+                              const outcome = Math.abs(pctMove) > 2 ? (isCorrect ? "CORRECT" : "WRONG") : "FLAT";
+                              const rec = Math.random() > 0.5 ? "ACCUMULATE" : "REDUCE";
+                              log.push({
+                                date: new Date(now - (9-i) * 86400000).toISOString().split('T')[0],
+                                ts: now - (9-i) * 86400000,
+                                price: btcPrice,
+                                score: Math.floor(Math.random() * 8) - 4,
+                                recommendation: rec,
+                                bias: rec === "ACCUMULATE" ? "BULLISH" : "BEARISH",
+                                outcome: outcome,
+                                pctMove: pctMove.toFixed(2),
+                                priceLater: btcPrice + (btcPrice * pctMove / 100)
+                              });
+                            }
+                            setAccuracyLog(log);
+                            try { localStorage.setItem("accuracy-log", JSON.stringify(log)); } catch (_e) {}
+                            addLog("✓ Injected test data: 70% hit rate");
+                          }}
+                          style={{ background: C.green, color: "#000", border: "none", borderRadius: 4, padding: "6px 12px", fontSize: 10, fontFamily: "monospace", fontWeight: 700, cursor: "pointer" }}
+                        >
+                          70% HIT RATE
+                        </button>
+                        <button
+                          onClick={function() {
+                            const log = [];
+                            const now = Date.now();
+                            const btcPrice = marketData && marketData.price ? marketData.price : 50000;
+                            // 40% hit rate test: 4 correct, 6 wrong
+                            for (let i = 0; i < 10; i++) {
+                              const isCorrect = i < 4;
+                              const pctMove = isCorrect
+                                ? (Math.random() > 0.5 ? 3 : -3) + Math.random() * 2
+                                : (Math.random() > 0.5 ? -3 : 3) - Math.random() * 2;
+                              const outcome = Math.abs(pctMove) > 2 ? (isCorrect ? "CORRECT" : "WRONG") : "FLAT";
+                              const rec = Math.random() > 0.5 ? "ACCUMULATE" : "REDUCE";
+                              log.push({
+                                date: new Date(now - (9-i) * 86400000).toISOString().split('T')[0],
+                                ts: now - (9-i) * 86400000,
+                                price: btcPrice,
+                                score: Math.floor(Math.random() * 8) - 4,
+                                recommendation: rec,
+                                bias: rec === "ACCUMULATE" ? "BULLISH" : "BEARISH",
+                                outcome: outcome,
+                                pctMove: pctMove.toFixed(2),
+                                priceLater: btcPrice + (btcPrice * pctMove / 100)
+                              });
+                            }
+                            setAccuracyLog(log);
+                            try { localStorage.setItem("accuracy-log", JSON.stringify(log)); } catch (_e) {}
+                            addLog("⚠ Injected test data: 40% hit rate (poor calibration)");
+                          }}
+                          style={{ background: C.orange, color: "#000", border: "none", borderRadius: 4, padding: "6px 12px", fontSize: 10, fontFamily: "monospace", fontWeight: 700, cursor: "pointer" }}
+                        >
+                          40% HIT RATE
+                        </button>
+                        <button
+                          onClick={function() {
+                            const log = [];
+                            const now = Date.now();
+                            const btcPrice = marketData && marketData.price ? marketData.price : 50000;
+                            // 20% hit rate test: 2 correct, 8 wrong
+                            for (let i = 0; i < 10; i++) {
+                              const isCorrect = i < 2;
+                              const pctMove = isCorrect
+                                ? (Math.random() > 0.5 ? 3 : -3) + Math.random() * 2
+                                : (Math.random() > 0.5 ? -3 : 3) - Math.random() * 2;
+                              const outcome = Math.abs(pctMove) > 2 ? (isCorrect ? "CORRECT" : "WRONG") : "FLAT";
+                              const rec = Math.random() > 0.5 ? "ACCUMULATE" : "REDUCE";
+                              log.push({
+                                date: new Date(now - (9-i) * 86400000).toISOString().split('T')[0],
+                                ts: now - (9-i) * 86400000,
+                                price: btcPrice,
+                                score: Math.floor(Math.random() * 8) - 4,
+                                recommendation: rec,
+                                bias: rec === "ACCUMULATE" ? "BULLISH" : "BEARISH",
+                                outcome: outcome,
+                                pctMove: pctMove.toFixed(2),
+                                priceLater: btcPrice + (btcPrice * pctMove / 100)
+                              });
+                            }
+                            setAccuracyLog(log);
+                            try { localStorage.setItem("accuracy-log", JSON.stringify(log)); } catch (_e) {}
+                            addLog("✗ Injected test data: 20% hit rate (poor performance)");
+                          }}
+                          style={{ background: C.red, color: "#fff", border: "none", borderRadius: 4, padding: "6px 12px", fontSize: 10, fontFamily: "monospace", fontWeight: 700, cursor: "pointer" }}
+                        >
+                          20% HIT RATE
+                        </button>
+                        <button
+                          onClick={function() {
+                            setAccuracyLog([]);
+                            try { localStorage.removeItem("accuracy-log"); } catch (_e) {}
+                            addLog("🗑 Cleared accuracy log");
+                          }}
+                          style={{ background: "transparent", border: "1px solid " + C.textDim, color: C.textDim, borderRadius: 4, padding: "6px 12px", fontSize: 10, fontFamily: "monospace", fontWeight: 700, cursor: "pointer" }}
+                        >
+                          CLEAR
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Manual grading of existing entries */}
+                    {accuracyLog.length > 0 && (
+                      <div style={{ padding: 12, background: C.surfaceHigh, borderRadius: 4 }}>
+                        <div style={{ color: C.textMid, fontSize: 10, fontFamily: "monospace", marginBottom: 8 }}>Grade ungraded entries:</div>
+                        <div style={{ maxHeight: 200, overflowY: "auto", marginBottom: 8 }}>
+                          {accuracyLog.filter(e => !e.outcome && e.price).map((entry, idx) => (
+                            <div key={idx} style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6, padding: 8, background: C.surface, borderRadius: 3, fontSize: 10, fontFamily: "monospace" }}>
+                              <span style={{ color: C.textDim, flex: 1 }}>{entry.date} @ ${entry.price?.toLocaleString() || "?"}</span>
+                              <button
+                                onClick={function() {
+                                  const updated = [...accuracyLog];
+                                  updated[idx].outcome = "CORRECT";
+                                  updated[idx].pctMove = "3.5";
+                                  setAccuracyLog(updated);
+                                  try { localStorage.setItem("accuracy-log", JSON.stringify(updated)); } catch (_e) {}
+                                }}
+                                style={{ background: C.green, color: "#000", border: "none", borderRadius: 3, padding: "4px 8px", fontSize: 9, fontWeight: 700, cursor: "pointer" }}
+                              >
+                                ✓
+                              </button>
+                              <button
+                                onClick={function() {
+                                  const updated = [...accuracyLog];
+                                  updated[idx].outcome = "WRONG";
+                                  updated[idx].pctMove = "-3.5";
+                                  setAccuracyLog(updated);
+                                  try { localStorage.setItem("accuracy-log", JSON.stringify(updated)); } catch (_e) {}
+                                }}
+                                style={{ background: C.red, color: "#fff", border: "none", borderRadius: 3, padding: "4px 8px", fontSize: 9, fontWeight: 700, cursor: "pointer" }}
+                              >
+                                ✗
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                        {accuracyLog.filter(e => !e.outcome && e.price).length === 0 && (
+                          <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", fontStyle: "italic" }}>All entries are graded ✓</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              )}
+            </div>
 
             {/* FOOTER */}
             <div style={{ marginTop: 28, paddingTop: 16, borderTop: "1px solid " + C.border, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
