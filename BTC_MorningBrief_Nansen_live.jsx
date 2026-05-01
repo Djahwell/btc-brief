@@ -678,6 +678,7 @@ export default function MorningBrief() {
   const [lthData, setLthData] = useState(null);
   const [stablecoinData, setStablecoinData] = useState(null);
   const [macroData, setMacroData] = useState(null);
+  const [showRegenMessage, setShowRegenMessage] = useState(false);
   // Phase anchors — populated from all_data.json.phaseAnchors on every load,
   // falls back to LEGACY_ANCHORS until the first fetch completes.
   const [phaseAnchors, setPhaseAnchors] = useState(LEGACY_ANCHORS);
@@ -2560,6 +2561,7 @@ FROM realized r, spot s`;
         // user sees the previous brief.
         if (cachedAll.regenerating) {
           addLog("♻ New Dune cycle trigger fired — brief regenerating (poll 15 min)");
+          safeSet(setShowRegenMessage)(true);
           pollForFreshBrief(function(freshData) {
             allDataRef.current = freshData;
             safeSet(setPhaseAnchors)(effectiveAnchors(freshData));
@@ -3448,6 +3450,35 @@ FROM realized r, spot s`;
           </button>
         </div>
       </div>
+
+      {/* REGENERATION MESSAGE */}
+      {showRegenMessage && (
+        <div style={{ background: C.surfaceHigh, borderTop: "1px solid " + C.border, borderBottom: "1px solid " + C.border, padding: "12px clamp(12px, 3vw, 28px)" }}>
+          <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ color: C.accent, fontSize: 16 }}>⟳</span>
+              <span style={{ color: C.textMid, fontSize: 12, fontFamily: "monospace" }}>Data refreshed. New brief generating. Refresh in a few minutes.</span>
+            </div>
+            <button
+              onClick={function() { setShowRegenMessage(false); }}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: C.textDim,
+                fontSize: 18,
+                cursor: "pointer",
+                padding: "0 4px",
+                display: "flex",
+                alignItems: "center",
+                lineHeight: 1,
+              }}
+              aria-label="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       <div style={{ maxWidth: 1280, margin: "0 auto", padding: "24px clamp(12px, 3vw, 28px)" }}>
 
