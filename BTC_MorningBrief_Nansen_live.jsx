@@ -680,6 +680,7 @@ export default function MorningBrief() {
   const [macroData, setMacroData] = useState(null);
   const [showRegenMessage, setShowRegenMessage] = useState(false);
   const [showTestGrading, setShowTestGrading] = useState(false);
+  const [testMode, setTestMode] = useState(false);
   // Phase anchors — populated from all_data.json.phaseAnchors on every load,
   // falls back to LEGACY_ANCHORS until the first fetch completes.
   const [phaseAnchors, setPhaseAnchors] = useState(LEGACY_ANCHORS);
@@ -2920,10 +2921,10 @@ FROM realized r, spot s`;
         var pctMove = ((p - gEntry.price) / gEntry.price) * 100;
         var rec = gEntry.recommendation;
         var outcome = "FLAT";
-        if ((rec === "ACCUMULATE" || rec === "ADD") && pctMove > 2) outcome = "CORRECT";
-        else if ((rec === "ACCUMULATE" || rec === "ADD") && pctMove < -2) outcome = "WRONG";
-        else if ((rec === "REDUCE" || rec === "HEDGE") && pctMove < -2) outcome = "CORRECT";
-        else if ((rec === "REDUCE" || rec === "HEDGE") && pctMove > 2) outcome = "WRONG";
+        if ((rec === "ACCUMULATE" || rec === "ADD") && pctMove > 1) outcome = "CORRECT";
+        else if ((rec === "ACCUMULATE" || rec === "ADD") && pctMove < -1) outcome = "WRONG";
+        else if ((rec === "REDUCE" || rec === "HEDGE") && pctMove < -1) outcome = "CORRECT";
+        else if ((rec === "REDUCE" || rec === "HEDGE") && pctMove > 1) outcome = "WRONG";
         gEntry.outcome = outcome;
         gEntry.priceLater = p;
         gEntry.pctMove = pctMove.toFixed(2);
@@ -2938,10 +2939,12 @@ FROM realized r, spot s`;
     // ── PERFORMANCE FEEDBACK BLOCK ─────────────────────────────────────────────
     // Build a self-reflection block from the last 7 graded calls so Claude can
     // reason from its own track record and adjust confidence accordingly.
+    // Now includes FLAT outcomes to build complete accuracy history.
     var feedbackBlock = "";
-    var gradedHistory = log.filter(function(e) { return e.outcome && e.outcome !== "FLAT" && e.score != null; }).slice(-7);
+    var gradedHistory = log.filter(function(e) { return e.outcome && e.score != null; }).slice(-7);
     if (gradedHistory.length >= 2) {
       var correct = gradedHistory.filter(function(e) { return e.outcome === "CORRECT"; }).length;
+      var flat = gradedHistory.filter(function(e) { return e.outcome === "FLAT"; }).length;
       var hitRate = Math.round(correct / gradedHistory.length * 100);
 
       // Pattern analysis — which signal regimes coincided with correct vs wrong calls
@@ -2964,7 +2967,7 @@ FROM realized r, spot s`;
         : null;
 
       feedbackBlock = "\n\nYOUR RECENT CALL PERFORMANCE (last " + gradedHistory.length + " graded calls):" +
-        "\n  Hit rate: " + hitRate + "% (" + correct + "/" + gradedHistory.length + " correct)" +
+        "\n  Hit rate: " + hitRate + "% (" + correct + "/" + gradedHistory.length + " correct | " + flat + " flat)" +
         "\n  Avg score on CORRECT calls: " + avgScoreCorrect + " | Avg score on WRONG calls: " + avgScoreWrong +
         "\n  Bias drift: " + biasDrift +
         (highScoreHitRate != null ? "\n  High-conviction calls (score >=5 or <=-5) hit rate: " + highScoreHitRate + "%" : "") +
@@ -4479,10 +4482,32 @@ FROM realized r, spot s`;
                   <div style={{ marginBottom: 16 }}>
                     <div style={{ color: C.gold, fontSize: 11, fontWeight: 700, fontFamily: "monospace", letterSpacing: 2, marginBottom: 12 }}>TEST GRADING TOOLS</div>
 
+                    {/* Mode toggle */}
+                    <div style={{ marginBottom: 16, padding: 12, background: testMode ? "rgba(255, 200, 0, 0.1)" : "rgba(76, 175, 80, 0.1)", border: "1px solid " + (testMode ? C.gold : C.green), borderRadius: 4 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                        <div style={{ color: testMode ? C.gold : C.green, fontSize: 10, fontFamily: "monospace", fontWeight: 700 }}>
+                          {testMode ? "🧪 TEST MODE ACTIVE" : "✓ PRODUCTION MODE"}
+                        </div>
+                        <button
+                          onClick={function() { setTestMode(!testMode); }}
+                          style={{ background: testMode ? C.gold : C.green, color: "#000", border: "none", borderRadius: 3, padding: "4px 10px", fontSize: 9, fontFamily: "monospace", fontWeight: 700, cursor: "pointer" }}
+                        >
+                          {testMode ? "SWITCH TO PRODUCTION" : "SWITCH TO TEST"}
+                        </button>
+                      </div>
+                      <div style={{ color: C.textDim, fontSize: 9, fontFamily: "monospace", fontStyle: "italic" }}>
+                        {testMode
+                          ? "Test data is isolated. Your real accuracy log is safe."
+                          : "Real accuracy data. Test mode will not affect this."}
+                      </div>
+                    </div>
+
                     {/* Inject test data */}
-                    <div style={{ marginBottom: 16, padding: 12, background: C.surfaceHigh, borderRadius: 4 }}>
-                      <div style={{ color: C.textMid, fontSize: 10, fontFamily: "monospace", marginBottom: 8 }}>Inject test data with various grades:</div>
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {testMode && (
+                      <div>
+                        <div style={{ marginBottom: 16, padding: 12, background: C.surfaceHigh, borderRadius: 4 }}>
+                          <div style={{ color: C.textMid, fontSize: 10, fontFamily: "monospace", marginBottom: 8 }}>Inject test data with various grades:</div>
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                         <button
                           onClick={function() {
                             const log = [];
@@ -4509,8 +4534,8 @@ FROM realized r, spot s`;
                               });
                             }
                             setAccuracyLog(log);
-                            try { localStorage.setItem("accuracy-log", JSON.stringify(log)); } catch (_e) {}
-                            addLog("✓ Injected test data: 70% hit rate");
+                            try { localStorage.setItem("accuracy-log-test", JSON.stringify(log)); } catch (_e) {}
+                            addLog("✓ Injected test data: 70% hit rate (test storage only)");
                           }}
                           style={{ background: C.green, color: "#000", border: "none", borderRadius: 4, padding: "6px 12px", fontSize: 10, fontFamily: "monospace", fontWeight: 700, cursor: "pointer" }}
                         >
@@ -4542,8 +4567,8 @@ FROM realized r, spot s`;
                               });
                             }
                             setAccuracyLog(log);
-                            try { localStorage.setItem("accuracy-log", JSON.stringify(log)); } catch (_e) {}
-                            addLog("⚠ Injected test data: 40% hit rate (poor calibration)");
+                            try { localStorage.setItem("accuracy-log-test", JSON.stringify(log)); } catch (_e) {}
+                            addLog("⚠ Injected test data: 40% hit rate (test storage only)");
                           }}
                           style={{ background: C.orange, color: "#000", border: "none", borderRadius: 4, padding: "6px 12px", fontSize: 10, fontFamily: "monospace", fontWeight: 700, cursor: "pointer" }}
                         >
@@ -4575,8 +4600,8 @@ FROM realized r, spot s`;
                               });
                             }
                             setAccuracyLog(log);
-                            try { localStorage.setItem("accuracy-log", JSON.stringify(log)); } catch (_e) {}
-                            addLog("✗ Injected test data: 20% hit rate (poor performance)");
+                            try { localStorage.setItem("accuracy-log-test", JSON.stringify(log)); } catch (_e) {}
+                            addLog("✗ Injected test data: 20% hit rate (test storage only)");
                           }}
                           style={{ background: C.red, color: "#fff", border: "none", borderRadius: 4, padding: "6px 12px", fontSize: 10, fontFamily: "monospace", fontWeight: 700, cursor: "pointer" }}
                         >
@@ -4585,19 +4610,19 @@ FROM realized r, spot s`;
                         <button
                           onClick={function() {
                             setAccuracyLog([]);
-                            try { localStorage.removeItem("accuracy-log"); } catch (_e) {}
-                            addLog("🗑 Cleared accuracy log");
+                            try { localStorage.removeItem("accuracy-log-test"); } catch (_e) {}
+                            addLog("🗑 Cleared test data");
                           }}
                           style={{ background: "transparent", border: "1px solid " + C.textDim, color: C.textDim, borderRadius: 4, padding: "6px 12px", fontSize: 10, fontFamily: "monospace", fontWeight: 700, cursor: "pointer" }}
                         >
                           CLEAR
                         </button>
-                      </div>
-                    </div>
+                          </div>
+                        </div>
 
-                    {/* Manual grading of existing entries */}
-                    {accuracyLog.length > 0 && (
-                      <div style={{ padding: 12, background: C.surfaceHigh, borderRadius: 4 }}>
+                        {/* Manual grading of existing entries */}
+                      {accuracyLog.length > 0 && (
+                        <div style={{ marginTop: 16, padding: 12, background: C.surfaceHigh, borderRadius: 4 }}>
                         <div style={{ color: C.textMid, fontSize: 10, fontFamily: "monospace", marginBottom: 8 }}>Grade ungraded entries:</div>
                         <div style={{ maxHeight: 200, overflowY: "auto", marginBottom: 8 }}>
                           {accuracyLog.filter(e => !e.outcome && e.price).map((entry, idx) => (
@@ -4609,7 +4634,7 @@ FROM realized r, spot s`;
                                   updated[idx].outcome = "CORRECT";
                                   updated[idx].pctMove = "3.5";
                                   setAccuracyLog(updated);
-                                  try { localStorage.setItem("accuracy-log", JSON.stringify(updated)); } catch (_e) {}
+                                  try { localStorage.setItem(testMode ? "accuracy-log-test" : "accuracy-log", JSON.stringify(updated)); } catch (_e) {}
                                 }}
                                 style={{ background: C.green, color: "#000", border: "none", borderRadius: 3, padding: "4px 8px", fontSize: 9, fontWeight: 700, cursor: "pointer" }}
                               >
@@ -4633,6 +4658,8 @@ FROM realized r, spot s`;
                         {accuracyLog.filter(e => !e.outcome && e.price).length === 0 && (
                           <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", fontStyle: "italic" }}>All entries are graded ✓</div>
                         )}
+                      </div>
+                    )}
                       </div>
                     )}
                   </div>
