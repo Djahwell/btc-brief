@@ -1,0 +1,44 @@
+name: Daily Accuracy Sync
+
+on:
+  schedule:
+    # Run daily at 3 AM UTC (adjust to your timezone)
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    # Allow manual trigger
+
+jobs:
+  sync-accuracy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync accuracy history
+        run: node scripts/sync-accuracy.js
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit if changed
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+          if git diff-index --quiet HEAD --; then
+            echo "No changes to commit"
+          else
+            git add accuracy-history.json
+            git commit -m "chore: sync accuracy history from live sessions"
+            git push
+          fi

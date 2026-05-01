@@ -12,6 +12,7 @@
     "data:schema": "node data-worker.js --schema",
     "data:schema-exflow": "node data-worker.js --schema-exflow",
     "brief": "node brief-worker.js",
+    "sync-accuracy": "node scripts/sync-accuracy.js",
     "cap:sync": "vite build && npx cap sync android",
     "cap:open": "npx cap open android",
     "cap:add-android": "npx cap add android",

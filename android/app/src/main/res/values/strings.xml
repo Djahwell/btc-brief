@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">BTC Brief</string>
+    <string name="title_activity_main">BTC Brief</string>
+    <string name="package_name">com.maisontoe.btcbrief</string>
+    <string name="custom_url_scheme">com.maisontoe.btcbrief</string>
+</resources>

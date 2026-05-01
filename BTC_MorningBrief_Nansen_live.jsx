@@ -4484,16 +4484,33 @@ FROM realized r, spot s`;
 
                     {/* Mode toggle */}
                     <div style={{ marginBottom: 16, padding: 12, background: testMode ? "rgba(255, 200, 0, 0.1)" : "rgba(76, 175, 80, 0.1)", border: "1px solid " + (testMode ? C.gold : C.green), borderRadius: 4 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
                         <div style={{ color: testMode ? C.gold : C.green, fontSize: 10, fontFamily: "monospace", fontWeight: 700 }}>
                           {testMode ? "🧪 TEST MODE ACTIVE" : "✓ PRODUCTION MODE"}
                         </div>
-                        <button
-                          onClick={function() { setTestMode(!testMode); }}
-                          style={{ background: testMode ? C.gold : C.green, color: "#000", border: "none", borderRadius: 3, padding: "4px 10px", fontSize: 9, fontFamily: "monospace", fontWeight: 700, cursor: "pointer" }}
-                        >
-                          {testMode ? "SWITCH TO PRODUCTION" : "SWITCH TO TEST"}
-                        </button>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button
+                            onClick={function() { setTestMode(!testMode); }}
+                            style={{ background: testMode ? C.gold : C.green, color: "#000", border: "none", borderRadius: 3, padding: "4px 10px", fontSize: 9, fontFamily: "monospace", fontWeight: 700, cursor: "pointer" }}
+                          >
+                            {testMode ? "SWITCH TO PRODUCTION" : "SWITCH TO TEST"}
+                          </button>
+                          <button
+                            onClick={function() {
+                              const json = JSON.stringify(accuracyLog, null, 2);
+                              const blob = new Blob([json], { type: 'application/json' });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `accuracy-export-${new Date().toISOString().split('T')[0]}.json`;
+                              a.click();
+                              addLog("📥 Exported accuracy log to file");
+                            }}
+                            style={{ background: C.teal, color: "#000", border: "none", borderRadius: 3, padding: "4px 10px", fontSize: 9, fontFamily: "monospace", fontWeight: 700, cursor: "pointer" }}
+                          >
+                            EXPORT
+                          </button>
+                        </div>
                       </div>
                       <div style={{ color: C.textDim, fontSize: 9, fontFamily: "monospace", fontStyle: "italic" }}>
                         {testMode
