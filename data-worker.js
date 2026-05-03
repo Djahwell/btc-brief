@@ -1377,6 +1377,95 @@ async function fetchCoinMetrics() {
   return out;
 }
 
+// ── Regulatory news fetch (NewsAPI) ──────────────────────────────────────────
+// Fetches fresh regulatory & legislative news about Bitcoin, crypto regulation,
+// Clarity Act, SEC actions, CFTC updates, etc. so the Catalyst Watch in the
+// brief has current information instead of stale training knowledge.
+// Returns an array of recent news articles with title, source, date, and summary.
+// If NEWS_API_KEY is missing or the fetch fails, returns empty array (non-fatal).
+const NEWS_API_KEY = ENV.VITE_NEWS_API_KEY;
+
+async function fetchRegulatoryNews() {
+  if (!NEWS_API_KEY) {
+    console.log('[RegulatoryNews] VITE_NEWS_API_KEY missing — skipping news fetch');
+    return [];
+  }
+
+  try {
+    const queries = [
+      'Bitcoin Clarity Act',
+      'Bitcoin SEC regulatory',
+      'CFTC Bitcoin commodity',
+      'cryptocurrency legislation',
+    ];
+
+    const articles = [];
+    const seenTitles = new Set();
+
+    for (const q of queries) {
+      try {
+        // Get articles from the past 7 days
+        const today = new Date();
+        const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const fromDate = sevenDaysAgo.toISOString().split('T')[0];
+
+        const url = new URL('https://newsapi.org/v2/everything');
+        url.searchParams.set('q', q);
+        url.searchParams.set('from', fromDate);
+        url.searchParams.set('sortBy', 'publishedAt');
+        url.searchParams.set('apiKey', NEWS_API_KEY);
+        url.searchParams.set('pageSize', '5');
+        url.searchParams.set('language', 'en');
+
+        const r = await fetch(url.toString(), {
+          headers: { 'User-Agent': UA },
+          signal: AbortSignal.timeout(10000),
+        });
+
+        if (!r.ok) {
+          if (r.status === 401) throw new Error('Invalid NewsAPI key');
+          if (r.status === 429) throw new Error('NewsAPI rate limited');
+          throw new Error(`HTTP ${r.status}`);
+        }
+
+        const data = await r.json();
+        if (data.articles) {
+          for (const article of data.articles) {
+            // Deduplicate by title
+            if (seenTitles.has(article.title)) continue;
+            seenTitles.add(article.title);
+
+            articles.push({
+              title: article.title,
+              source: article.source?.name || 'Unknown',
+              date: article.publishedAt?.split('T')[0] || null,
+              url: article.url,
+              description: article.description || '',
+              content: article.content ? article.content.slice(0, 200) : '',
+            });
+          }
+        }
+      } catch (e) {
+        console.warn(`[RegulatoryNews] Query "${q}" failed:`, e.message);
+      }
+    }
+
+    // Sort by date descending, keep last 10 unique articles
+    articles.sort((a, b) => {
+      const aDate = a.date ? new Date(a.date).getTime() : 0;
+      const bDate = b.date ? new Date(b.date).getTime() : 0;
+      return bDate - aDate;
+    });
+
+    const topArticles = articles.slice(0, 10);
+    console.log(`[RegulatoryNews] ✓ Fetched ${topArticles.length} articles from past 7 days`);
+    return topArticles;
+  } catch (e) {
+    console.error('[RegulatoryNews] ✗ (non-fatal):', e.message);
+    return [];
+  }
+}
+
 // ── Cache write — preserves brief + briefCachedAt across cron cycles ──────────
 // Reads existing all_data.json (so brief-worker output survives), overlays the
 // new fetched fields, and writes back. brief and briefCachedAt are NEVER written
@@ -1745,6 +1834,10 @@ async function runFetch() {
   // ── CoinMetrics network health + MVRV fallback ───────────────────────────
   console.log('[Worker] Fetching CoinMetrics...');
   payload.coinMetrics = await fetchCoinMetrics();
+
+  // ── Regulatory news (for Catalyst Watch freshness) ────────────────────────
+  console.log('[Worker] Fetching regulatory news...');
+  payload.catalystNews = await fetchRegulatoryNews();
 
   // If Dune MVRV missing/failed but CoinMetrics has it, inject so brief uses it.
   // CoinMetrics CapRealUSD/CapMrktCurUSD is the same calculation Dune runs.

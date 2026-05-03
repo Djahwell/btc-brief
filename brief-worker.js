@@ -114,7 +114,7 @@ function buildAnchorsBlock(a) {
 
 // ── Build Claude user message ──────────────────────────────────────────────────
 function buildUserMessage(d) {
-  const { market, tech, coinMetrics, macros, cme, duneCache, options, anchors } = d;
+  const { market, tech, coinMetrics, macros, cme, duneCache, options, anchors, catalystNews } = d;
   const p = market?.price;
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Europe/Paris' });
   const LIQUID = 4_200_000, CIRC = 20_000_000;
@@ -225,9 +225,21 @@ ${normRef}`;
     return `\n\nBINANCE 24H TAKER PRESSURE (BTCUSDT spot, last 24h klines — LIVE data):\n  Taker Buy Volume:   +${wt.taker_buy_btc.toFixed(0)} BTC\n  Taker Sell Volume:  -${wt.taker_sell_btc.toFixed(0)} BTC\n  Net Taker Flow:     ${sign}${net.toFixed(0)} BTC → ${wt.pressure}\n  Buy Ratio (24h):    ${buyPct} of volume were taker buys\n  Total Volume (24h): ${wt.total_volume_btc.toFixed(0)} BTC (${wt.trade_count?.toLocaleString()} trades)\n  Quad-norm net:      ${pctLiq}\n  INSTRUCTION: This is LIVE 24h data. Populate binancePressure with dataQuality LIVE. Net taker buy > 50% = buy-side dominance (bullish). Apply quad-normalization. Use as order-flow confirmation of on-chain signals.`;
   })() : '';
 
-  const qualitySummary = `\n\nDATA SOURCE QUALITY:\n- LIVE: price, funding, OI, F&G, options skew, gold, dominance, SMAs, CME basis${macros?.dxy!=null?', DXY':''}${macros?.vix!=null?', VIX':''}${macros?.tnxYield!=null?', 10Y yield':''}${tech?.btcQqqCorr!=null?', BTC-QQQ corr':''}${dc?.mvrv?.mvrv!=null?', MVRV':''}${etf?.total_million_usd!=null?', ETF flows':''}${lth?.lth_net_btc!=null?', LTH position':''}${st?.total_usd!=null?', stablecoin supply':''}${dc?.exchangeFlow?.netflow_btc!=null?', exchange netflow ('+( dc.exchangeFlow.source||'blockchain.info')+')':''}${wt?.net_taker_btc!=null?', Binance 24h taker pressure':''}\n- ESTIMATED: STH SOPR${dc?.mvrv?.mvrv==null?', MVRV (use ~1.5 est.)':''}${etf?.total_million_usd==null?', ETF flows':''}${dc?.exchangeFlow?.netflow_btc==null?', exchange netflow':''}\n\nGenerate the full morning brief JSON now. Apply quad-normalization to all flows. Score each axis INDEPENDENTLY per Section F — do NOT double-count funding + F&G. Return ONLY valid JSON. No markdown. No preamble.`;
+  // ── Regulatory news block for Catalyst Watch ──────────────────────────────────
+  let newsBlock = '';
+  if (catalystNews && catalystNews.length > 0) {
+    newsBlock = `\n\nREGULATORY & LEGISLATIVE NEWS (past 7 days):\n`;
+    for (const article of catalystNews.slice(0, 5)) {
+      newsBlock += `  • [${article.date}] ${article.title}\n    Source: ${article.source}\n    ${article.description?.slice(0, 120) || article.content?.slice(0, 120) || 'No description'}\n`;
+    }
+    newsBlock += `\n  INSTRUCTION: Use these fresh news items to populate catalystWatch with CURRENT events. Include event, timing (e.g., "pending Senate vote June 2026"), impact, and specific news source/date in the note.`;
+  } else {
+    newsBlock = '\n\nREGULATORY NEWS: Unavailable — use training knowledge for catalystWatch.';
+  }
 
-  return marketBlock + phaseBlock + anchorsBlock + smaBlock + cmBlock + macroBlock + duneBlock + cmeBlock + etfBlock + lthBlock + stableBlock + volBlock + binanceWhaleBlock + qualitySummary;
+  const qualitySummary = `\n\nDATA SOURCE QUALITY:\n- LIVE: price, funding, OI, F&G, options skew, gold, dominance, SMAs, CME basis${macros?.dxy!=null?', DXY':''}${macros?.vix!=null?', VIX':''}${macros?.tnxYield!=null?', 10Y yield':''}${tech?.btcQqqCorr!=null?', BTC-QQQ corr':''}${dc?.mvrv?.mvrv!=null?', MVRV':''}${etf?.total_million_usd!=null?', ETF flows':''}${lth?.lth_net_btc!=null?', LTH position':''}${st?.total_usd!=null?', stablecoin supply':''}${dc?.exchangeFlow?.netflow_btc!=null?', exchange netflow ('+( dc.exchangeFlow.source||'blockchain.info')+')':''}${wt?.net_taker_btc!=null?', Binance 24h taker pressure':''}${catalystNews?.length > 0 ? ', regulatory news' : ''}\n- ESTIMATED: STH SOPR${dc?.mvrv?.mvrv==null?', MVRV (use ~1.5 est.)':''}${etf?.total_million_usd==null?', ETF flows':''}${dc?.exchangeFlow?.netflow_btc==null?', exchange netflow':''}\n\nGenerate the full morning brief JSON now. Apply quad-normalization to all flows. Score each axis INDEPENDENTLY per Section F — do NOT double-count funding + F&G. Return ONLY valid JSON. No markdown. No preamble.`;
+
+  return marketBlock + phaseBlock + anchorsBlock + smaBlock + cmBlock + macroBlock + duneBlock + cmeBlock + etfBlock + lthBlock + stableBlock + volBlock + binanceWhaleBlock + newsBlock + qualitySummary;
 }
 
 // ── Call Anthropic Claude ─────────────────────────────────────────────────────
@@ -294,11 +306,11 @@ Phase system (anchors auto-derived from realized price + SMA200 + rolling ATH �
 Hard stop: daily close below ${STOP}
 
 SECTION 2 - BACKGROUND CONTEXT (as of April 2026)
-NOTE: Live data in user message ALWAYS overrides this.
+NOTE: Live data in user message ALWAYS overrides this. REGULATORY NEWS BLOCK (from NewsAPI past 7 days) takes absolute priority for catalystWatch — use those fresh articles as primary sources for timing, outcomes, and impact assessment.
 - BTC ATH: $126,073 (Oct 2025) | Bear phase: Oct 2025–Feb 2026 | Recovery: Mar–Apr 2026
 - ETF AUM: IBIT ~$115B+ | Combined ~$130B+ | Baseline inflow: ~$264M/day
 - Realized Price: ~$45K | STH cost basis: ~$75K | LTH cost basis: ~$30K
-- CLARITY Act: BTC classified as commodity under CFTC - Senate vote pending
+- REGULATORY CATALYSTS: Clarity Act, SEC actions, CFTC commodity classification — CHECK REGULATORY NEWS BLOCK for fresh updates. Do NOT rely on training knowledge if news is available.
 
 SECTION 3 - QUAD-NORMALIZED SIGNAL KNOWLEDGE BASE
 METHODOLOGY: Four normalization axes required.
@@ -361,7 +373,7 @@ Return ONLY valid JSON. No markdown fences. No preamble.
   "macroContext": { "riskLevel": "HIGH | MEDIUM | LOW", "dxy": "", "dxySignal": "", "realYield": "", "realYieldSignal": "", "gold": "", "fedWatch": "", "detail": "" },
   "todayAction": { "recommendation": "ACCUMULATE | ADD | HOLD | REDUCE | HEDGE | WAIT", "size": "", "trigger": "", "stopAlert": "ACTIVE | MONITORING | CLEAR", "dynamicStop": "", "scoreJustification": "" },
   "cmeBasis": { "basisPct": "", "regime": "STRONG CONTANGO | HEALTHY | FLAT | BACKWARDATION", "signal": "", "detail": "", "cmeOIvsPerp": "" },
-  "catalystWatch": [{"event": "", "timing": "", "impact": "BULLISH | BEARISH | BINARY", "note": ""}],
+  "catalystWatch": [{"event": "", "timing": "", "impact": "BULLISH | BEARISH | BINARY", "note": "← POPULATE FROM REGULATORY NEWS BLOCK: e.g. {\"event\": \"Clarity Act Senate vote\", \"timing\": \"Q3 2026\", \"impact\": \"BULLISH\", \"note\": \"NewsAPI [2026-05-03] passed subcommittee, Senate floor likely June 2026.\"}. Include 2-4 major upcoming catalysts with fresh timing from the news block."}],
   "analystNote": "4-5 sentences.",
   "riskWarning": "the ONE risk that could invalidate today thesis",
   "normalization": { "currentPrice": "", "marketCap": "", "dailyVolumeBTC": "", "volumeTrend": "", "lthSellingBTC": "N/A or live value", "lthSellingPctLiquid": null, "whaleNetflowBTC": "e.g. -6,200 BTC (negative = outflow from exchanges = accumulation)", "whaleNetflowPctLiquid": "e.g. -0.148%", "whaleNetflowPctVolume": "e.g. -1.63%", "whaleNetflowPctMcap": "e.g. -0.031%", "etfFlowUSD": "e.g. +$664M", "etfFlowBTC": "e.g. +4,282 BTC (convert from USD using today's price)", "etfFlowPctLiquid": "e.g. +0.102%" }
@@ -419,14 +431,15 @@ async function runBriefWorker() {
   try {
     console.log('[Brief] Building user message...');
     const userMessage = buildUserMessage({
-      market:      allData.market,
-      tech:        allData.tech,
-      options:     allData.options,
-      macros:      allData.macros,
-      cme:         allData.cme,
-      coinMetrics: allData.coinMetrics,
-      duneCache:   allData,
+      market:        allData.market,
+      tech:          allData.tech,
+      options:       allData.options,
+      macros:        allData.macros,
+      cme:           allData.cme,
+      coinMetrics:   allData.coinMetrics,
+      duneCache:     allData,
       anchors,
+      catalystNews:  allData.catalystNews || [],
     });
 
     console.log('[Brief] Calling Claude...');
