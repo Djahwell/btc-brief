@@ -1383,7 +1383,8 @@ async function fetchCoinMetrics() {
 // brief has current information instead of stale training knowledge.
 // Returns an array of recent news articles with title, source, date, and summary.
 // If NEWS_API_KEY is missing or the fetch fails, returns empty array (non-fatal).
-const NEWS_API_KEY = ENV.VITE_NEWS_API_KEY;
+// Note: In GitHub Actions, secrets are injected as process.env; locally from .env
+const NEWS_API_KEY = ENV.VITE_NEWS_API_KEY || process.env.VITE_NEWS_API_KEY;
 
 async function fetchRegulatoryNews() {
   if (!NEWS_API_KEY) {
