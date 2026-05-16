@@ -1580,12 +1580,18 @@ function writeCache(payload) {
   const preservedBriefCachedAt = prev.briefCachedAt;
   const preservedBriefError    = prev.brief_error;
 
+  // Only update cachedAt if we got fresh data; otherwise keep prior timestamp
+  // This prevents "mixed freshness" — old LTH data marked as fresh.
+  const hasFreshData = payload.lthData || payload.stablecoinSupply ||
+                       payload.market || payload.mvrv || payload.exchangeFlow;
+  const freshCachedAt = hasFreshData ? new Date().toISOString() : prev.cachedAt;
+
   const out = {
     ...prev,
     ...payload,
     mvrv_query_id:   _queryId    || prev.mvrv_query_id   || null,
     exflow_query_id: _exflowQid  || prev.exflow_query_id || null,
-    cachedAt:        new Date().toISOString(),
+    cachedAt:        freshCachedAt,
   };
 
   // Re-apply preserved brief fields (in case payload accidentally included nulls)
@@ -1727,6 +1733,10 @@ async function runFetch() {
   writeCache(payload);
 
   // ── MVRV (Dune) ───────────────────────────────────────────────────────────
+  // RE-ENABLED (2026-05-16): Using 2500 free monthly credits for Dune MVRV.
+  // This provides direct on-chain data, fresher than CoinMetrics fallback.
+  // Fallback chain: Dune → CoinMetrics (free) → stale cache → training knowledge
+  //
   if (DUNE_API_KEY) {
     try {
       const queryId = await getOrCreateQueryId();
@@ -1760,36 +1770,51 @@ async function runFetch() {
     console.log('[MVRV] Skipped — DUNE_API_KEY missing (CoinMetrics will provide MVRV fallback)');
   }
 
-  // ── Exchange Flows — blockchain.info primary, Dune fallback ──────────────
+  // ── Exchange Flows — blockchain.info primary, Dune fallback DISABLED ─────
   try {
     const ef = await fetchExchangeFlowBlockchain();
     payload.exchangeFlow = ef;
     payload._exchangeAddressBalances = ef._currentBalances;
     delete payload.exchangeFlow._currentBalances;
   } catch (e) {
-    console.error('[ExFlow/blockchain] ✗:', e.message, '— falling back to Dune');
-    if (DUNE_API_KEY) {
-      try {
-        const exQid = await getOrCreateExflowQueryId();
-        const exec2 = await dunePost(`/api/v1/query/${exQid}/execute`, {});
-        if (!exec2.execution_id) throw new Error('No execution_id');
-        const data2 = await pollExecution(exec2.execution_id, 'ExFlow', 300_000);
-        const ef2   = parseExchangeFlow(data2);
-        if (ef2) {
-          payload.exchangeFlow = ef2;
-          console.log(`[ExFlow/Dune] ✓  Net: ${(ef2.netflow_btc || 0).toFixed(0)} BTC`);
-        }
-      } catch (e2) {
-        console.error('[ExFlow/Dune] ✗ (non-fatal):', e2.message);
-        if (e2.message.includes('402')) console.error('[ExFlow] Dune quota exceeded — no exchange flow this cycle.');
-        try {
-          const prev = JSON.parse(readFileSync(CACHE_FILE, 'utf8'));
-          if (prev.exchangeFlow?.netflow_btc != null) {
-            payload.exchangeFlow = { ...prev.exchangeFlow, stale: true };
-            console.warn(`[ExFlow] Using stale cache: Net ${prev.exchangeFlow.netflow_btc?.toFixed(0)} BTC`);
-          }
-        } catch (_) {}
+    console.error('[ExFlow/blockchain] ✗:', e.message);
+    // DISABLED (2026-05-16): Dune fallback was consuming ~100 credits per call.
+    // blockchain.info is reliable and free. Fallback to stale cache instead of
+    // burning more Dune quota.
+    // if (DUNE_API_KEY) {
+    //   try {
+    //     const exQid = await getOrCreateExflowQueryId();
+    //     const exec2 = await dunePost(`/api/v1/query/${exQid}/execute`, {});
+    //     if (!exec2.execution_id) throw new Error('No execution_id');
+    //     const data2 = await pollExecution(exec2.execution_id, 'ExFlow', 300_000);
+    //     const ef2   = parseExchangeFlow(data2);
+    //     if (ef2) {
+    //       payload.exchangeFlow = ef2;
+    //       console.log(`[ExFlow/Dune] ✓  Net: ${(ef2.netflow_btc || 0).toFixed(0)} BTC`);
+    //     }
+    //   } catch (e2) {
+    //     console.error('[ExFlow/Dune] ✗ (non-fatal):', e2.message);
+    //     if (e2.message.includes('402')) console.error('[ExFlow] Dune quota exceeded — no exchange flow this cycle.');
+    //     try {
+    //       const prev = JSON.parse(readFileSync(CACHE_FILE, 'utf8'));
+    //       if (prev.exchangeFlow?.netflow_btc != null) {
+    //         payload.exchangeFlow = { ...prev.exchangeFlow, stale: true };
+    //         console.warn(`[ExFlow] Using stale cache: Net ${prev.exchangeFlow.netflow_btc?.toFixed(0)} BTC`);
+    //       }
+    //     } catch (_) {}
+    //   }
+    // }
+    // Use stale cache instead
+    try {
+      const prev = JSON.parse(readFileSync(CACHE_FILE, 'utf8'));
+      if (prev.exchangeFlow?.netflow_btc != null) {
+        payload.exchangeFlow = { ...prev.exchangeFlow, stale: true };
+        console.warn(`[ExFlow] Using stale cache: Net ${prev.exchangeFlow.netflow_btc?.toFixed(0)} BTC`);
+      } else {
+        console.warn('[ExFlow] blockchain.info failed and no cache available');
       }
+    } catch (_) {
+      console.warn('[ExFlow] blockchain.info failed (no cache)');
     }
   }
 

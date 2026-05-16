@@ -2256,11 +2256,20 @@ FROM realized r, spot s`;
   const fetchLTHData = async () => {
     try {
       var cacheRes = await safeFetch('/all_data.json', { timeout: 5000 });
-      if (cacheRes && cacheRes.lthData && cacheRes.cachedAt) {
-        var ageMs = Date.now() - new Date(cacheRes.cachedAt).getTime();
-        if (ageMs < 20 * 3_600_000 && cacheRes.lthData.lth_net_btc != null) {
+      if (cacheRes && cacheRes.lthData && cacheRes.lthData.lth_net_btc != null) {
+        // Check BOTH global cachedAt AND the LTH field's own date
+        // Use whichever is fresher (or if LTH has a date, use that)
+        var checkDate = cacheRes.lthData.date
+          ? new Date(cacheRes.lthData.date + 'T00:00:00Z').getTime()
+          : (cacheRes.cachedAt ? new Date(cacheRes.cachedAt).getTime() : 0);
+        var ageMs = Date.now() - checkDate;
+
+        // Accept if less than 20 hours old
+        if (ageMs < 20 * 3_600_000) {
           console.info('[LTH] ✓ From worker cache — LTH net:', cacheRes.lthData.lth_net_btc, 'BTC (', cacheRes.lthData.date, ')');
           return cacheRes.lthData;
+        } else {
+          console.warn('[LTH] Data too old:', Math.round(ageMs / 3_600_000), 'hours');
         }
       }
     } catch (e) {
@@ -2284,11 +2293,19 @@ FROM realized r, spot s`;
     // ── Tier 1: worker cache ────────────────────────────────────────────────
     try {
       var cacheRes = await safeFetch('/all_data.json', { timeout: 5000 });
-      if (cacheRes && cacheRes.stablecoinSupply && cacheRes.cachedAt) {
-        var ageMs = Date.now() - new Date(cacheRes.cachedAt).getTime();
-        if (ageMs < 20 * 3_600_000 && cacheRes.stablecoinSupply.total_usd != null) {
+      if (cacheRes && cacheRes.stablecoinSupply && cacheRes.stablecoinSupply.total_usd != null) {
+        // Check BOTH global cachedAt AND the stablecoin field's own date
+        var checkDate = cacheRes.stablecoinSupply.date
+          ? new Date(cacheRes.stablecoinSupply.date + 'T00:00:00Z').getTime()
+          : (cacheRes.cachedAt ? new Date(cacheRes.cachedAt).getTime() : 0);
+        var ageMs = Date.now() - checkDate;
+
+        // Accept if less than 20 hours old
+        if (ageMs < 20 * 3_600_000) {
           console.info('[Stable] ✓ Tier-1 worker cache — $' + (cacheRes.stablecoinSupply.total_usd / 1e9).toFixed(1) + 'B | ' + cacheRes.stablecoinSupply.regime);
           return cacheRes.stablecoinSupply;
+        } else {
+          console.warn('[Stable] Data too old:', Math.round(ageMs / 3_600_000), 'hours');
         }
       }
     } catch (cacheErr) {
@@ -2684,7 +2701,7 @@ FROM realized r, spot s`;
         var lthSign = lthDataResult.lth_net_btc >= 0 ? '+' : '';
         addLog("LTH net position ✓ (BMP) — " + lthSign + lthDataResult.lth_net_btc.toLocaleString() + " BTC/day  (" + lthDataResult.date + ")");
       } else {
-        addLog("LTH net position ⚠ — not in worker cache (run npm run dune)");
+        addLog("LTH net position ⚠ — data stale (run npm run data or wait for 6h refresh)");
       }
     } catch (e) {
       addLog("LTH data fetch error (continuing without): " + e.message);
@@ -2702,7 +2719,7 @@ FROM realized r, spot s`;
           : 'delta N/A';
         addLog("Stablecoin supply ✓ — $" + stableB + "B total · " + stableDelta + " · " + stablecoinResult.regime);
       } else {
-        addLog("Stablecoin supply ⚠ — not in worker cache (run npm run dune)");
+        addLog("Stablecoin supply ⚠ — data stale (run npm run data or wait for 6h refresh)");
       }
     } catch (e) {
       addLog("Stablecoin fetch error (continuing without): " + e.message);
@@ -3933,7 +3950,7 @@ FROM realized r, spot s`;
                     })() : (
                       <>
                         <div style={{ color: C.textDim, fontSize: 12, fontWeight: 700, fontFamily: "monospace" }}>N/A</div>
-                        <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginTop: 4 }}>run npm run dune to fetch</div>
+                        <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginTop: 4 }}>data stale · run npm run data</div>
                       </>
                     )}
                   </div>
@@ -3974,7 +3991,7 @@ FROM realized r, spot s`;
                     })() : (
                       <>
                         <div style={{ color: C.textDim, fontSize: 12, fontWeight: 700, fontFamily: "monospace" }}>N/A</div>
-                        <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginTop: 4 }}>run npm run dune to fetch</div>
+                        <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", marginTop: 4 }}>data stale · run npm run data</div>
                       </>
                     )}
                   </div>
