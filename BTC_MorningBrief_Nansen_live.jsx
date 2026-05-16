@@ -2259,8 +2259,9 @@ FROM realized r, spot s`;
       if (cacheRes && cacheRes.lthData && cacheRes.lthData.lth_net_btc != null) {
         // Check BOTH global cachedAt AND the LTH field's own date
         // Use whichever is fresher (or if LTH has a date, use that)
+        // Treat date as end-of-day to avoid false "stale" rejection for previous day's data
         var checkDate = cacheRes.lthData.date
-          ? new Date(cacheRes.lthData.date + 'T00:00:00Z').getTime()
+          ? new Date(cacheRes.lthData.date + 'T23:59:59Z').getTime()
           : (cacheRes.cachedAt ? new Date(cacheRes.cachedAt).getTime() : 0);
         var ageMs = Date.now() - checkDate;
 
@@ -2295,8 +2296,9 @@ FROM realized r, spot s`;
       var cacheRes = await safeFetch('/all_data.json', { timeout: 5000 });
       if (cacheRes && cacheRes.stablecoinSupply && cacheRes.stablecoinSupply.total_usd != null) {
         // Check BOTH global cachedAt AND the stablecoin field's own date
+        // Treat date as end-of-day to avoid false "stale" rejection for previous day's data
         var checkDate = cacheRes.stablecoinSupply.date
-          ? new Date(cacheRes.stablecoinSupply.date + 'T00:00:00Z').getTime()
+          ? new Date(cacheRes.stablecoinSupply.date + 'T23:59:59Z').getTime()
           : (cacheRes.cachedAt ? new Date(cacheRes.cachedAt).getTime() : 0);
         var ageMs = Date.now() - checkDate;
 
