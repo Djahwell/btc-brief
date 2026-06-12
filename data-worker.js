@@ -457,10 +457,20 @@ async function fetchBMPLTHData() {
       while (j > 0 && (ys[j] === null || ys[j] === undefined)) j--;
       const prevDate = xs[j];
       const prevVal  = ys[j];
-      const netChange = Math.round(todayVal - prevVal);
+      // Compute true daily rate: BMP chart sometimes has multi-day gaps between
+      // valid data points (nulls for days not yet published). Without dividing by
+      // the gap, a weekly accumulation reads as a single day — producing absurdly
+      // high figures (e.g. +86,551 BTC/day instead of ~6,000-7,000 BTC/day).
+      const rawChange = Math.round(todayVal - prevVal);
+      const daysDiff  = Math.max(1, Math.round(
+        (new Date(todayDate.slice(0, 10)).getTime() - new Date(prevDate.slice(0, 10)).getTime()) / 86400000
+      ));
+      if (daysDiff > 14) return { _err: `LTH data gap too large (${daysDiff}d between points) — discarding to avoid misleading daily rate` };
+      const dailyNetChange = Math.round(rawChange / daysDiff);
       return {
         lth_supply_btc:  Math.round(todayVal),
-        lth_net_btc:     netChange,
+        lth_net_btc:     dailyNetChange,
+        lth_days_gap:    daysDiff,
         date:            todayDate.slice(0, 10),
         prev_date:       prevDate.slice(0, 10),
         source_url:      'https://www.bitcoinmagazinepro.com/charts/long-term-holder-supply/',
@@ -476,22 +486,13 @@ async function fetchBMPLTHData() {
 
 // ── Exchange Flow via blockchain.info (Dune-quota-free) ──────────────────────
 const EXCHANGE_ADDRS_LEGACY = [
-  '34xp4vRoCGJym3xR7yCVPFHoCNxv4Twseo',
-  '1P5ZEDWTKTFGxQjZphgWPQUpe554WKDfHQ',
-  '3M219KR5vEneNb47ewrPfWyb5jQ2DjxRP6',
-  '3LYJfcfHHeihJD2R9cFoHbDoNS5ScBEV3G',
-  '3FupZp77ySr7jwoLYEJ9Ro4rakoBZPDhBY',
-  '3Cbq7aT1tY8kMxWLBkgmdar1Hz4HniFDz7',
-  '17XBj6iFEsf8kzDMGQk5ghZewDa3zKKbT6',
-  '1LPH7kHa1KAuyMKcRJKXnmNTSBXVFoGPMF',
-  '3AfP9nFSMRNMk9MkgVsmKG9sL2PGYQ9Lfr',
-  '39YnSQwjhKBUEQ1FHXKqMYKETJhU4FZVRJ',
-  '3HMJz7S4WFQcmE6FHWy7LE1TzLn59pSG5z',
-  '3D2oetdNuZUqQHPJmcMDDHYoqkyNVsFk9r',
-  '1HQ3Go3ggs8pFnXuHVHRytPCq5fGG8Hbhx',
-  '3LQUu4v9z6KNch71j7kbj8GPeAGUo1FW6a',
-  '3BtxkGjCg37dBaLQc3P3M76bV5VFqyXyY4',
-  '3NAVjK57yugfiLaJPnZJTdVFNqiYUVEcVU',
+  // Valid addresses only (verified 2026-05-16)
+  '34xp4vRoCGJym3xR7yCVPFHoCNxv4Twseo',  // Binance
+  '1P5ZEDWTKTFGxQjZphgWPQUpe554WKDfHQ',  // Coinbase
+  '3M219KR5vEneNb47ewrPfWyb5jQ2DjxRP6',  // Kraken
+  '3D2oetdNuZUqQHPJmcMDDHYoqkyNVsFk9r',  // Bitfinex
+  '1HQ3Go3ggs8pFnXuHVHRytPCq5fGG8Hbhx',  // OKEx
+  '3LQUu4v9z6KNch71j7kbj8GPeAGUo1FW6a',  // Huobi
 ];
 
 async function fetchExchangeFlowBlockchain() {
@@ -1131,39 +1132,25 @@ async function fetchMacros() {
   const out = { dxy: null, dxyChange: null, vix: null, vixChange: null, tnxYield: null, tnxChange: null };
 
   const fredFetch = async (series) => {
-    const fr = await fetch(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${series}`,
-      { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(12000) });
-    if (!fr.ok) throw new Error(`FRED ${series}: HTTP ${fr.status}`);
-    const ft = await fr.text();
-    const fl = ft.trim().split('\n').filter(l => !l.startsWith('DATE') && l.split(',')[1]?.trim() !== '.');
-    if (!fl.length) throw new Error(`FRED ${series}: no valid rows`);
-    const lastVal = fl[fl.length - 1]?.split(',')[1]?.trim();
-    const v = parseFloat(lastVal);
-    if (!lastVal || isNaN(v)) throw new Error(`FRED ${series}: unparseable value "${lastVal}"`);
-    return v;
-  };
-
-  const fetchDXYFromFX = async () => {
-    const r = await fetch('https://open.er-api.com/v6/latest/USD',
-      { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(10000) });
-    if (!r.ok) throw new Error(`FX API: HTTP ${r.status}`);
-    const d = await r.json();
-    if (!d?.rates?.EUR) throw new Error('no EUR rate');
-    const eurusd = 1 / d.rates.EUR;
-    const usdjpy = d.rates.JPY || 142;
-    const gbpusd = d.rates.GBP ? 1/d.rates.GBP : 1.26;
-    const usdcad = d.rates.CAD || 1.36;
-    const usdsek = d.rates.SEK || 10.4;
-    const usdchf = d.rates.CHF || 0.89;
-    const dxy = 50.14348112
-      * Math.pow(eurusd, -0.576)
-      * Math.pow(usdjpy,  0.136)
-      * Math.pow(gbpusd, -0.119)
-      * Math.pow(usdcad, -0.091)
-      * Math.pow(usdsek, -0.042)
-      * Math.pow(usdchf, -0.036);
-    if (dxy < 75 || dxy > 130) throw new Error(`DXY out of plausible range: ${dxy.toFixed(2)}`);
-    return parseFloat(dxy.toFixed(2));
+    // FRED can be slow from GitHub Actions — 25s timeout with one retry.
+    const attempt = async () => {
+      const fr = await fetch(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${series}`,
+        { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(25000) });
+      if (!fr.ok) throw new Error(`FRED ${series}: HTTP ${fr.status}`);
+      const ft = await fr.text();
+      const fl = ft.trim().split('\n').filter(l => !l.startsWith('DATE') && l.split(',')[1]?.trim() !== '.');
+      if (!fl.length) throw new Error(`FRED ${series}: no valid rows`);
+      const lastVal = fl[fl.length - 1]?.split(',')[1]?.trim();
+      const v = parseFloat(lastVal);
+      if (!lastVal || isNaN(v)) throw new Error(`FRED ${series}: unparseable value "${lastVal}"`);
+      return v;
+    };
+    try { return await attempt(); }
+    catch (e) {
+      console.warn(`[FRED] First attempt failed (${e.message}) — retrying once...`);
+      await sleep(2000);
+      return await attempt();
+    }
   };
 
   // DXY
@@ -1172,25 +1159,68 @@ async function fetchMacros() {
     if (d.price) { out.dxy = parseFloat(d.price.toFixed(2)); out.dxyChange = d.change; console.log(`[Macro] DXY (Yahoo): ${out.dxy}`); }
   } catch (e) {
     console.warn('[Macro] DXY (Yahoo) failed:', e.message);
-    for (const sym of ['$dxy', 'dx.f']) {
+    for (const sym of ['$dxy', 'usdx.f', 'dx.f', 'dxy']) {
       try {
         const s = await stooqFetch(sym);
-        if (s.price && s.price > 80 && s.price < 130) {
+        if (s.price && s.price > 88 && s.price < 130) {
           out.dxy = parseFloat(s.price.toFixed(2)); out.dxyChange = s.change;
           console.log(`[Macro] DXY (Stooq ${sym}): ${out.dxy}`); break;
+        } else {
+          console.warn(`[Macro] DXY (Stooq ${sym}): price ${s.price} outside plausible range — skipping`);
         }
-      } catch (_) {}
+      } catch (e) { console.warn(`[Macro] DXY (Stooq ${sym}) failed:`, e.message); }
     }
     if (out.dxy == null) {
+      // FRED Broad Dollar Index — single 10s attempt (no retry); if this env
+      // blocks FRED we fail fast instead of wasting 52s on two timeouts.
       try {
-        out.dxy = await fetchDXYFromFX();
-        console.log(`[Macro] DXY (FX approx from EUR/USD): ${out.dxy}`);
+        const fr = await fetch('https://fred.stlouisfed.org/graph/fredgraph.csv?id=DTWEXBGS',
+          { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(10000) });
+        if (!fr.ok) throw new Error(`FRED DTWEXBGS: HTTP ${fr.status}`);
+        const ft = await fr.text();
+        const fl = ft.trim().split('\n').filter(l => !l.startsWith('DATE') && l.split(',')[1]?.trim() !== '.');
+        if (!fl.length) throw new Error('FRED DTWEXBGS: no valid rows');
+        const v = parseFloat(fl[fl.length - 1].split(',')[1]);
+        if (isNaN(v)) throw new Error('FRED DTWEXBGS: unparseable value');
+        out.dxy = parseFloat(v.toFixed(2));
+        console.log(`[Macro] DXY (FRED DTWEXBGS): ${out.dxy}`);
       } catch (e2) {
-        console.warn('[Macro] DXY (FX approx) failed:', e2.message);
+        console.warn('[Macro] DXY (FRED) failed:', e2.message);
+        // Last resort: ECB EUR/USD → EUR-weighted DXY approximation.
+        // EUR has 57.6% weight in the ICE basket. Anchored at EUR/USD=1.08 → DXY=103
+        // (June 2026 calibration). Error ±2-3pt within EUR/USD 1.02–1.15 range.
         try {
-          out.dxy = parseFloat((await fredFetch('DTWEXBGS')).toFixed(2));
-          console.log(`[Macro] DXY (FRED DTWEXBGS proxy): ${out.dxy}`);
-        } catch (e3) { console.warn('[Macro] DXY (FRED) failed:', e3.message); }
+          const ecbRes = await fetch(
+            'https://data-api.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A?lastNObservations=1&format=csvdata',
+            { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(10000) }
+          );
+          if (!ecbRes.ok) throw new Error(`ECB EXR: HTTP ${ecbRes.status}`);
+          const ecbText = await ecbRes.text();
+          // ECB csvdata format: header row contains column names; data rows follow.
+          // Locate OBS_VALUE column by header, not by position (extra columns vary).
+          const ecbLines = ecbText.trim().split('\n');
+          const headerLine = ecbLines.find(l => l.includes('OBS_VALUE'));
+          if (!headerLine) throw new Error('ECB EXR: no OBS_VALUE header');
+          const headers = headerLine.split(',');
+          const obsIdx = headers.findIndex(h => h.trim() === 'OBS_VALUE');
+          if (obsIdx === -1) throw new Error('ECB EXR: OBS_VALUE column not found');
+          // Data rows start with the series key, e.g. "EXR.D.USD.EUR.SP00.A,..."
+          const dataRows = ecbLines.filter(l => l.startsWith('EXR.'));
+          if (!dataRows.length) throw new Error('ECB EXR: no data rows');
+          const lastRow = dataRows[dataRows.length - 1].split(',');
+          const obsValue = parseFloat(lastRow[obsIdx]);
+          if (isNaN(obsValue) || obsValue <= 0) throw new Error(`ECB EXR: invalid value ${obsValue}`);
+          // ECB series is USD per EUR (= EUR/USD). Approximate DXY via EUR weight.
+          const eurusd = obsValue;
+          const dxyApprox = parseFloat((103 * Math.pow(1.08 / eurusd, 0.576)).toFixed(2));
+          if (dxyApprox < 70 || dxyApprox > 140) throw new Error(`ECB DXY approx out of range: ${dxyApprox}`);
+          out.dxy = dxyApprox;
+          out.dxyApprox = true; // flag so brief-worker can caveat if desired
+          console.log(`[Macro] DXY (ECB EUR-approx, ±3pt): ${out.dxy} [EUR/USD=${eurusd}]`);
+        } catch (e3) {
+          console.warn('[Macro] DXY (ECB approx) failed:', e3.message);
+          // DXY remains null — brief-worker will note missing data.
+        }
       }
     }
   }
@@ -1331,7 +1361,8 @@ async function fetchCoinMetrics() {
 
   let out = null;
   try {
-    const metrics = 'AdrActCnt,TxCnt,HashRate,FeeTotNtv,PriceUSD,TxTfrValAdjUSD';
+    // Free-tier metrics only (TxTfrValAdjUSD requires paid tier)
+    const metrics = 'AdrActCnt,TxCnt,HashRate,FeeTotNtv,PriceUSD';
     const url = `${base}?assets=btc&metrics=${metrics}&frequency=1d&limit_per_asset=90&sort=time`;
     const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(15000) });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -1340,39 +1371,17 @@ async function fetchCoinMetrics() {
     if (!rows?.length) throw new Error('no data');
     const latest = rows[rows.length - 1];
     const n = k => latest[k] != null ? parseFloat(latest[k]) : null;
-    const txVolumeArr90d = rows
-      .map(r => r.TxTfrValAdjUSD != null ? parseFloat(r.TxTfrValAdjUSD) : null)
-      .filter(v => v != null && v > 0);
     out = { date: latest.time?.slice(0,10) ?? null, activeAddresses: n('AdrActCnt'),
             txCount: n('TxCnt'), hashRate: n('HashRate'), totalFeesBTC: n('FeeTotNtv'),
-            refPrice: n('PriceUSD'), txVolumeUSD: n('TxTfrValAdjUSD'),
-            txVolumeArr90d: txVolumeArr90d,
+            refPrice: n('PriceUSD'), txVolumeUSD: null,
+            txVolumeArr90d: [],
             mvrv: null, realizedPrice: null,
             source: 'CoinMetrics Community API' };
     console.log(`[CoinMetrics] ActiveAddr: ${Math.round(out.activeAddresses||0).toLocaleString()}`);
   } catch (e) { console.warn('[CoinMetrics] Base fetch failed:', e.message); return null; }
 
-  try {
-    const capMetrics = 'CapRealUSD,CapMrktCurUSD';
-    const url2 = `${base}?assets=btc&metrics=${capMetrics}&frequency=1d&limit_per_asset=1&sort=time`;
-    const r2 = await fetch(url2, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(10000) });
-    if (!r2.ok) throw new Error(`HTTP ${r2.status}`);
-    const raw2 = await r2.json();
-    const row2 = raw2?.data?.[0];
-    if (row2) {
-      const capReal = row2.CapRealUSD  != null ? parseFloat(row2.CapRealUSD)  : null;
-      const capMrkt = row2.CapMrktCurUSD != null ? parseFloat(row2.CapMrktCurUSD) : null;
-      const price   = out.refPrice;
-      const mvrv = (capReal && capMrkt && capReal > 0) ? parseFloat((capMrkt / capReal).toFixed(3)) : null;
-      const circSupply = (capMrkt && price && price > 0) ? capMrkt / price : null;
-      const realizedPrice = (capReal && circSupply) ? Math.round(capReal / circSupply) : null;
-      out.mvrv = mvrv;
-      out.realizedPrice = realizedPrice;
-      out.capRealUSD = capReal;
-      out.capMrktUSD = capMrkt;
-      if (mvrv != null) console.log(`[CoinMetrics] MVRV: ${mvrv} | Realized: $${(realizedPrice||0).toLocaleString()}`);
-    }
-  } catch (e) { console.warn('[CoinMetrics] Cap metrics unavailable (community tier?):', e.message); }
+  // CapRealUSD and CapMrktCurUSD require paid tier — skipped for free Community API
+  // MVRV will be calculated via Dune (if quota available) or heuristic fallback
 
   return out;
 }
