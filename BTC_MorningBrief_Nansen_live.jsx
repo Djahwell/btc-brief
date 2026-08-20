@@ -2466,8 +2466,20 @@ FROM realized r, spot s`;
       }
     }
 
-    // Step 2: retry — check local first, then GitHub Pages
-    var retrySources = ["/all_data.json", ALL_DATA_URL];
+    // Step 2: retry — GitHub Pages direct (live). The local "/all_data.json"
+    // path is DEV-only, same rule as loadAllData() above: in the packaged
+    // APK that file is a snapshot frozen at build time (bundled from the
+    // repo's committed public/all_data.json, which can be months old — it's
+    // only refreshed by `npm run data` locally, never by the 6h cron). It can
+    // never be fresher than what Step 1 already tried via loadAllData(), so
+    // including it here in production just risks silently resurrecting a
+    // stale brief. Bug fixed 2026-08-20: this loop used to accept ANY brief
+    // with a price, with no age check — so a cold app start where the live
+    // Worker/Pages fetch in Step 1 timed out would fall through to the frozen
+    // local snapshot and render it as if current, with no staleness guard at
+    // all (unlike every other cache-read path in this file).
+    var retrySources = (import.meta.env.DEV ? ["/all_data.json"] : []).concat([ALL_DATA_URL]);
+    var STALE_BRIEF_MS = 36 * 3_600_000; // same threshold as Step 1
     for (var _ri = 0; _ri < retrySources.length; _ri++) {
       var _rUrl = retrySources[_ri];
       try {
@@ -2485,13 +2497,20 @@ FROM realized r, spot s`;
         var retryJson = await retry.json();
         if (retryJson && retryJson.brief) {
           var _rHasPrice = retryJson.market && retryJson.market.price != null;
-          if (_rHasPrice) {
+          var _rTs = retryJson.briefCachedAt || retryJson.cachedAt;
+          var _rAgeMs = _rTs ? (Date.now() - new Date(_rTs).getTime()) : Infinity;
+          var _rFresh = _rAgeMs < STALE_BRIEF_MS;
+          if (_rHasPrice && _rFresh) {
             allDataRef.current = retryJson;
             safeSet(setPhaseAnchors)(effectiveAnchors(retryJson));
-            console.info("[Claude] ✓ Retry from", _rUrl, "— using pre-generated brief");
+            console.info("[Claude] ✓ Retry from", _rUrl, "— using pre-generated brief (age: " + Math.round(_rAgeMs / 3_600_000) + "h)");
             return JSON.stringify(retryJson.brief);
           }
-          console.warn("[Claude] Retry from", _rUrl, "— brief found but market.price missing");
+          if (!_rHasPrice) {
+            console.warn("[Claude] Retry from", _rUrl, "— brief found but market.price missing");
+          } else {
+            console.warn("[Claude] Retry from", _rUrl, "— brief found but stale (" + Math.round(_rAgeMs / 3_600_000) + "h) — rejecting, not displaying as current");
+          }
         }
         if (retryJson && retryJson.brief_error) {
           console.warn("[Claude] brief_error in", _rUrl, ":", retryJson.brief_error);
