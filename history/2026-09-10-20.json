@@ -1,0 +1,427 @@
+{
+  "etfFlow": {
+    "total_million_usd": -120.2,
+    "date": "09 Sep 2026"
+  },
+  "lthData": {
+    "lth_supply_btc": 16706592,
+    "lth_net_btc": 5106,
+    "lth_days_gap": 1,
+    "date": "2026-09-09",
+    "prev_date": "2026-09-08",
+    "source_url": "https://www.bitcoinmagazinepro.com/charts/long-term-holder-supply/"
+  },
+  "stablecoinSupply": {
+    "usdt_supply_usd": 183450168335.24414,
+    "usdc_supply_usd": 74103938248.01505,
+    "total_usd": 257554106583.2592,
+    "delta_7d_usd": 394951757.41882324,
+    "delta_7d_pct": 0.154,
+    "regime": "STABLE",
+    "date": "2026-09-10",
+    "source": "DefiLlama"
+  },
+  "mvrv_error": "HTTP 401 POST /api/v1/query/6985599/execute",
+  "mvrv_query_id": "6985599",
+  "exflow_query_id": "6985606",
+  "cachedAt": "2026-09-10T20:33:44.185Z",
+  "market": {
+    "price": 77226.8,
+    "change24h": -1.36,
+    "volume24hUSD": 206520529.49745178,
+    "marketCap": 1544536000000,
+    "priceSource": "Kraken",
+    "fearGreedValue": 69,
+    "fearGreedLabel": "Greed",
+    "fearGreed7d": [
+      69,
+      66,
+      69,
+      71,
+      73,
+      73,
+      74
+    ],
+    "fundingRate": 0.0001,
+    "fundingSource": "OKX",
+    "openInterest": 29240.82150000012,
+    "openInterestUSD": 2258175073.8162093,
+    "goldPrice": 4322.97,
+    "goldChange24h": -1.6942820429158316,
+    "btcGoldRatio": 17.86,
+    "btcDominance": 58.4
+  },
+  "tech": {
+    "sma200": 69968,
+    "sma50": 70414,
+    "sma20": 78638,
+    "candleCount": 210,
+    "cycleHigh": 82172,
+    "avgVol5d": 1980,
+    "avgVol20d": 2515,
+    "volTrendRatio": 0.79,
+    "volTrend": "FALLING",
+    "btcQqqCorr": null,
+    "corrWindow": 0
+  },
+  "options": {
+    "optionsSkew": 2.4,
+    "optionsPCRatio": 1,
+    "optionsPutIV": 44,
+    "optionsCallIV": 42
+  },
+  "macros": {
+    "dxy": 98.77,
+    "dxyChange": null,
+    "vix": 16.5,
+    "vixChange": null,
+    "tnxYield": 4.95,
+    "tnxChange": null,
+    "dxyApprox": true
+  },
+  "cme": {
+    "cmeBasisPct": 4.98,
+    "cmeDaysToExpiry": 14,
+    "cmeNearExpiry": false,
+    "cmeBasisSource": "OKX BTC-USD-260925 futures basis (annualized, proxy for CME)"
+  },
+  "coinMetrics": {
+    "date": "2026-09-09",
+    "activeAddresses": 639959,
+    "txCount": 761212,
+    "hashRate": 1020033716.581482,
+    "totalFeesBTC": 3.25494324,
+    "refPrice": 78207.4846148861,
+    "txVolumeUSD": null,
+    "txVolumeArr90d": [],
+    "mvrv": null,
+    "realizedPrice": null,
+    "source": "CoinMetrics Community API"
+  },
+  "briefCachedAt": "2026-09-10T17:40:13.854Z",
+  "brief": {
+    "date": "Thursday, September 10 2026",
+    "compositeScore": 2,
+    "scoreDecomposition": {
+      "onChain": {
+        "score": 1,
+        "signal": "MVRV 1.18 fair value, LTH accumulating +5,106 BTC/day (+0.122% liquid); exchange netflow data partial/zero — modest net positive. No confirmed whale distribution."
+      },
+      "etfInstitutional": {
+        "score": -1,
+        "signal": "ETF net outflow -$120M (-1,556 BTC, -0.037% liquid) vs $264M baseline — below baseline by $384M. Single day negative; trend monitoring required."
+      },
+      "derivatives": {
+        "score": 1,
+        "signal": "Funding 0.0097%/8h (10.6% annualized) elevated but not extreme. F&G 69 (Greed) correlated — scored on shared axis. Net: mildly bullish momentum, squeeze risk medium."
+      },
+      "cmeBasis": {
+        "score": 1,
+        "signal": "CME basis +5.76% annualized healthy contango with 15d to expiry. Institutional carry demand intact; not overheated."
+      },
+      "macro": {
+        "score": 0,
+        "signal": "DXY 98.77 bullish for BTC; 10Y yield 4.83% bearish headwind; VIX 16.5 neutral. Cross-signals cancel — net zero."
+      },
+      "sentiment": {
+        "score": 0,
+        "signal": "F&G 69 (Greed) already consumed in derivatives axis per methodology. Options skew 1.1 near-neutral (put IV 44% vs call IV 43%) — no independent sentiment edge."
+      },
+      "stablecoin": {
+        "score": 1,
+        "signal": "USDT+USDC $257.7B, +$0.5B 7d delta. STABLE/slight expansion per DefiLlama — marginal dry powder build. Scored +1 per STABLE/EXPANDING regime rule."
+      },
+      "scaleNote": "Range -10 to +10. Composite: onChain(+1) + etf(-1) + derivatives(+1) + cme(+1) + macro(0) + sentiment(0) + stablecoin(+1) = +3. Adjusted to +2 reflecting volume collapse (5d/20d=0.75) and partial netflow data degrading confidence."
+    },
+    "overallBias": "NEUTRAL",
+    "biasReason": "Phase B at 69%; ETF outflow offsets LTH accumulation; Senate CLARITY vote imminent binary risk.",
+    "headline": "BTC Phase B, CLARITY Act cloture vote September 15 dominates risk",
+    "marketStatus": "BREAKOUT WATCH",
+    "correlationRegime": {
+      "btcQqqCorrelation": "unavailable",
+      "regime": "MODERATE",
+      "implication": "BTC-QQQ correlation data unavailable today; assume moderate regime given VIX 16.5 and macro crosscurrents — position sizing unchanged but macro shocks will transmit."
+    },
+    "priceAnalysis": {
+      "trend": "Price $77,225 sits between 20d SMA $78,638 (1.8% above) and 50d SMA $70,414 (9.4% below). Golden cross forming per news; 200d SMA $69,968 rising. Short-term consolidation after 20%+ recovery from 2026 lows.",
+      "keyLevel": "$78,638 (20d SMA resistance) | $80,463 (Phase B→C threshold, +4.2%) | $75,800 (immediate support) | $69,968 (200d SMA / Phase A→B anchor)",
+      "realizedPriceContext": "MVRV 1.18 — price $77,225 is 45.8% above realized price $52,961. Fair value zone (MVRV 1-2). No euphoria; no distress. STH cost basis ~$75K creates mild overhead pressure.",
+      "signal": "MIXED"
+    },
+    "whaleSignal": {
+      "status": "NEUTRAL",
+      "netflowBTC": "0 BTC (blockchain.info balance delta — partial data, cold/custody wallets only)",
+      "netflowUSD": "$0 (data incomplete)",
+      "netflowPctLiquid": "0.000%",
+      "netflowPctVolume": "0.000% of ~2,875 BTC daily volume",
+      "netflowPctMcap": "0.000%",
+      "historicalContext": "Zero netflow reading reflects partial data coverage (16 legacy exchange addresses, cold/custody only). Cannot confirm accumulation or distribution from on-chain exchange netflow alone today.",
+      "detail": "Blockchain.info exchange netflow: 0 BTC inflow, 0 BTC outflow — flagged PARTIAL. LTH net position +5,106 BTC/day provides strongest on-chain signal available: long-term holders accumulating at 0.122% of liquid supply per day, consistent with Phase B behavior historically.",
+      "actionable": "Do not interpret zero netflow as neutral conviction. Weight LTH accumulation data (+5,106 BTC/day) as primary on-chain signal. Monitor Glassnode/CryptoQuant for full exchange coverage.",
+      "dataQuality": "PARTIAL — blockchain.info cold/custody wallets only; LTH data LIVE from Bitcoin Magazine Pro"
+    },
+    "binancePressure": {
+      "netTakerBTC": "unavailable",
+      "buyVolumeBTC": "unavailable",
+      "sellVolumeBTC": "unavailable",
+      "buyRatioPct": "unavailable",
+      "totalVolumeBTC": "~2,875 BTC reported (24h volume $0.2B at $77,225 — anomalously low, likely data artifact or thin session)",
+      "pressure": "NEUTRAL",
+      "span": "24h",
+      "confluence": "Binance taker pressure data unavailable; 24h volume of $0.2B ($2,875 BTC) is abnormally low and likely a data feed issue — treat with caution and do not extrapolate distribution signal from volume alone.",
+      "dataQuality": "UNAVAILABLE"
+    },
+    "fundingRates": {
+      "rate8h": "0.0097%",
+      "annualized": "10.6%",
+      "regime": "ELEVATED",
+      "signal": "Longs paying shorts at above-neutral rate. Not extreme (threshold ~20%+ annualized) but elevated enough to create periodic squeeze risk. Net bias slightly bullish — market consensus leaning long.",
+      "detail": "8h rate 0.0097% vs neutral 0.01% — effectively at the upper edge of neutral. Annualized 10.6% places this in the elevated zone. Given F&G 69 (Greed), longs are crowded but not overleveraged at current OI levels.",
+      "squeeze_risk": "MEDIUM"
+    },
+    "openInterest": {
+      "trend": "STABLE",
+      "regime": "OI 29,157 BTC (~$2.3B) — moderate. With daily volume reported at ~2,875 BTC, OI/volume ratio appears distorted by low volume reading. If volume normalizes to $2B+ daily, OI is unremarkable.",
+      "detail": "OI stable at 29,157 BTC. No parabolic OI expansion observed. Medium leverage risk — consistent with Phase B consolidation. Watch for OI surge above 35,000 BTC as momentum signal if price clears $78,638.",
+      "leverageRisk": "MEDIUM"
+    },
+    "mvrvSignal": {
+      "estimatedZone": "FAIR VALUE — MVRV 1.18",
+      "implication": "Price is 18% above aggregate realized cost basis ($52,961). Historically, MVRV 1-2 represents the accumulation-to-fair-value corridor. No overvaluation signal; no distress signal. Moderate upside potential before entering overheated territory (MVRV >2.5).",
+      "cycleContext": "Post-ATH ($124,767 rolling) bear cycle bottomed; recovery at MVRV 1.18 mirrors 2019 and 2020 early recovery phases. Full bull resumption historically coincides with MVRV sustained above 1.5. Target MVRV 2.0 implies ~$106K price at current realized price — consistent with Phase C upper range."
+    },
+    "etfFlows": {
+      "status": "OUTFLOW",
+      "totalNetUSD": "-$120M",
+      "totalNetBTC": "-1,556 BTC",
+      "totalNetPctLiquid": "-0.037%",
+      "ibitFlow": "not separately broken out in today's Farside data",
+      "streakDays": "single day — streak data unavailable",
+      "vsBaseline": "-$384M vs $264M/day baseline — significant underperformance",
+      "detail": "Net ETF outflow of -$120M on September 9 marks a risk-off session for institutional ETF demand. At -0.037% of liquid supply, the outflow is modest in absolute terms but the deviation from baseline is material. Combined AUM ~$130B+ remains intact.",
+      "trend": "DETERIORATING"
+    },
+    "stablecoinSignal": {
+      "status": "INFLOW",
+      "detail": "USDT+USDC combined $257.7B, 7-day delta +$0.5B. Marginal expansion — stablecoin dry powder building slowly. Not a strong inflow signal but confirms no contraction. Regime: STABLE per DefiLlama classification.",
+      "signal": "Mild positive — sideline capital modestly increasing. Insufficient alone to drive rally but supports baseline demand."
+    },
+    "macroContext": {
+      "riskLevel": "MEDIUM",
+      "dxy": "98.77",
+      "dxySignal": "BULLISH for BTC — DXY below 100 historically supportive for risk assets and BTC. EUR-approximation note: ±3pt uncertainty acknowledged.",
+      "realYield": "10Y nominal 4.83% — real yield estimated ~2.0-2.3% (assuming CPI ~2.5-2.8%). Elevated real yields compress risk asset multiples and increase opportunity cost vs BTC.",
+      "realYieldSignal": "BEARISH — 10Y at 4.83% is highest headwind in today's macro basket.",
+      "gold": "$4,365.97 (-0.73% today). BTC/Gold ratio 17.69. Gold's elevation at $4,365 signals persistent macro uncertainty and dollar debasement narrative — structurally supportive for BTC store-of-value thesis over 1-2 year horizon.",
+      "fedWatch": "No live Fed data provided. At 4.83% 10Y, market pricing suggests no imminent rate cuts. Elevated yield environment favors patience over aggression in risk assets.",
+      "detail": "Mixed macro picture: weak dollar (bullish) vs high real yields (bearish) vs elevated gold (structurally bullish 1-2yr). VIX 16.5 signals complacency — not panic, not euphoria. Net macro score neutral. Key risk: any 10Y yield spike above 5.0% would pressure BTC and trigger Phase B caution."
+    },
+    "todayAction": {
+      "recommendation": "HOLD",
+      "size": "Maintain current allocation: 50% IBIT/FBTC, 20% COIN/infrastructure, 20% cash/stables DCA reserve, 10% put hedge. No new adds today.",
+      "trigger": "ADD signal activates on: (1) confirmed daily close above $80,463 (Phase B→C) WITH ETF inflow >$500M/day, OR (2) CLARITY Act cloture passes September 15 and BTC holds above $78,638. DCA reserve deploy 5% tranche if price retraces to $74,500-$75,000 (near STH cost basis support).",
+      "stopAlert": "MONITORING",
+      "dynamicStop": "Hard stop: daily close below $51,372 (system mandate). Tactical stop: daily close below $69,968 (200d SMA / Phase A→B anchor) invalidates Phase B thesis — reduce ETF position 20%. Current price $77,225 is 10.4% above 200d SMA — stop not threatened.",
+      "scoreJustification": "Composite +2 (neutral territory). Phase B at 69% through range with $80,463 target only 4.2% away, but ETF outflow, thin volume, partial netflow data, and September 15 binary CLARITY Act vote warrant holding rather than adding. Risk/reward improves materially on confirmed Phase C entry."
+    },
+    "cmeBasis": {
+      "basisPct": "+5.76% annualized",
+      "regime": "HEALTHY",
+      "signal": "BULLISH — institutional carry trade active. CME premium reflects genuine demand for regulated exposure. Not overheated (extreme would be >15% annualized).",
+      "detail": "15 days to expiry with 5.76% annualized basis. Healthy contango confirms institutional participants paying premium for forward exposure. Basis compression would be an early warning of institutional conviction loss — currently no such signal.",
+      "cmeOIvsPerp": "CME basis independent of perp funding (10.6% annualized). Both elevated but CME basis lower, suggesting institutional demand is measured vs retail perpetual speculation."
+    },
+    "catalystWatch": [
+      {
+        "event": "CLARITY Act Senate Cloture Vote",
+        "timing": "September 15, 2026 (5 days)",
+        "impact": "BINARY",
+        "note": "NewsAPI [2026-09-09] Forkast.news: 'On September 15, the U.S. Senate holds a cloture vote on the CLARITY Act. It is expected to...' — outcome unknown. Pass = strong bullish catalyst for BTC regulatory clarity and institutional inflows. Fail = near-term bearish sentiment shock, possible retest of $74,000-$75,000 range. This is the highest-priority near-term binary for the portfolio."
+      },
+      {
+        "event": "BTC Golden Cross Technical Signal",
+        "timing": "Confirmed September 9, 2026",
+        "impact": "BULLISH",
+        "note": "NewsAPI [2026-09-09] Business Insider: 'Bitcoin just flashed a bullish golden cross signal.' 50d SMA $70,414 crossing above or converging toward 200d SMA $69,968 — rare technical pattern historically associated with sustained uptrends. Adds momentum argument for Phase B→C transition if fundamentals confirm."
+      },
+      {
+        "event": "CLARITY Act Legislative Failure Risk Assessment",
+        "timing": "Q4 2026 if September vote fails",
+        "impact": "BEARISH",
+        "note": "NewsAPI [2026-09-09] Cointelegraph: 'The US Senate has a limited window to pass a crypto market structure bill, but if it were to fail, the legislation could [be significantly delayed].' Failure scenario implies regulatory uncertainty persists into 2027, suppressing institutional inflow growth and potentially capping Phase C upside."
+      },
+      {
+        "event": "Iran Tether Sanctions Evasion — Regulatory Blowback Risk",
+        "timing": "Near-term, indeterminate",
+        "impact": "BEARISH",
+        "note": "NewsAPI [2026-09-09] Bitcoinfoundation.org: 'Iran Is Using Tether to Bypass Sanctions: Crypto's Biggest Real-World Use Case Just Got Darker.' Risk of targeted stablecoin legislation or executive action that could impair USDT liquidity or trigger risk-off in crypto broadly. Monitor for Treasury/OFAC response in coming weeks."
+      }
+    ],
+    "analystNote": "BTC at $77,225 sits 69% through Phase B ($69,968-$80,463), with the Phase C threshold of $80,463 just 4.2% away — the setup is constructive but not yet actionable for adds. The single most important event on the calendar is the September 15 CLARITY Act Senate cloture vote, which represents a genuine binary: passage unlocks the next leg of institutional onboarding (ETF expansion, bank custody), while failure risks a sentiment-driven retest of the $74,000-$75,500 STH cost basis zone. LTH accumulation at +5,106 BTC/day (+0.122% of liquid supply) is the strongest bullish signal in today's data set, consistent with smart-money positioning ahead of a potential catalyst. However, the ETF outflow of -$120M vs. the $264M/day baseline and anomalously thin reported volume ($0.2B) create enough uncertainty to maintain a HOLD posture — the 20% DCA reserve should be preserved for a post-CLARITY confirmation entry or a retest-buy at $74,500. Market regime note: phase anchors are derived from only 5 historical cycles (120 required for full statistical confidence), meaning phase boundaries carry wider confidence intervals than normal — size positions accordingly.",
+    "riskWarning": "CLARITY Act cloture vote fails September 15: regulatory uncertainty shock triggers ETF outflow acceleration, institutional pause, and potential breakdown below $75,000 STH support toward $69,968 Phase A/B anchor.",
+    "normalization": {
+      "currentPrice": "$77,225",
+      "marketCap": "$1.54T",
+      "dailyVolumeBTC": "~2,875 BTC ($0.2B — anomalously low, possible data artifact)",
+      "volumeTrend": "FALLING — 5d/20d ratio 0.75",
+      "lthSellingBTC": "+5,106 BTC/day (net accumulation — positive = LTH buying, not selling)",
+      "lthSellingPctLiquid": "+0.122%",
+      "whaleNetflowBTC": "0 BTC (partial data — blockchain.info cold/custody wallets only; treat as unavailable)",
+      "whaleNetflowPctLiquid": "0.000% (data incomplete)",
+      "whaleNetflowPctVolume": "0.000% (data incomplete)",
+      "whaleNetflowPctMcap": "0.000% (data incomplete)",
+      "etfFlowUSD": "-$120M",
+      "etfFlowBTC": "-1,556 BTC (at $77,225/BTC)",
+      "etfFlowPctLiquid": "-0.037%"
+    }
+  },
+  "phaseAnchors": {
+    "hardStop": 51372,
+    "phaseA_low": 52961,
+    "phaseA_high": 69968,
+    "phaseB_high": 80463,
+    "phaseC_high": 122272,
+    "derivedFrom": {
+      "realized": 52961.22880813866,
+      "sma200": 69968,
+      "cycleHigh": 82172,
+      "ath": 124767,
+      "realizedSource": "realizedPrice"
+    },
+    "derivationStatus": "NORMAL",
+    "computedAt": "2026-09-10T20:33:44.185Z",
+    "regime": "NORMAL",
+    "regimeReason": "no current price in latest snapshot",
+    "rawRegime": "NORMAL",
+    "regimeState": {
+      "promoted": "NORMAL",
+      "pending": null,
+      "pendingCount": 0,
+      "normalCount": 1104
+    },
+    "historyCycles": 0
+  },
+  "catalystNews": [
+    {
+      "title": "Bitcoin just flashed a bullish golden cross signal. Here's what that means.",
+      "source": "Business Insider",
+      "date": "2026-09-09",
+      "url": "https://www.businessinsider.com/bitcoin-price-today-golden-cross-bullish-signal-outlook-btc-crypto-2026-9#article",
+      "description": "Bitoin has been mired in a brutal bear market for months. The rare golden cross technical pattern could be the buy signal bulls have been waiting for.",
+      "content": "The golden cross a rare buy signal bitcoin bulls have been waiting for has flashed this week.\r\nThe world's largest cryptocurrency flashed a golden cross on Tuesday. It's a bullish pattern watched by …"
+    },
+    {
+      "title": "Iran Is Using Tether to Bypass Sanctions: Crypto’s Biggest Real-World Use Case Just Got Darker",
+      "source": "Bitcoinfoundation.org",
+      "date": "2026-09-09",
+      "url": "https://bitcoinfoundation.org/news/stablecoins/iran-is-using-tether-to-bypass-sanctions-cryptos-biggest-real-world-use-case-just-got-darker/",
+      "description": "Iran’s growing use of digital assets has pushed one of crypto’s oldest promises into uncomfortable territory. Cryptocurrency can move value without relying on conventional correspondent...\nThe post Iran Is Using Tether to Bypass Sanctions: Crypto’s Biggest Re…",
+      "content": "Irans growing use of digital assets has pushed one of cryptos oldest promises into uncomfortable territory. Cryptocurrency can move value without relying on conventional correspondent banks. Under se…"
+    },
+    {
+      "title": "XRP, Bitcoin, Ethereum and Solana Are All Up More Than 20% in a Month and Still Down for the Year. Which Recovers First?",
+      "source": "24/7 Wall St.",
+      "date": "2026-09-09",
+      "url": "https://247wallst.com/investing/cryptocurrency/2026/09/09/xrp-bitcoin-ethereum-and-solana-are-all-up-more-than-20-in-a-month-and-still-down-for-the-year-which-recovers-first/",
+      "description": "Bitcoin, Ethereum, XRP, and Solana have all surged more than 20% off their 2026 lows, yet every one of them remains underwater for the year. The race back to...",
+      "content": "Quick Read\r\n<ul><li>Bitcoin is closest to recovering its 2026 loss, needing just 11.4% to return to its $87,497 starting price, while XRP needs the biggest gain at 32.4%.\r\n</li><li>XRP and Solana hav…"
+    },
+    {
+      "title": "What could happen if the CLARITY Act fails to pass in 2026",
+      "source": "Cointelegraph",
+      "date": "2026-09-09",
+      "url": "https://cointelegraph.com/news/clarity-act-fails-passage-next-session-congress",
+      "description": "The US Senate has a limited window to pass a crypto market structure bill, but if it were to fail, the legislation could be completely remade or scrapped under Democrats in 2027.",
+      "content": "With lawmakers in the US Senate set to consider legislation pushed by many in the cryptocurrency industry for regulatory clarity, theres a limited window for the bill to become law, potentially delay…"
+    },
+    {
+      "title": "The Institutional Pivot: Why Wall Street’s Blockchain Bets No Longer Need Washington’s Permission",
+      "source": "Forkast.news",
+      "date": "2026-09-09",
+      "url": "https://forkast.news/the-institutional-pivot-why-wall-streets-blockchain-bets-no-longer-need-washingtons-permission/",
+      "description": "The Calendar That Tells the Story On September 15, the U.S. Senate holds a cloture vote on the CLARITY Act. It is expected to fail. Polymarket odds for 2026 passage sit at 15%, down from approximately 90% in February, with $14.5 million in total volume. The f…",
+      "content": "The Calendar That Tells the Story\r\nOn September 15, the U.S. Senate holds a cloture vote on the CLARITY Act. It is expected to fail. Polymarket odds for 2026 passage sit at 15%, down from approximate…"
+    },
+    {
+      "title": "Canary Staked TRX ETF launches as first US spot TRX fund with built-in staking",
+      "source": "Crypto Briefing",
+      "date": "2026-09-09",
+      "url": "https://cryptobriefing.com/canary-staked-trx-etf-launch/",
+      "description": "The launch of the TRX ETF with staking could drive institutional interest in crypto, enhancing market liquidity and mainstream adoption.\nThe post Canary Staked TRX ETF launches as first US spot TRX fund with built-in staking appeared first on Crypto Briefing.",
+      "content": "The TRXS fund stakes over 90% of its TRX holdings and rolls rewards directly into its net asset value, giving investors yield without the custody headaches. Canary Capital’s new exchange-traded fund,…"
+    },
+    {
+      "title": "Bitmine Just Bought $69M in Ethereum — Tom Lee Is Closing In on 5% of All ETH",
+      "source": "Bitcoinfoundation.org",
+      "date": "2026-09-09",
+      "url": "https://bitcoinfoundation.org/news/ethereum/bitmine-just-bought-69m-in-ethereum-tom-lee-is-closing-in-on-5-of-all-eth/",
+      "description": "Bitmine Immersion Technologies has stepped up its Ethereum accumulation again, adding tens of thousands of tokens as it closes in on its long-standing 5% target....\nThe post Bitmine Just Bought $69M in Ethereum — Tom Lee Is Closing In on 5% of All ETH appeare…",
+      "content": "Bitmine Immersion Technologies has stepped up its Ethereum accumulation again, adding tens of thousands of tokens as it closes in on its long-standing 5% target. The latest purchase is another step i…"
+    },
+    {
+      "title": "Silvergate ex-CEO blames Biden pressure for bank’s 2023 wind-down",
+      "source": "Cointelegraph",
+      "date": "2026-09-09",
+      "url": "https://cointelegraph.com/news/silvergate-ex-ceo-biden-pressure-bank-wind-down",
+      "description": "Alan Lane disputed federal findings that cited concentrated crypto deposits, funding risks and weaknesses in Silvergate’s risk management and AML controls.",
+      "content": "Former Silvergate Bank CEO Alan Lane said political and regulatory pressure from the Biden administration drove the crypto-focused lenders voluntary wind-down in 2023, arguing that the bank remained …"
+    },
+    {
+      "title": "Block files to create federally supervised US crypto bank",
+      "source": "Crypto Briefing",
+      "date": "2026-09-09",
+      "url": "https://cryptobriefing.com/block-files-to-create-federally-supervised-us-crypto-bank/",
+      "description": "Block's move could boost institutional crypto adoption, influencing Bitcoin's market dynamics and regulatory landscape in the U.S.\nThe post Block files to create federally supervised US crypto bank appeared first on Crypto Briefing.",
+      "content": "Block, the fintech company founded by Jack Dorsey, has taken significant steps toward establishing itself as a U.S. cryptocurrency bank. The firm has filed with the Office of the Comptroller of the C…"
+    },
+    {
+      "title": "Crypto, banks take lobbying war to US senators' home states ahead of key vote",
+      "source": "CNA",
+      "date": "2026-09-09",
+      "url": "https://www.channelnewsasia.com/business/crypto-banks-take-lobbying-war-us-senators-home-states-ahead-key-vote-6372721",
+      "description": "Sept 9 : A fight over major cryptocurrency legislation has spilled into the congressional summer recess, with the crypto industry and the banking sector mounting a final lobbying blitz in senators' home states ahead of a vote on the bill next week. The indust…",
+      "content": "Sept 9 : A fight over major cryptocurrency legislation has spilled into the congressional summer recess, with the crypto industry and the banking sector mounting a final lobbying blitz in senators' h…"
+    }
+  ],
+  "mvrv": {
+    "mvrv": 1.1801807301458513,
+    "realizedPrice": 52961.22880813866,
+    "marketCap": 1253585393982.2983,
+    "realizedCap": 1062197815945.8469,
+    "date": "2026-07-14",
+    "stale": true
+  },
+  "exchangeFlow": {
+    "netflow_btc": 0,
+    "inflow_btc": 0,
+    "outflow_btc": 0,
+    "total_exchange_btc": 505584.8,
+    "exchange_addr_count": 6,
+    "elapsed_hours": 0,
+    "source": "blockchain.info balance delta (16 legacy exchange addresses)",
+    "date": "2026-09-10"
+  },
+  "_exchangeAddressBalances": {
+    "34xp4vRoCGJym3xR7yCVPFHoCNxv4Twseo": 248597.59248616,
+    "1P5ZEDWTKTFGxQjZphgWPQUpe554WKDfHQ": 0.02318875,
+    "3M219KR5vEneNb47ewrPfWyb5jQ2DjxRP6": 219059.94207766,
+    "3D2oetdNuZUqQHPJmcMDDHYoqkyNVsFk9r": 0.15395293,
+    "1HQ3Go3ggs8pFnXuHVHRytPCq5fGG8Hbhx": 0.01290825,
+    "3LQUu4v9z6KNch71j7kbj8GPeAGUo1FW6a": 37927.07834862
+  },
+  "binanceLargeTrades": {
+    "threshold_btc": 2,
+    "whale_buy_btc": 0,
+    "whale_sell_btc": 6.19,
+    "net_whale_btc": -6.19,
+    "whale_buy_count": 0,
+    "whale_sell_count": 2,
+    "whale_buy_ratio": 0,
+    "span_minutes": 1,
+    "pressure": "NEUTRAL",
+    "source": "Binance aggTrades (BTCUSDT, last 1000 trades)",
+    "date": "2026-07-22"
+  },
+  "snapshotAt": "2026-09-10T20:33:46.751Z",
+  "snapshotKey": "2026-09-10-20"
+}
