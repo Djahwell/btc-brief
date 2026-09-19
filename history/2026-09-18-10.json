@@ -1,0 +1,426 @@
+{
+  "etfFlow": {
+    "total_million_usd": 159.5,
+    "date": "17 Sep 2026"
+  },
+  "lthData": {
+    "lth_supply_btc": 16489318,
+    "lth_net_btc": -18071,
+    "lth_days_gap": 1,
+    "date": "2026-09-18",
+    "prev_date": "2026-09-17",
+    "source_url": "https://www.bitcoinmagazinepro.com/charts/long-term-holder-supply/"
+  },
+  "stablecoinSupply": {
+    "usdt_supply_usd": 183228457670.5204,
+    "usdc_supply_usd": 73962236042.11473,
+    "total_usd": 257190693712.63513,
+    "delta_7d_usd": -501654547.99609375,
+    "delta_7d_pct": -0.195,
+    "regime": "STABLE",
+    "date": "2026-09-18",
+    "source": "DefiLlama"
+  },
+  "mvrv_error": "HTTP 401 POST /api/v1/query/6985599/execute",
+  "mvrv_query_id": "6985599",
+  "exflow_query_id": "6985606",
+  "cachedAt": "2026-09-18T10:46:32.430Z",
+  "market": {
+    "price": 78179.1,
+    "change24h": 2.39,
+    "volume24hUSD": 179973208.06001586,
+    "marketCap": 1563582000000,
+    "priceSource": "Kraken",
+    "fearGreedValue": 56,
+    "fearGreedLabel": "Greed",
+    "fearGreed7d": [
+      56,
+      50,
+      51,
+      69,
+      57,
+      61,
+      63
+    ],
+    "fundingRate": 0.0000773051044769,
+    "fundingSource": "OKX",
+    "openInterest": 28765.913000000164,
+    "openInterestUSD": 2248893189.018313,
+    "goldPrice": 4374.49,
+    "goldChange24h": 1.3644187966160655,
+    "btcGoldRatio": 17.87
+  },
+  "tech": {
+    "sma200": 70385,
+    "sma50": 72416,
+    "sma20": 78008,
+    "candleCount": 210,
+    "cycleHigh": 82172,
+    "avgVol5d": 2712,
+    "avgVol20d": 2274,
+    "volTrendRatio": 1.19,
+    "volTrend": "STABLE",
+    "btcQqqCorr": null,
+    "corrWindow": 0
+  },
+  "options": {
+    "optionsSkew": 6.1,
+    "optionsPCRatio": 3.5,
+    "optionsPutIV": 40,
+    "optionsCallIV": 34
+  },
+  "macros": {
+    "dxy": 99.44,
+    "dxyChange": null,
+    "vix": 15.4,
+    "vixChange": null,
+    "tnxYield": 4.94,
+    "tnxChange": null,
+    "dxyApprox": true
+  },
+  "cme": {
+    "cmeBasisPct": 6.17,
+    "cmeDaysToExpiry": 7,
+    "cmeNearExpiry": true,
+    "cmeBasisSource": "OKX BTC-USD-260925 futures basis (annualized, proxy for CME)"
+  },
+  "coinMetrics": {
+    "date": "2026-09-17",
+    "activeAddresses": 652441,
+    "txCount": 647901,
+    "hashRate": 905992680.398374,
+    "totalFeesBTC": 2.84519783,
+    "refPrice": 76386.9018813968,
+    "txVolumeUSD": null,
+    "txVolumeArr90d": [],
+    "mvrv": null,
+    "realizedPrice": null,
+    "source": "CoinMetrics Community API"
+  },
+  "briefCachedAt": "2026-09-17T12:42:32.147Z",
+  "brief": {
+    "date": "Thursday, September 17 2026",
+    "compositeScore": -3,
+    "scoreDecomposition": {
+      "onChain": {
+        "score": -1,
+        "signal": "MVRV 1.18 fair value (neutral), but LTH distributing -217,934 BTC/day (-5.189% liquid) is a significant bearish drag. Exchange netflow data partial/zero — cannot confirm accumulation. Net: slight bearish lean driven by LTH distribution regime."
+      },
+      "etfInstitutional": {
+        "score": -2,
+        "signal": "ETF net outflow -$296M (-3,878 BTC, -0.092% liquid) on Sep 16, well below $264M/day baseline and triggered by CLARITY Act Senate failure. Largest single-day outflow since June. Full -2 warranted."
+      },
+      "derivatives": {
+        "score": 0,
+        "signal": "Funding rate 0.0054% per 8h (5.9% annualized) is mildly elevated but not extreme. Fear & Greed 50 (Neutral) — correlated axis, scored together. Net: neutral, no strong directional signal from either metric. Options skew 7.5 (put IV 43% vs call IV 35%) adds modest bearish tilt but captured under sentiment axis."
+      },
+      "cmeBasis": {
+        "score": 1,
+        "signal": "CME annualized basis +7.97% — HEALTHY CONTANGO. Institutional demand via cash-and-carry present despite ETF outflows. Note: 8 days to expiry, roll risk minimal but watch for basis compression at rollover."
+      },
+      "macro": {
+        "score": 0,
+        "signal": "DXY 99.16 is constructive for BTC (weak dollar). VIX 17.7 normal — no systemic stress. However 10Y yield at 5.01% is materially bearish for risk assets and offsets DXY tailwind. Net: macro neutral with a bearish yield overhang."
+      },
+      "sentiment": {
+        "score": 0,
+        "signal": "Fear & Greed 50 (Neutral) already scored on derivatives axis. Options skew 7.5 with put IV premium signals hedging demand and mild downside protection bias — marginally bearish but insufficient to score -1 in isolation. Net: 0."
+      },
+      "stablecoin": {
+        "score": -1,
+        "signal": "USDT+USDC supply $256.9B, 7-day delta -$0.9B — CONTRACTING. Regime: STABLE per DefiLlama but 7d delta is negative, indicating net stablecoin withdrawal/redemption. Scored -1 per CONTRACTING rule."
+      },
+      "scaleNote": "Range -10 to +10. Composite: -1 + -2 + 0 + 1 + 0 + 0 + -1 = -3. Capped representation: -3 reflects cautious bias, not systemic breakdown."
+    },
+    "overallBias": "CAUTION",
+    "biasReason": "CLARITY Act Senate failure triggers ETF outflows; LTH distributing; 10Y yield at 5% headwind.",
+    "headline": "CLARITY Act Fails 49-50; ETFs Bleed $296M; BTC Holds Phase B",
+    "marketStatus": "BREAKOUT WATCH",
+    "correlationRegime": {
+      "btcQqqCorrelation": "unavailable",
+      "regime": "MODERATE",
+      "implication": "BTC-QQQ correlation data unavailable for today. Assumed moderate regime given VIX 17.7 (risk-on environment intact) and BTC holding Phase B despite equity-adjacent macro stress. Monitor for regime shift if 10Y yield sustains above 5%."
+    },
+    "priceAnalysis": {
+      "trend": "BTC at $76,310 is 57% through Phase B ($70,338–$80,889). Price is above 200d SMA ($70,338, +8.5%) and 50d SMA ($72,146) but below 20d SMA ($78,009), indicating near-term bearish momentum. Recovery from Sep 15 low (~$75,000) is tentative.",
+      "keyLevel": "$78,009 (20d SMA resistance) to the upside; $75,000 (Sep low / psychological) to the downside. Phase B→C trigger at $80,889 requires +6.0% from current price.",
+      "realizedPriceContext": "Realized price $52,961 implies MVRV 1.18 — price is 44% above realized cost basis. LTH cost basis ~$30K means long-term holders remain deeply profitable, supporting distribution regime observed in live data.",
+      "signal": "MIXED"
+    },
+    "whaleSignal": {
+      "status": "NEUTRAL",
+      "netflowBTC": "0 BTC (partial data — cold/custody wallets only; 16 legacy exchange addresses)",
+      "netflowUSD": "$0 (data partial)",
+      "netflowPctLiquid": "0.000%",
+      "netflowPctVolume": "0.000%",
+      "netflowPctMcap": "0.000%",
+      "historicalContext": "Zero netflow reading reflects data limitation (cold/custody wallets only) rather than confirmed neutral whale activity. Cannot affirm accumulation or distribution via on-chain exchange netflow today.",
+      "detail": "Blockchain.info balance delta registers 0 BTC across 16 legacy exchange addresses — flagged as PARTIAL DATA. LTH distribution signal (-217,934 BTC/day) from Bitcoin Magazine Pro is the dominant whale signal and strongly bearish, but sourced separately from the exchange netflow metric.",
+      "actionable": "Do not interpret zero netflow as bullish. Weight LTH distribution data as primary whale signal. Await full on-chain exchange netflow confirmation before upgrading whale status.",
+      "dataQuality": "LIVE"
+    },
+    "binancePressure": {
+      "netTakerBTC": "unavailable",
+      "buyVolumeBTC": "unavailable",
+      "sellVolumeBTC": "unavailable",
+      "buyRatioPct": "unavailable",
+      "totalVolumeBTC": "~2,465 BTC (24h total market volume reference)",
+      "pressure": "NEUTRAL",
+      "span": "24h",
+      "confluence": "Binance 24h taker pressure data not provided in today's data block; cannot confirm or contradict on-chain netflow direction — treat whale signal as ESTIMATED for directional confluence purposes.",
+      "dataQuality": "UNAVAILABLE"
+    },
+    "fundingRates": {
+      "rate8h": "0.0054%",
+      "annualized": "5.9%",
+      "regime": "ELEVATED",
+      "signal": "Mildly elevated funding suggests modest long bias in perp markets, but well below levels that trigger cascading liquidations. Not yet pricing euphoria.",
+      "detail": "At 5.9% annualized, funding is above neutral (~4.4%) but far below extreme long territory (>20% annualized). With OI at 28,622 BTC ($2.2B) and price near Phase B midpoint, elevated funding with weak spot demand is a mild caution signal — longs could face squeeze if price fails $75K.",
+      "squeeze_risk": "MEDIUM"
+    },
+    "openInterest": {
+      "trend": "STABLE",
+      "regime": "OI at 28,622 BTC ($2.2B) is moderate. Not at cycle highs, suggesting leverage is not dangerously extended. Stable OI with mildly elevated funding indicates steady speculative positioning rather than aggressive buildup.",
+      "detail": "OI of ~$2.2B in context of $1.53T market cap represents ~0.14% of market cap — low systemic leverage risk. However, if price breaks below $75,000 support, even moderate OI could amplify downside via long liquidations given funding rate overhang.",
+      "leverageRisk": "MEDIUM"
+    },
+    "mvrvSignal": {
+      "estimatedZone": "FAIR VALUE (MVRV 1.18)",
+      "implication": "At 1.18, BTC is in the fair value band (1.0–2.0). Price is above realized price ($52,961) but not in overvalued territory. LTH distribution at this MVRV level is opportunistic profit-taking rather than cycle-top distribution, but -217,934 BTC/day is elevated and warrants monitoring.",
+      "cycleContext": "MVRV 1.18 historically represents early-to-mid bull cycle fair value. Prior cycle peaks occurred at MVRV 3.5–7.0. Current reading is consistent with Phase B consolidation — neither a screaming buy nor a cycle top warning."
+    },
+    "etfFlows": {
+      "status": "OUTFLOW",
+      "totalNetUSD": "-$296M",
+      "totalNetBTC": "-3,878 BTC",
+      "totalNetPctLiquid": "-0.092%",
+      "ibitFlow": "not separately broken out in today's data (total includes IBIT + FBTC and peers)",
+      "streakDays": "not confirmed from available data",
+      "vsBaseline": "-$560M vs $264M/day baseline (delta: -$560M below threshold)",
+      "detail": "Sep 16 ETF outflow of -$296M is the largest since June per Biztoc/bitcoinfoundation reporting. Directly attributable to CLARITY Act Senate cloture vote failure (49-50). Some headlines cite -$450M (likely includes T+1 settlement lag or broader crypto ETP universe). Using Farside -$296M as primary figure.",
+      "trend": "DETERIORATING"
+    },
+    "stablecoinSignal": {
+      "status": "OUTFLOW",
+      "detail": "USDT+USDC combined supply $256.9B with 7-day delta of -$0.9B. While DefiLlama labels regime as STABLE, the directional 7d delta is negative — dry powder is contracting marginally. Not a crisis signal but removes a bullish stablecoin tailwind.",
+      "signal": "Mild bearish — stablecoin supply not growing to support new BTC demand at current prices. Watch for reversal if regulatory clarity improves."
+    },
+    "macroContext": {
+      "riskLevel": "MEDIUM",
+      "dxy": "99.16",
+      "dxySignal": "BULLISH for BTC — DXY below 100 represents weak dollar environment historically supportive of hard assets and risk assets.",
+      "realYield": "10Y nominal yield 5.01% (TIPS real yield estimated ~2.0%+ given recent inflation data). Materially bearish for non-yielding assets including BTC.",
+      "realYieldSignal": "BEARISH — 10Y at 5.01% is the highest cost-of-capital environment for BTC in this cycle. Competes directly with risk asset allocation.",
+      "gold": "$4,332.21 (-0.45% 24h). BTC/Gold ratio 17.61. Gold at all-time high territory — safe haven demand elevated. BTC not fully participating as safe haven, suggesting macro buyers prefer gold over BTC in current regulatory uncertainty.",
+      "fedWatch": "Fed decision in focus per Times of India headline. Rate path uncertainty at 5.01% 10Y yield implies market pricing higher-for-longer. No cut priced near-term — bearish for BTC valuation multiples.",
+      "detail": "Macro setup is split: weak DXY (+) vs 5.01% 10Y yield (-) vs stable VIX 17.7 (neutral). Net macro read is neutral-to-bearish for BTC. Gold outperformance vs BTC (-0.45% gold, +0.22% BTC) is a mild positive but BTC/Gold ratio 17.61 shows no decisive breakout above key thresholds."
+    },
+    "todayAction": {
+      "recommendation": "WAIT",
+      "size": "0% new deployment. Maintain existing Phase B allocation. Do not add until ETF flows confirm reversal above $264M/day baseline.",
+      "trigger": "Re-enter ADD mode on: (1) Daily close above $78,009 (20d SMA) with ETF flow >$400M, OR (2) CLARITY Act Senate re-vote scheduled with positive procedural outcome. Phase B→C confirmation requires daily close above $80,889.",
+      "stopAlert": "MONITORING",
+      "dynamicStop": "Hard stop daily close below $51,372 (unchanged). Tactical Phase B stop: daily close below $70,338 (200d SMA / Phase A→B boundary) would signal phase regression. Current price $76,310 provides $6,000 buffer to tactical stop.",
+      "scoreJustification": "Composite score -3 driven by ETF outflows (-2), LTH distribution (-1), and stablecoin contraction (-1), partially offset by CME healthy contango (+1). Score below -2 triggers WAIT/CAUTION stance per portfolio mandate. Phase B position maintained but no new capital deployed until regulatory catalyst or ETF flow reversal confirmed."
+    },
+    "cmeBasis": {
+      "basisPct": "+7.97% annualized",
+      "regime": "HEALTHY CONTANGO",
+      "signal": "BULLISH — institutional cash-and-carry demand intact despite ETF outflows. CME basis remaining positive at expiry approach (8 days) suggests real institutional BTC demand for yield arbitrage.",
+      "detail": "7.97% annualized CME basis represents meaningful carry for institutional arbitrageurs. The persistence of healthy contango even during the CLARITY Act selloff suggests sophisticated capital is not exiting BTC basis trades — a constructive undercurrent. Near expiry (8 days) roll watch: if basis compresses sharply at rollover, it could signal institutional demand softening.",
+      "cmeOIvsPerp": "CME OI data not separately provided today. Perp OI at 28,622 BTC ($2.2B). CME basis at +7.97% vs perp funding at 5.9% annualized — CME premium above perp funding confirms genuine institutional futures demand, not just retail carry speculation."
+    },
+    "catalystWatch": [
+      {
+        "event": "CLARITY Act Senate Re-vote / Procedural Revival",
+        "timing": "Uncertain — cloture failed 49-50 on Sep 15, 2026; revival requires 1 senator flip or procedural maneuver",
+        "impact": "BULLISH",
+        "note": "NewsAPI [2026-09-16, Bitcoinfoundation.org]: Senate rejected cloture on CLARITY Act 49-50. Failure triggered -$296M ETF outflow (Farside) and BTC below $75K intraday. Revival of vote or alternative legislative path would be a major re-rating catalyst. Watch Senate floor schedule and bipartisan negotiation signals closely."
+      },
+      {
+        "event": "Federal Reserve Interest Rate Decision",
+        "timing": "Imminent — September 2026 FOMC meeting window",
+        "impact": "BINARY",
+        "note": "NewsAPI [2026-09-16, Times of India]: Article flags 'Fed decision in focus' alongside CLARITY Act failure. 10Y yield at 5.01% suggests market pricing higher-for-longer. A dovish surprise (rate cut or cut signal) would be strongly bullish for BTC via risk-on re-rating. A hawkish hold with elevated dot plot is bearish — reinforces 5% yield headwind."
+      },
+      {
+        "event": "ETF Flow Reversal Post-CLARITY Act Shock",
+        "timing": "Next 3-5 trading days (Sep 17-23, 2026)",
+        "impact": "BULLISH",
+        "note": "NewsAPI [2026-09-16, Biztoc.com]: Bitcoin ETFs shed $450M as CLARITY Act fails — 'most since June.' Institutional reallocation decisions post-legislative shock typically stabilize within 3-5 days absent follow-on negative news. Recovery of ETF inflows above $264M/day baseline would confirm Phase B resilience and support re-entry trigger."
+      },
+      {
+        "event": "CLARITY Act Alternative Legislative Path or Executive Action",
+        "timing": "Q4 2026 — uncertain; depends on Senate leadership scheduling",
+        "impact": "BULLISH",
+        "note": "NewsAPI [2026-09-16, Bitcoinfoundation.org]: 'Crypto Vote: Why the CLARITY Act Just Failed' — analysis suggests bill died on procedural grounds (50-49 cloture failure), not fundamental opposition. If Senate leadership brings amended bill or administration signals executive-level crypto policy clarity, market re-rating potential is significant. Monitor Congressional Calendar and Treasury/SEC statements."
+      }
+    ],
+    "analystNote": "BTC is holding Phase B ($70,338–$80,889) at $76,310 despite a significant regulatory setback — the CLARITY Act's 49-50 Senate cloture failure is the dominant event driving today's cautious stance, having triggered -$296M in ETF outflows (Sep 16) and an intraday breach of $75,000. The MVRV at 1.18 and CME basis at +7.97% confirm this is not a fundamental breakdown, but the LTH distribution regime at -217,934 BTC/day (-5.189% liquid supply) is unusually elevated for a MVRV sub-1.2 environment and warrants close monitoring — if LTH selling persists above $80K on any rally, it becomes a cycle-top proximity signal. The 10Y yield at 5.01% remains the macro albatross: at this rate level, BTC's risk-adjusted return versus Treasuries compresses materially, and the DXY tailwind at 99.16 is insufficient to offset the cost-of-capital headwind. Portfolio action is WAIT — existing Phase B allocation is maintained, but the Phase B→C trigger at $80,889 now requires both a price close above that level AND ETF inflow recovery above $500M/day per mandate, which is unlikely until CLARITY Act legislative resolution or a Fed dovish pivot provides a fresh institutional entry catalyst.",
+    "riskWarning": "A second failed Senate procedural vote on CLARITY Act or competing bearish regulatory action (SEC enforcement, executive order) in the next 7 days could trigger a sustained ETF outflow streak exceeding $1B aggregate, pushing BTC below the critical $75,000 tactical support and potentially retesting $72,146 (50d SMA) — invalidating the Phase B hold thesis and forcing a re-evaluation toward Phase A re-accumulation.",
+    "normalization": {
+      "currentPrice": "$76,310.5",
+      "marketCap": "$1.53T",
+      "dailyVolumeBTC": "~2,465 BTC",
+      "volumeTrend": "STABLE (5d/20d ratio: 1.13)",
+      "lthSellingBTC": "-217,934 BTC/day",
+      "lthSellingPctLiquid": "-5.189%",
+      "whaleNetflowBTC": "0 BTC (PARTIAL DATA — cold/custody wallets only; do not interpret as neutral)",
+      "whaleNetflowPctLiquid": "0.000% (partial)",
+      "whaleNetflowPctVolume": "0.000% (partial)",
+      "whaleNetflowPctMcap": "0.000% (partial)",
+      "etfFlowUSD": "-$296M (Sep 16, Farside)",
+      "etfFlowBTC": "-3,878 BTC (at $76,310/BTC)",
+      "etfFlowPctLiquid": "-0.092%"
+    }
+  },
+  "phaseAnchors": {
+    "hardStop": 51372,
+    "phaseA_low": 52961,
+    "phaseA_high": 70385,
+    "phaseB_high": 80943,
+    "phaseC_high": 122272,
+    "derivedFrom": {
+      "realized": 52961.22880813866,
+      "sma200": 70385,
+      "cycleHigh": 82172,
+      "ath": 124767,
+      "realizedSource": "realizedPrice"
+    },
+    "derivationStatus": "NORMAL",
+    "computedAt": "2026-09-18T10:46:32.430Z",
+    "regime": "NORMAL",
+    "regimeReason": "insufficient history — bear-realized rule needs 120 cycles, have 3; bear-sma rule needs 240 cycles, have 3; ath-cycle rule needs 112 cycles, have 3",
+    "rawRegime": "NORMAL",
+    "regimeState": {
+      "promoted": "NORMAL",
+      "pending": null,
+      "pendingCount": 0,
+      "normalCount": 1162
+    },
+    "historyCycles": 3
+  },
+  "catalystNews": [
+    {
+      "title": "Bitcoin near $76,000 as Fed hikes rates; hawkish tone and $592 million ETF outflows pressure crypto",
+      "source": "The Times of India",
+      "date": "2026-09-17",
+      "url": "https://economictimes.indiatimes.com/markets/cryptocurrency/crypto-news/bitcoin-near-76000-as-fed-hikes-rates-hawkish-tone-and-592-million-etf-outflows-pressure-crypto/articleshow/134309336.cms",
+      "description": "Bitcoin traded near $76,000 after the Federal Reserve raised rates by 25 basis points, while Bitcoin and Ethereum ETFs saw nearly $592 million in combined outflows. Crypto prices remained resilient, though analysts flagged cautious technical structures and ha…",
+      "content": "Bitcoin traded near the $76,000 mark after the Fed delivered a 25 basis point rate hike for the first time since 2023 and ETF demand also weakened sharply, with Bitcoin and Ethereum funds seeing comb…"
+    },
+    {
+      "title": "Live updates: Bitcoin continues near $76,000 as stocks surge following Fed rate hike",
+      "source": "CoinDesk",
+      "date": "2026-09-17",
+      "url": "https://www.coindesk.com/tech/2026/09/17/live-updates-zcash-jumps-17-as-usd345-million-of-liquidations-hit-crypto-traders",
+      "description": "The SEC debuted its long-awaited \"innovation exemption,\" providing a roadmap for blockchain-based venues to offer tokenized securities.",
+      "content": "Zcash rose more than 17% to nearly $1,358 as of Asian morning hours Thursday, far ahead of every other major, according to CoinDesk data.\r\nSolana and hyperliquid each added about 3%, with BNB, dogeco…"
+    },
+    {
+      "title": "Bitwise CIO Hougan revises Clarity Act outlook, says crypto bull market may continue without legislation",
+      "source": "Biztoc.com",
+      "date": "2026-09-17",
+      "url": "https://biztoc.com/x/d668f5c4bab26466",
+      "description": "Bitcoin climbed above $80,000 in early September despite declining odds of the legislation passing this year, Hougan noted.",
+      "content": "Bitcoin climbed above $80,000 in early September despite declining odds of the legislation passing this year, Hougan noted.\r\nThis story appeared on theblock.co, 2026-09-17 10:19:55."
+    },
+    {
+      "title": "The Big Crypto Whiff",
+      "source": "The American Prospect",
+      "date": "2026-09-17",
+      "url": "https://prospect.org/2026/09/17/crypto-clarity-act-senate-democrats-trump/",
+      "description": "The crypto industry wasn’t able to buy support for its biggest legislative priority in the Senate this week, despite unparalleled levels of spending in the midterms.\nThe post The Big Crypto Whiff appeared first on The American Prospect.",
+      "content": "The Digital Asset Market Clarity Act (or CLARITY Act) was supposed to usher in a new era for the crypto industry. It was going to give them special treatment to skirt securities regulation, and enshr…"
+    },
+    {
+      "title": "Bitcoin treasuries buy just 5.9K BTC in three months as paper losses linger",
+      "source": "Cointelegraph",
+      "date": "2026-09-17",
+      "url": "https://cointelegraph.com/markets/bitcoin-treasuries-buy-just-59k-btc-in-three-months-as-paper-losses-linger",
+      "description": "Bitcoin corporate treasuries remained at an unrealized loss on their holdings as the price fell below $80,000 and fresh capital inflows dwindled.",
+      "content": "Bitcoin (BTC) is no longer a target for corporate treasuries as current buyers sit on unrealized losses, new research shows.\r\nKey points:\r\n<ul><li>Bitcoin corporate treasuries added just 5,900 BTC ov…"
+    },
+    {
+      "title": "Sensex today | Stock Market Highlights: Nifty, Sensex close flat as high crude price concerns offset value buying",
+      "source": "BusinessLine",
+      "date": "2026-09-17",
+      "url": "https://www.thehindubusinessline.com/markets/sensex-nifty50-today-stock-market-highlights-17th-september-2026/article71472777.ece",
+      "description": "Sensex Today, Nifty 50 | Stock Market Highlights - Find here all the highlights related to Sensex, Nifty, BSE, NSE, share prices and Indian stock markets for 17th September 2026. Follow our NSE IPO Live to know real-time subscription data.",
+      "content": "<li></li>\r\nSeptember 17, 2026 16:05Puravankara expects 2,600 cr revenue from Mumbai redevelopment projects\r\nPuravankara expects 2,600 cr revenue from Mumbai redevelopment projects\r\nPuravankara Ltd pl…"
+    },
+    {
+      "title": "BlackRock’s IBIT sees $144M in net outflows as bitcoin ETFs drop",
+      "source": "Crypto Briefing",
+      "date": "2026-09-17",
+      "url": "https://cryptobriefing.com/blackrock-ibit-outflows-bitcoin-etfs-drop/",
+      "description": "Rising Treasury yields are prompting a shift away from risk assets like bitcoin ETFs, impacting market dynamics and investor strategies.\nThe post BlackRock’s IBIT sees $144M in net outflows as bitcoin ETFs drop appeared first on Crypto Briefing.",
+      "content": "Combined spot bitcoin and ether ETF redemptions topped $520 million on Wednesday, with IBIT and Fidelity's FBTC leading the retreat. Bitcoin ETFs had a rough Wednesday. Spot bitcoin and ether ETF pro…"
+    },
+    {
+      "title": "Two-Thirds Of Key Democrats Sign Sweeping Anti-Corruption Pledge",
+      "source": "HuffPost",
+      "date": "2026-09-17",
+      "url": "https://www.huffpost.com/entry/dems-sign-anti-corruption-pledge_n_6aab65b7e4b00c07b744a8ad",
+      "description": "More than 300 Democrats have promised to swear off corporate PAC money and ban congressional stock trading.",
+      "content": "Nearly two-thirds of Democrats in the most important races to win control of the House of Representatives have signed on to a sweeping anti-corruption pledge, and a leading group fighting moneys infl…"
+    },
+    {
+      "title": "Hawkish Fed lifts dollar to seven-week high as focus turn to BOJ",
+      "source": "CNBC",
+      "date": "2026-09-17",
+      "url": "https://www.cnbc.com/2026/09/17/hawkish-fed-lifts-dollar-to-seven-week-high-as-focus-turn-to-boj.html",
+      "description": "The U.S. dollar eased against ⁠the euro on Thursday, one day after logging its biggest jump in three months against the common currency.",
+      "content": "The U.S. dollar eased against the euro on Thursday, a day after logging its biggest jump in three months against the common currency after the Federal Reserve hiked rates and signaled further tighten…"
+    },
+    {
+      "title": "Two major crypto bills advance in House committees despite Senate setback",
+      "source": "Crypto Briefing",
+      "date": "2026-09-17",
+      "url": "https://cryptobriefing.com/two-major-crypto-bills-advance-in-house-committees-despite-senate-setback/",
+      "description": "The advancement of crypto bills in the House may boost market confidence and signal a shift towards clearer U.S. crypto regulations.\nThe post Two major crypto bills advance in House committees despite Senate setback appeared first on Crypto Briefing.",
+      "content": "The U.S. House of Representatives has seen progress on two significant cryptocurrency bills, as reported by @coinbureau. The Digital Asset Tax Certainty Act and the American Reserve Modernization Act…"
+    }
+  ],
+  "mvrv": {
+    "mvrv": 1.1801807301458513,
+    "realizedPrice": 52961.22880813866,
+    "marketCap": 1253585393982.2983,
+    "realizedCap": 1062197815945.8469,
+    "date": "2026-07-14",
+    "stale": true
+  },
+  "exchangeFlow": {
+    "netflow_btc": 0,
+    "inflow_btc": 0,
+    "outflow_btc": 0,
+    "total_exchange_btc": 516359.71,
+    "exchange_addr_count": 6,
+    "elapsed_hours": 0,
+    "source": "blockchain.info balance delta (16 legacy exchange addresses)",
+    "date": "2026-09-18"
+  },
+  "_exchangeAddressBalances": {
+    "34xp4vRoCGJym3xR7yCVPFHoCNxv4Twseo": 248597.59249162,
+    "1P5ZEDWTKTFGxQjZphgWPQUpe554WKDfHQ": 0.02318875,
+    "3M219KR5vEneNb47ewrPfWyb5jQ2DjxRP6": 229834.85409404,
+    "3D2oetdNuZUqQHPJmcMDDHYoqkyNVsFk9r": 0.15395293,
+    "1HQ3Go3ggs8pFnXuHVHRytPCq5fGG8Hbhx": 0.01290825,
+    "3LQUu4v9z6KNch71j7kbj8GPeAGUo1FW6a": 37927.07834862
+  },
+  "binanceLargeTrades": {
+    "threshold_btc": 2,
+    "whale_buy_btc": 0,
+    "whale_sell_btc": 2.3,
+    "net_whale_btc": -2.3,
+    "whale_buy_count": 0,
+    "whale_sell_count": 1,
+    "whale_buy_ratio": 0,
+    "span_minutes": 4,
+    "pressure": "NEUTRAL",
+    "source": "Binance aggTrades (BTCUSDT, last 1000 trades)",
+    "date": "2026-09-11"
+  },
+  "snapshotAt": "2026-09-18T10:46:34.191Z",
+  "snapshotKey": "2026-09-18-10"
+}
