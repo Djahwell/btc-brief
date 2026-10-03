@@ -1,0 +1,422 @@
+{
+  "etfFlow": {
+    "total_million_usd": 31.7,
+    "date": "02 Oct 2026"
+  },
+  "lthData": {
+    "lth_supply_btc": 16476891,
+    "lth_net_btc": 6886,
+    "lth_days_gap": 1,
+    "date": "2026-10-02",
+    "prev_date": "2026-10-01",
+    "source_url": "https://www.bitcoinmagazinepro.com/charts/long-term-holder-supply/"
+  },
+  "stablecoinSupply": {
+    "usdt_supply_usd": 184038348269.7006,
+    "usdc_supply_usd": 74234073482.15111,
+    "total_usd": 258272421751.85168,
+    "delta_7d_usd": -968398161.1109924,
+    "delta_7d_pct": -0.374,
+    "regime": "STABLE",
+    "date": "2026-10-03",
+    "source": "DefiLlama"
+  },
+  "mvrv_error": "HTTP 401 POST /api/v1/query/6985599/execute",
+  "mvrv_query_id": "6985599",
+  "exflow_query_id": "6985606",
+  "cachedAt": "2026-10-03T11:16:57.964Z",
+  "market": {
+    "price": 84619.9,
+    "change24h": 0.14,
+    "volume24hUSD": 307398519.37648153,
+    "marketCap": 1692398000000,
+    "priceSource": "Kraken",
+    "fearGreedValue": 67,
+    "fearGreedLabel": "Greed",
+    "fearGreed7d": [
+      67,
+      72,
+      74,
+      71,
+      73,
+      74,
+      70
+    ],
+    "fundingRate": -0.000008130609396,
+    "fundingSource": "OKX",
+    "openInterest": 28412.850700000115,
+    "openInterestUSD": 2404292584.94894,
+    "goldPrice": 4146.81,
+    "goldChange24h": -1.0400914407731414,
+    "btcGoldRatio": 20.41,
+    "btcDominance": 59.2
+  },
+  "tech": {
+    "sma200": 71425,
+    "sma50": 78553,
+    "sma20": 82435,
+    "candleCount": 210,
+    "cycleHigh": 86594,
+    "avgVol5d": 2729,
+    "avgVol20d": 2874,
+    "volTrendRatio": 0.95,
+    "volTrend": "STABLE",
+    "btcQqqCorr": null,
+    "corrWindow": 0
+  },
+  "options": {
+    "optionsSkew": 5.7,
+    "optionsPCRatio": 0.71,
+    "optionsPutIV": 40,
+    "optionsCallIV": 35
+  },
+  "macros": {
+    "dxy": 100.74,
+    "dxyChange": null,
+    "vix": 15.3,
+    "vixChange": null,
+    "tnxYield": 5.28,
+    "tnxChange": null,
+    "dxyApprox": true
+  },
+  "cme": null,
+  "coinMetrics": {
+    "date": "2026-10-02",
+    "activeAddresses": 736514,
+    "txCount": 596770,
+    "hashRate": 930513981.3821613,
+    "totalFeesBTC": 3.84890525,
+    "refPrice": 84517.5188820339,
+    "txVolumeUSD": null,
+    "txVolumeArr90d": [],
+    "mvrv": null,
+    "realizedPrice": null,
+    "source": "CoinMetrics Community API"
+  },
+  "briefCachedAt": "2026-10-03T04:43:03.496Z",
+  "brief": {
+    "date": "Saturday, October 03 2026",
+    "compositeScore": 3,
+    "scoreDecomposition": {
+      "onChain": {
+        "score": 1,
+        "signal": "MVRV 1.18 = fair value; exchange netflow data partial/zero (cold wallet only); LTH selling -3,104 BTC/day (-0.074% liquid) is modest distribution pressure. Net: mild positive on MVRV fair value offset by LTH headwind. +1."
+      },
+      "etfInstitutional": {
+        "score": 1,
+        "signal": "ETF inflow +$32M vs ~$264M baseline — well below institutional baseline but directionally positive on a weekend. Streak and trend unknown. +1 for positive sign, capped given weak magnitude."
+      },
+      "derivatives": {
+        "score": 1,
+        "signal": "Funding 0.0009%/8h (1.0% annualized) is neutral-healthy — no crowded longs. F&G 67 (Greed) is elevated but not extreme. Shared axis: neutral funding + moderate greed = net +1. Not double-counted."
+      },
+      "cmeBasis": {
+        "score": 0,
+        "signal": "CME basis unavailable. No score applied — cannot assess institutional forward premium."
+      },
+      "macro": {
+        "score": 0,
+        "signal": "DXY 100.74 neutral. VIX 15.3 benign. 10Y yield 5.28% is materially bearish for risk assets — high real cost of capital competes with BTC. Net: macro headwinds and tailwinds roughly cancel. 0."
+      },
+      "sentiment": {
+        "score": 1,
+        "signal": "Sentiment axis scored on directional bias beyond derivatives: Citi raising BTC target to $113K signals growing TradFi institutional conviction. SEC custody proposal adds structural optimism. +1."
+      },
+      "stablecoin": {
+        "score": -1,
+        "signal": "USDT+USDC 7-day delta: -$0.9B. Supply contracting = dry powder leaving ecosystem. Regime flagged STABLE by source but directional delta is negative. Score: -1 per methodology."
+      },
+      "scaleNote": "Range -10 to +10. Composite = sum of independent axis scores: 1+1+1+0+0+1-1 = 3."
+    },
+    "overallBias": "BUY",
+    "biasReason": "Phase C momentum confirmed; fair-value MVRV, neutral funding, SEC custody tailwind despite 10Y yield drag.",
+    "headline": "BTC Enters Phase C at Fair Value as SEC Clears Custody Path",
+    "marketStatus": "MOMENTUM",
+    "correlationRegime": {
+      "btcQqqCorrelation": "Unavailable",
+      "regime": "MODERATE",
+      "implication": "BTC-QQQ correlation data not live today; assume moderate regime given VIX 15.3 and risk-on posture — BTC likely tracking macro equities with some independence driven by crypto-specific catalysts."
+    },
+    "priceAnalysis": {
+      "trend": "BTC at $84,577 is 6% into Phase C range ($82,139–$122,272). Price is above 20d SMA $82,433 and 50d SMA $78,552, confirming short-term bullish structure. Phase B→C breakout confirmed.",
+      "keyLevel": "$82,139 (Phase B→C anchor / 20d SMA cluster near $82,433) is now critical support. Resistance at $90,000 psychological; next structural level $100,000.",
+      "realizedPriceContext": "MVRV 1.18 with realized price $52,961 implies average holder is +18% unrealized profit — fair value zone. No MVRV excess heat; ceiling before distribution pressure accelerates is approximately MVRV 2.0–2.5 (~$106K–$132K).",
+      "signal": "BULLISH"
+    },
+    "whaleSignal": {
+      "status": "NEUTRAL",
+      "netflowBTC": "0 BTC (blockchain.info — partial cold/custody wallet data only)",
+      "netflowUSD": "$0",
+      "netflowPctLiquid": "0.000%",
+      "netflowPctVolume": "0.000%",
+      "netflowPctMcap": "0.000%",
+      "historicalContext": "Zero reading reflects data limitation (16 legacy cold/custody addresses only) — NOT a confirmed neutral signal. True exchange netflow directionally unknown today.",
+      "detail": "Dune Analytics flagged PARTIAL DATA. Exchange inflow and outflow both zero — likely a data gap, not a genuine equilibrium. LTH net selling -3,104 BTC/day provides the only on-chain directional signal: modest distribution consistent with profit-taking at fair value.",
+      "actionable": "Do not read whale neutrality as accumulation. Monitor tomorrow's netflow for confirmation. LTH selling pace must stay below -5,000 BTC/day to remain non-threatening.",
+      "dataQuality": "ESTIMATED"
+    },
+    "binancePressure": {
+      "netTakerBTC": "Unavailable",
+      "buyVolumeBTC": "Unavailable",
+      "sellVolumeBTC": "Unavailable",
+      "buyRatioPct": "Unavailable",
+      "totalVolumeBTC": "Unavailable",
+      "pressure": "NEUTRAL",
+      "span": "24h",
+      "confluence": "No Binance taker pressure data provided today; cannot confirm or contradict the partial on-chain netflow reading — treat directional signal as inconclusive.",
+      "dataQuality": "UNAVAILABLE"
+    },
+    "fundingRates": {
+      "rate8h": "0.0009%",
+      "annualized": "1.0%",
+      "regime": "NEUTRAL",
+      "signal": "Funding is healthy and far from crowded. Longs are not overextended; no squeeze risk from funding pressure.",
+      "detail": "At 1.0% annualized, funding is well below the 10–15% annualized threshold that historically precedes flush events. Basis-neutral funding supports organic price discovery rather than leverage-driven momentum.",
+      "squeeze_risk": "LOW"
+    },
+    "openInterest": {
+      "trend": "STABLE",
+      "regime": "28,737 BTC (~$2.4B) OI at 6% into Phase C. Moderate absolute level relative to market cap ($2.4B / $1.69T = 0.14%) — not elevated.",
+      "detail": "OI is not expanding aggressively, which is constructive. A leverage-driven blow-off typically sees OI surge 20–40% alongside price; current flat OI suggests Phase C entry is not yet over-leveraged.",
+      "leverageRisk": "LOW"
+    },
+    "mvrvSignal": {
+      "estimatedZone": "FAIR VALUE — MVRV 1.18",
+      "implication": "Holders are modestly in profit. Historically, MVRV 1.0–2.0 is accumulation-to-fair-value; distribution pressure intensifies above 2.0. Current reading supports continued holding with no immediate sell signal.",
+      "cycleContext": "At prior cycle peaks MVRV reached 3.0–3.5. Current 1.18 implies significant headroom before euphoric distribution. Realized price $52,961 serves as deep macro support floor."
+    },
+    "etfFlows": {
+      "status": "INFLOW",
+      "totalNetUSD": "+$32M",
+      "totalNetBTC": "+375 BTC",
+      "totalNetPctLiquid": "+0.009%",
+      "ibitFlow": "Not disaggregated in today's data",
+      "streakDays": "Unknown — weekend data limited",
+      "vsBaseline": "-$232M vs $264M/day institutional baseline — 12% of baseline. Weekend flow significantly below weekday norms.",
+      "detail": "Weekend ETF flows are structurally lighter due to T+1 settlement mechanics and institutional desk hours. The +$32M positive reading on a Saturday is directionally constructive but not signal-grade. Watch Monday's print for regime confirmation.",
+      "trend": "STABLE"
+    },
+    "stablecoinSignal": {
+      "status": "OUTFLOW",
+      "detail": "USDT+USDC combined supply: $258.3B. 7-day delta: -$0.9B. Stablecoin supply contracting at the margin — dry powder being withdrawn from the crypto ecosystem. Magnitude is small (<0.35% of total) but direction is negative per methodology.",
+      "signal": "Minor headwind. Not alarming at -$0.9B/week but directionally unfavorable. Watch for continuation — sustained 3+ week contraction would warrant stablecoin score downgrade to -2."
+    },
+    "macroContext": {
+      "riskLevel": "MEDIUM",
+      "dxy": "100.74",
+      "dxySignal": "NEUTRAL — DXY sub-101 is benign for BTC. No dollar-strength headwind at current level.",
+      "realYield": "10Y nominal yield 5.28%. Estimated real yield ~2.8–3.0% (assuming ~2.3% inflation breakeven). Materially elevated real cost of capital competes with risk assets.",
+      "realYieldSignal": "BEARISH — 5.28% 10Y is a structural headwind. Historically BTC has rallied through elevated yields only when ETF/institutional demand provides offset. Current ETF flow too light to fully neutralize.",
+      "gold": "$4,150.37 (-0.99% 24h). BTC/Gold ratio 20.38 — BTC outperforming gold on 2026 YTD basis. Gold near all-time highs signals macro uncertainty premium remains elevated.",
+      "fedWatch": "No FOMC meeting imminent this weekend. Yield at 5.28% implies market pricing fewer near-term cuts — risk-off undertone for fixed income sensitive assets.",
+      "detail": "VIX 15.3 reflects contained equity volatility — not panic. Cross-asset backdrop is cautiously risk-on. Primary macro risk is yield creep above 5.5% which would pressure growth multiples and crypto risk premium simultaneously."
+    },
+    "todayAction": {
+      "recommendation": "HOLD",
+      "size": "Maintain current Phase C allocation: 55% ETF core (IBIT/FBTC), 20% infrastructure equities (COIN), 20% cash/stables DCA reserve intact, 10% put hedge active.",
+      "trigger": "ADD 5% from DCA reserve on confirmed daily close above $88,000 with ETF flow >$500M on next weekday print. REDUCE 15% at $116,252 per Phase C mandate.",
+      "stopAlert": "MONITORING",
+      "dynamicStop": "Hard stop: daily close below $51,372 (system mandate). Active trailing support: Phase B→C anchor at $82,139. A weekly close below $82,139 would signal Phase C failure — reduce 25% immediately. 20d SMA $82,433 is tactical stop for active traders.",
+      "scoreJustification": "Composite +3 (BUY bias) but Saturday weekend session with thin volume ($0.4B / 4,871 BTC), partial on-chain data, and ETF flow well below baseline warrants HOLD rather than active ADD. Conviction improves on Monday with full institutional flow data."
+    },
+    "cmeBasis": {
+      "basisPct": "Unavailable",
+      "regime": "HEALTHY",
+      "signal": "Cannot score today. Assumed healthy given neutral funding and moderate OI — no backwardation signal from perp market structure.",
+      "detail": "CME basis data not provided in today's feed. Absence noted. This removes one independent institutional demand signal. Will populate when data resumes Monday.",
+      "cmeOIvsPerp": "Unavailable"
+    },
+    "catalystWatch": [
+      {
+        "event": "SEC Proposed Rules — Crypto Custody for Investment Advisers and Funds",
+        "timing": "Proposal published ~October 1, 2026; comment period typically 60–90 days; final rule Q1 2027",
+        "impact": "BULLISH",
+        "note": "NewsAPI [2026-10-01, Decrypt] [2026-10-02, CNBC]: SEC proposed rules allowing investment advisers and regulated funds to use state trust companies as custodians and permitting self-custody under defined conditions. Structurally expands institutional on-ramp. If finalized, dramatically increases TAM for registered fund BTC allocation."
+      },
+      {
+        "event": "Citigroup $113K BTC 12-Month Price Target",
+        "timing": "Published October 1, 2026 — 12-month horizon implies target by October 2027",
+        "impact": "BULLISH",
+        "note": "NewsAPI [2026-10-01, Fortune] [2026-10-01, Times of India]: Citi raised BTC target from $82,000 to $113,000 citing renewed institutional investor demand and improved regulatory clarity. Major TradFi bank price target upgrades historically catalyze incremental institutional allocation mandates. Target sits within Phase C range ($82,139–$122,272)."
+      },
+      {
+        "event": "Congressional Research Service Report — Bank Crypto Regulatory Instability",
+        "timing": "Published October 1, 2026; likely to accelerate Congressional action on stablecoin/crypto banking legislation in Q4 2026",
+        "impact": "BINARY",
+        "note": "NewsAPI [2026-10-01, Crypto Briefing]: CRS flagged regulatory instability for banks engaging in Bitcoin, urging Congress to establish clear, consistent guidelines. Could accelerate passage of Clarity Act or equivalent framework (BULLISH) or trigger temporary bank risk-off posture toward crypto (BEARISH short-term). Net: binary pending Congressional response."
+      },
+      {
+        "event": "U.S. Digital Asset Legislation — Clarity Act / Crypto Market Structure",
+        "timing": "Q4 2026 Senate floor consideration; CRS report adds urgency",
+        "impact": "BULLISH",
+        "note": "Regulatory news cluster [2026-10-01 to 2026-10-02]: Multiple signals converging — SEC custody proposal, CRS instability warning, and Citi institutional forecast collectively point to Q4 2026 as a pivotal regulatory window. Clarity Act or market structure bill passage would be the single largest structural catalyst for BTC Phase C → D transition."
+      }
+    ],
+    "analystNote": "BTC at $84,577 is confirmed in Phase C with a clean break above the $82,139 anchor, 20d SMA ($82,433), and 50d SMA ($78,552) — the trend structure is intact and the phase mandate is to hold core. MVRV at 1.18 (realized price $52,961) confirms we remain in fair-value territory with substantial headroom before MVRV-driven distribution signals emerge near the 2.0–2.5 range (~$106K–$132K). The regulatory landscape is accelerating in favor of institutional adoption: the SEC custody proposal published October 1–2 would be one of the most consequential structural changes for registered fund BTC allocation since spot ETF approval, and Citi's target upgrade to $113K signals growing TradFi consensus around the Phase C upside range. The primary macro headwind is the 10Y yield at 5.28%, which creates a non-trivial hurdle rate for capital allocation into risk assets — this is the key variable to monitor, as a yield surge above 5.5% could temporarily compress BTC's risk premium even in a structurally bullish cycle. Today's data quality is partially limited — exchange netflow is partial (cold wallet addresses only), Binance taker pressure is unavailable, and CME basis is absent — warranting a conservative HOLD recommendation rather than an active add signal until Monday's full institutional flow picture is available.",
+    "riskWarning": "10Y Treasury yield accelerating above 5.5% would compress risk-asset multiples simultaneously with a potential stablecoin supply contraction, removing both the macro tailwind and the dry-powder bid — invalidating the Phase C momentum thesis on a multi-week basis.",
+    "normalization": {
+      "currentPrice": "$84,577.8",
+      "marketCap": "$1.69T",
+      "dailyVolumeBTC": "4,871 BTC (~$0.4B) — extremely thin; weekend session",
+      "volumeTrend": "STABLE (5d/20d ratio: 0.94)",
+      "lthSellingBTC": "-3,104 BTC/day",
+      "lthSellingPctLiquid": "-0.074%",
+      "whaleNetflowBTC": "0 BTC (PARTIAL DATA — cold/custody wallet addresses only; not representative of full exchange netflow)",
+      "whaleNetflowPctLiquid": "0.000%",
+      "whaleNetflowPctVolume": "0.000%",
+      "whaleNetflowPctMcap": "0.000%",
+      "etfFlowUSD": "+$32M",
+      "etfFlowBTC": "+375 BTC",
+      "etfFlowPctLiquid": "+0.009%"
+    }
+  },
+  "phaseAnchors": {
+    "hardStop": 51372,
+    "phaseA_low": 52961,
+    "phaseA_high": 71425,
+    "phaseB_high": 82139,
+    "phaseC_high": 122272,
+    "derivedFrom": {
+      "realized": 52961.22880813866,
+      "sma200": 71425,
+      "cycleHigh": 86594,
+      "ath": 124767,
+      "realizedSource": "realizedPrice"
+    },
+    "derivationStatus": "NORMAL",
+    "computedAt": "2026-10-03T11:16:57.964Z",
+    "regime": "NORMAL",
+    "regimeReason": "no current price in latest snapshot",
+    "rawRegime": "NORMAL",
+    "regimeState": {
+      "promoted": "NORMAL",
+      "pending": null,
+      "pendingCount": 0,
+      "normalCount": 1270
+    },
+    "historyCycles": 0
+  },
+  "catalystNews": [
+    {
+      "title": "Bitcoin’s $113,000 case strengthens as US regulators push 9 crypto actions",
+      "source": "CryptoSlate",
+      "date": "2026-10-02",
+      "url": "https://cryptoslate.com/bitcoins-113000-case-strengthens-as-us-regulators-push-9-crypto-actions/",
+      "description": "The US Securities and Exchange Commission (SEC) proposed a custody framework on Oct. 1 that would let investment advisers and regulated funds hold crypto under rules written for it. It is the latest of nine agency actions since Aug. 18 that span most of an as…",
+      "content": "The US Securities and Exchange Commission (SEC) proposed a custody framework on Oct. 1 that would let investment advisers and regulated funds hold crypto under rules written for it.\r\nIt is the latest…"
+    },
+    {
+      "title": "CLARITY Act Could Unlock 11 Crypto Activities for US Banks Under Senate Plan",
+      "source": "Bitcoinfoundation.org",
+      "date": "2026-10-02",
+      "url": "https://bitcoinfoundation.org/news/regulation/clarity-act-could-unlock-11-crypto-activities-for-us-banks-under-senate-plan/",
+      "description": "The Congressional Research Service reports on opportunities that would be created for US lenders under the CLARITY Act as reported by the Senate and passed...\nThe post CLARITY Act Could Unlock 11 Crypto Activities for US Banks Under Senate Plan appeared first…",
+      "content": "The Congressional Research Service reports on opportunities that would be created for US lenders under the CLARITY Act as reported by the Senate and passed by the House in H.R. 3633. \r\nA Sept. 30 Con…"
+    },
+    {
+      "title": "U.S. market regulator seeks to make it easier for funds, advisers to hold crypto",
+      "source": "CNBC",
+      "date": "2026-10-02",
+      "url": "https://www.cnbc.com/2026/10/02/sec-bitcoin-crypto-proposal.html",
+      "description": "The SEC has proposed new rules that would make it easier for investment advisers and regulated funds to hold cryptocurrencies on behalf of clients.",
+      "content": "The U.S. Securities and Exchange Commission has proposed new rules that would make it easier for investment advisers and regulated funds to hold cryptocurrencies on behalf of clients, as U.S. regulat…"
+    },
+    {
+      "title": "Bitnomial Certifies Ondo US Dollar Spot Futures With CFTC",
+      "source": "Bitcoinist",
+      "date": "2026-10-02",
+      "url": "https://bitcoinist.com/bitnomial-ondo-us-dollar-spot-futures-certified-cftc/",
+      "description": "TL;DR CFTC records show Bitnomial’s “Ondo US Dollar Spot” futures product was certified on October 1. The filing classifies the contract as a futures product under the financial-instrument category. Certification is a regulatory product filing status; it shou…",
+      "content": "<ul><li>CFTC records show Bitnomial’s “Ondo US Dollar Spot” futures product was certified on October 1.</li><li>The filing classifies the contract as a futures product under the financial-instrument …"
+    },
+    {
+      "title": "Bitcoin price target: Why Citi raised its BTC USD forecast to $113,000 from $82,000 as the cryptocurrency rebounds",
+      "source": "The Times of India",
+      "date": "2026-10-01",
+      "url": "https://economictimes.indiatimes.com/news/international/us/bitcoin-price-target-why-citi-raised-its-btc-usd-forecast-to-113000-from-82000-as-the-cryptocurrency-rebounds/articleshow/134627000.cms",
+      "description": "Bitcoin (BTC USD) price target: Citigroup has increased its 12-month Bitcoin price target from $82,000 to $113,000 due to favorable market conditions. The bank expects $5 billion in crypto investment product inflows over the next year as advisers increase all…",
+      "content": "Bitcoin (BTC USD) price target: Bitcoin has climbed back above $80,000 after a difficult stretch earlier this year, and Citigroup has raised its 12-month price target for the cryptocurrency to $113,0…"
+    },
+    {
+      "title": "SEC Proposes Rules to Clear Up How Advisers and Funds Can Hold Crypto",
+      "source": "Decrypt",
+      "date": "2026-10-01",
+      "url": "https://decrypt.co/379899/sec-proposes-rules-advisers-funds-hold-crypto",
+      "description": "The proposal would let advisers and funds use state trust companies as custodians and permit self-custody under certain conditions, aiming to replace years of ambiguity with a clear compliance path.",
+      "content": "In brief\r\n<ul><li>The SEC proposed a tailored framework for how registered investment advisers and regulated funds can custody crypto, seeking to clarify which arrangements satisfy the \"qualified cus…"
+    },
+    {
+      "title": "Crypto for Advisors: The CLARITY Act failed, but the rules came anyway",
+      "source": "CoinDesk",
+      "date": "2026-10-01",
+      "url": "https://www.coindesk.com/coindesk-indices/2026/10/01/crypto-for-advisors-the-clarity-act-failed-but-the-rules-came-anyway",
+      "description": "Leader in cryptocurrency, Bitcoin, Ethereum, XRP, blockchain, DeFi, digital finance and Web 3.0 news with analysis, video and live price updates.",
+      "content": "There is nothing so powerful as an idea whose time has come. For now, that time has not arrived. But as Congress closed a door, regulators opened a window.\r\nBoth the SEC and CFTC moved with remarkabl…"
+    },
+    {
+      "title": "Citigroup Predicts Slower Yet Steadier Crypto Inflows",
+      "source": "pymnts.com",
+      "date": "2026-10-01",
+      "url": "https://www.pymnts.com/cryptocurrency/2026/citigroup-predicts-slower-yet-steadier-crypto-inflows/",
+      "description": "Citigroup has reportedly hiked its 12-month forecasts for bitcoin and ether as cryptocurrency activity picks up. The brokerage raised its target for bitcoin from $82,000 to $113,000, and its forecast for ether from $2,240 to $3,028, Reuters reported Thursday …",
+      "content": "Citigroup has reportedly hiked its 12-month forecasts for bitcoin and ether as cryptocurrency activity picks up.The brokerage raised its target for bitcoin from $82,000 to $113,000, and its forecast …"
+    },
+    {
+      "title": "Unexplained Wealth: Tightening the noose against criminals with strengthened institutions",
+      "source": "The Punch",
+      "date": "2026-10-01",
+      "url": "https://punchng.com/unexplained-wealth-tightening-the-noose-against-criminals-with-strengthened-institutions/",
+      "description": "Legal experts, including Emir Sanusi II and Dr Wahab Shittu, argue that tackling unexplained wealth in Nigeria requires stronger institutions, not just law\n\nRead More: https://punchng.com/unexplained-wealth-tightening-the-noose-against-criminals-with-strength…",
+      "content": "The fight against unexplained wealth in Nigeria cannot be won by legislation alone, as legal experts and public figures who gathered in Lagos to launch a three-volume work on financial law called for…"
+    },
+    {
+      "title": "Bitwise CIO says Clarity Act failure gave crypto ‘better rules faster’",
+      "source": "Crypto Briefing",
+      "date": "2026-09-30",
+      "url": "https://cryptobriefing.com/bitwise-cio-says-clarity-act-failure-gave-crypto-better-rules-faster/",
+      "description": "Bitwise CIO Matt Hougan says crypto rallied after the Clarity Act failed as regulators delivered faster rules on tokenization and buybacks.\nThe post Bitwise CIO says Clarity Act failure gave crypto ‘better rules faster’ appeared first on Crypto Briefing.",
+      "content": "Matt Hougan argues that stablecoins, exchanges, tokenization platforms and revenue-generating tokens have benefited from regulators acting after the bill stalled. Bitwise CIO Matt Hougan says the cry…"
+    }
+  ],
+  "mvrv": {
+    "mvrv": 1.1801807301458513,
+    "realizedPrice": 52961.22880813866,
+    "marketCap": 1253585393982.2983,
+    "realizedCap": 1062197815945.8469,
+    "date": "2026-07-14",
+    "stale": true
+  },
+  "exchangeFlow": {
+    "netflow_btc": 0,
+    "inflow_btc": 0,
+    "outflow_btc": 0,
+    "total_exchange_btc": 496416.31,
+    "exchange_addr_count": 6,
+    "elapsed_hours": 0,
+    "source": "blockchain.info balance delta (16 legacy exchange addresses)",
+    "date": "2026-10-03"
+  },
+  "_exchangeAddressBalances": {
+    "34xp4vRoCGJym3xR7yCVPFHoCNxv4Twseo": 248597.59262947,
+    "1P5ZEDWTKTFGxQjZphgWPQUpe554WKDfHQ": 0.02318875,
+    "3M219KR5vEneNb47ewrPfWyb5jQ2DjxRP6": 209891.45097413,
+    "3D2oetdNuZUqQHPJmcMDDHYoqkyNVsFk9r": 0.15395293,
+    "1HQ3Go3ggs8pFnXuHVHRytPCq5fGG8Hbhx": 0.01290825,
+    "3LQUu4v9z6KNch71j7kbj8GPeAGUo1FW6a": 37927.07834862
+  },
+  "binanceLargeTrades": {
+    "threshold_btc": 2,
+    "whale_buy_btc": 0,
+    "whale_sell_btc": 4.42,
+    "net_whale_btc": -4.42,
+    "whale_buy_count": 0,
+    "whale_sell_count": 1,
+    "whale_buy_ratio": 0,
+    "span_minutes": 5,
+    "pressure": "NEUTRAL",
+    "source": "Binance aggTrades (BTCUSDT, last 1000 trades)",
+    "date": "2026-10-02"
+  },
+  "snapshotAt": "2026-10-03T11:16:59.781Z",
+  "snapshotKey": "2026-10-03-11"
+}
