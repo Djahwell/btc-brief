@@ -35,6 +35,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 
 import { join, dirname }                                                     from 'path';
 import { fileURLToPath }                                                     from 'url';
 import { classifyRegime, applyRegimeToAnchors }                              from './scripts/regime_check.js';
+import { computeAMT }                                                        from './scripts/amt.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
@@ -980,6 +981,7 @@ async function fetchMarketSnapshot() {
 async function fetchTechnicalData() {
   let closes = null, volumes = null;
   let btcDates = [];
+  let ohlcv = [];   // full daily bars for the AMT market-balance profile
   const tsToDate = ms => new Date(ms).toISOString().slice(0, 10);
 
   try {
@@ -991,13 +993,14 @@ async function fetchTechnicalData() {
     if (d.error && d.error.length) throw new Error(`Kraken error: ${d.error[0]}`);
     const rows = d.result?.XXBTZUSD || d.result?.XBTZUSD || [];
     if (!rows.length) throw new Error('empty candle array');
-    closes = []; volumes = []; btcDates = [];
+    closes = []; volumes = []; btcDates = []; ohlcv = [];
     for (const row of rows) {
       const c = parseFloat(row[4]); const v = parseFloat(row[6]);
       if (!(c > 0)) continue;
       closes.push(c);
       volumes.push(v >= 0 ? v : 0);
       btcDates.push(tsToDate(parseInt(row[0], 10) * 1000));
+      ohlcv.push({ date: btcDates[btcDates.length - 1], open: parseFloat(row[1]), high: parseFloat(row[2]), low: parseFloat(row[3]), close: c, volume: v >= 0 ? v : 0 });
     }
     console.log(`[Tech] Kraken candles: ${closes.length} days (last date: ${btcDates[btcDates.length - 1]})`);
   } catch (e) {
@@ -1007,13 +1010,14 @@ async function fetchTechnicalData() {
         { signal: AbortSignal.timeout(12000) });
       if (!r2.ok) throw new Error(`HTTP ${r2.status}`);
       const d2 = await r2.json();
-      closes = []; volumes = []; btcDates = [];
+      closes = []; volumes = []; btcDates = []; ohlcv = [];
       for (const row of d2) {
         const c = parseFloat(row[4]); const v = parseFloat(row[5]);
         if (!(c > 0)) continue;
         closes.push(c);
         volumes.push(v >= 0 ? v : 0);
         btcDates.push(tsToDate(parseInt(row[0], 10)));
+        ohlcv.push({ date: btcDates[btcDates.length - 1], open: parseFloat(row[1]), high: parseFloat(row[2]), low: parseFloat(row[3]), close: c, volume: v >= 0 ? v : 0 });
       }
       console.log(`[Tech] Binance candles: ${closes.length} days (last date: ${btcDates[btcDates.length - 1]})`);
     } catch (e2) {
@@ -1099,6 +1103,7 @@ async function fetchTechnicalData() {
     avgVol5d: Math.round(avgVol5d), avgVol20d: Math.round(avgVol20d),
     volTrendRatio: volTrendRatio ? parseFloat(volTrendRatio.toFixed(2)) : null,
     volTrend, btcQqqCorr, corrWindow,
+    _ohlcv: ohlcv,   // transient — consumed by computeAMT in runFetch, stripped before write
   };
 }
 
@@ -1853,6 +1858,16 @@ async function runFetch() {
   // ── Technical data (SMAs + QQQ correlation) ──────────────────────────────
   console.log('[Worker] Fetching technical data (SMAs + QQQ)...');
   payload.tech = await fetchTechnicalData();
+
+  // ── AMT market balance (30d/7d volume profile from the same daily bars) ──
+  try {
+    payload.amt = computeAMT(payload.tech?._ohlcv, payload.market?.price, { lookback: 30, shortLookback: 7 });
+    if (payload.amt) {
+      const a = payload.amt;
+      console.log(`[AMT] ${a.state} (${a.suggestedScore >= 0 ? '+' : ''}${a.suggestedScore}) | POC $${a.poc.toLocaleString()} | VA $${a.val.toLocaleString()}–$${a.vah.toLocaleString()} | ${a.location} | value ${a.migration}`);
+    } else console.warn('[AMT] not enough candles for a 30d profile');
+  } catch (e) { console.warn('[AMT] failed (non-fatal):', e.message); payload.amt = null; }
+  if (payload.tech) delete payload.tech._ohlcv;
 
   // ── Options skew (Deribit) ───────────────────────────────────────────────
   console.log('[Worker] Fetching options skew (Deribit)...');

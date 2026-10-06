@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { buildAMTPromptBlock } from "./scripts/amt.js";
 
 // ─── API TOKENS ───────────────────────────────────────────────────────────────
 // All keys loaded from .env — create a .env file in your project root with:
@@ -163,7 +164,9 @@ F. COMPOSITE SIGNAL SCORING (-10 to +10):
     macro (DXY / real yields / VIX):       max ±1 point
     sentiment (Fear&Greed if not already used in derivatives): max ±1 point
     stablecoin (USDT+USDC supply growth):  max ±1 point
-  TOTAL range: -10 to +10
+    marketBalance (AMT balance vs imbalance — see AMT MARKET BALANCE block): max ±1 point
+  TOTAL range: -10 to +10 (sum all axes, then CLAMP to -10..+10)
+  AMT is a CONTEXT axis: it also decides how the flow axes are read (fade at the edges in BALANCE, follow in IMBALANCE).
   SCORE: +8 to +10 -> STRONG BUY | +5 to +7 -> BUY | +2 to +4 -> LEAN BUY
          -1 to +1  -> NEUTRAL    | -2 to -4  -> CAUTION | -5 to -10 -> SELL/HEDGE
 
@@ -211,12 +214,14 @@ Return ONLY valid JSON. No markdown fences. No preamble. No text outside the JSO
     "macro":            { "score": 0, "signal": "e.g. DXY +0.28% headwind, VIX 21 elevated, 10Y 4.38% neutral" },
     "sentiment":        { "score": 0, "signal": "e.g. F&G 12 extreme fear — skipped (captured in derivatives axis)" },
     "stablecoin":       { "score": 0, "signal": "e.g. USDT+USDC supply $XXXb, +$Xb 7d — expanding dry powder" },
+    "marketBalance":    { "score": 0, "signal": "e.g. BALANCE, spot at upper edge of $78.7K–$87.4K value — fade VAH, no directional edge" },
     "scaleNote":        "Range -10 to +10. Each axis contribution shown. Total = sum of above."
   },
   "overallBias": "STRONG BUY | BUY | NEUTRAL | CAUTION | SELL",
   "biasReason": "<=20 words citing dominant normalized signal",
   "headline": "<=15 words - lead with the COMPOSITE SCORE picture and key on-chain/structural driver, NOT just the F&G label. F&G is one input among many — do not let it dominate the headline unless it is the single most decisive signal after all axes are weighted.",
   "marketStatus": "ACCUMULATION PHASE | BREAKOUT WATCH | MOMENTUM | BULL RUN | DISTRIBUTION | DANGER ZONE",
+  "auctionState": { "state": "BALANCE | IMBALANCE_UP | IMBALANCE_DOWN | TESTING_VAH | TESTING_VAL | FAILED_AUCTION_HIGH | FAILED_AUCTION_LOW | UNAVAILABLE", "location": "", "poc": "", "vah": "", "val": "", "migration": "", "implication": "1 sentence: what the auction state means for today's action" },
   "correlationRegime": {
     "btcQqqCorrelation": "e.g. 0.72",
     "regime": "HIGH | MODERATE | LOW",
@@ -3277,7 +3282,8 @@ FROM realized r, spot s`;
           + "\n  INSTRUCTION: Supplementary whale pressure signal (" + bwtPctLiq + "). Net positive = buy-side aggression. This is order-flow pressure — distinct from on-chain exchange netflow. Use to corroborate whaleNetflow direction.";
       }
 
-      const finalPrompt = marketBlock + phaseBlock + smaBlock + liqBlock + coinMetricsBlock
+      var amtBlock = buildAMTPromptBlock(allDataRef.current && allDataRef.current.amt);
+      const finalPrompt = marketBlock + phaseBlock + smaBlock + amtBlock + liqBlock + coinMetricsBlock
         + macroBlock2 + duneBlock + cmeBlock + etfLiveBlock + lthBlock + stablecoinBlock + volTrendBlock + binanceWhaleBlock2 + feedbackBlock
         + "\n\nDATA SOURCE QUALITY SUMMARY:"
         + "\n- LIVE (high confidence): price, funding, OI, fear/greed, options skew, gold, dominance, SMAs, vol trend, CME basis (front + second month)"
@@ -3678,6 +3684,7 @@ FROM realized r, spot s`;
                     { key: "macro",            label: "MACRO" },
                     { key: "sentiment",        label: "SENTIMENT" },
                     { key: "stablecoin",       label: "STABLECOIN" },
+                    { key: "marketBalance",    label: "AMT BALANCE" },
                   ].map(({ key, label }) => {
                     const axis = brief.scoreDecomposition[key];
                     if (!axis || axis.score == null) return null;
@@ -3696,6 +3703,26 @@ FROM realized r, spot s`;
                 </div>
               </div>
             )}
+
+            {/* AMT AUCTION STATE — balance vs imbalance (Auction Market Theory) */}
+            {brief.auctionState && brief.auctionState.state && brief.auctionState.state !== "UNAVAILABLE" && (function() {
+              var a = brief.auctionState;
+              var st = String(a.state);
+              var col = /IMBALANCE_UP|FAILED_AUCTION_LOW/.test(st) ? C.green : /IMBALANCE_DOWN|FAILED_AUCTION_HIGH/.test(st) ? C.red : C.textDim;
+              return (
+                <div style={{ marginBottom: 14, background: col + "08", border: "1px solid " + col + "50", borderRadius: 8, padding: "12px 20px" }}>
+                  <div style={{ color: C.textDim, fontSize: 10, fontFamily: "monospace", letterSpacing: 3, marginBottom: 4 }}>AMT MARKET BALANCE  ·  30d VALUE AREA</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                    <span style={{ color: col, fontSize: 16, fontWeight: 900, fontFamily: "JetBrains Mono, monospace" }}>{st.replace(/_/g, " ")}</span>
+                    {a.location && <span style={{ background: col + "20", color: col, fontFamily: "monospace", fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 4 }}>{String(a.location).replace(/_/g, " ")}</span>}
+                  </div>
+                  <div style={{ marginTop: 6, color: C.textDim, fontSize: 11, fontFamily: "monospace" }}>
+                    {"VAL " + (a.val || "—") + "  ·  POC " + (a.poc || "—") + "  ·  VAH " + (a.vah || "—") + (a.migration ? "  ·  value " + a.migration : "")}
+                  </div>
+                  {a.implication && <div style={{ marginTop: 6, color: C.text, fontSize: 12, lineHeight: 1.5 }}>{a.implication}</div>}
+                </div>
+              );
+            })()}
 
             {/* CONVERGENCE SIGNAL — synthesises funding + sentiment + options */}
             {convergence && (

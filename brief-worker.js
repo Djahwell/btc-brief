@@ -17,6 +17,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join, dirname }                                       from 'path';
 import { fileURLToPath }                                       from 'url';
+import { buildAMTPromptBlock } from './scripts/amt.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
@@ -114,7 +115,7 @@ function buildAnchorsBlock(a) {
 
 // ── Build Claude user message ──────────────────────────────────────────────────
 function buildUserMessage(d) {
-  const { market, tech, coinMetrics, macros, cme, duneCache, options, anchors, catalystNews } = d;
+  const { market, tech, coinMetrics, macros, cme, duneCache, options, anchors, catalystNews, amt } = d;
   const p = market?.price;
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Europe/Paris' });
   const LIQUID = 4_200_000, CIRC = 20_000_000;
@@ -239,7 +240,8 @@ ${normRef}`;
 
   const qualitySummary = `\n\nDATA SOURCE QUALITY:\n- LIVE: price, funding, OI, F&G, options skew, gold, dominance, SMAs, CME basis${macros?.dxy!=null?', DXY':''}${macros?.vix!=null?', VIX':''}${macros?.tnxYield!=null?', 10Y yield':''}${tech?.btcQqqCorr!=null?', BTC-QQQ corr':''}${dc?.mvrv?.mvrv!=null?', MVRV':''}${etf?.total_million_usd!=null?', ETF flows':''}${lth?.lth_net_btc!=null?', LTH position':''}${st?.total_usd!=null?', stablecoin supply':''}${dc?.exchangeFlow?.netflow_btc!=null?', exchange netflow ('+( dc.exchangeFlow.source||'blockchain.info')+')':''}${wt?.net_taker_btc!=null?', Binance 24h taker pressure':''}${catalystNews?.length > 0 ? ', regulatory news' : ''}\n- ESTIMATED: STH SOPR${dc?.mvrv?.mvrv==null?', MVRV (use ~1.5 est.)':''}${etf?.total_million_usd==null?', ETF flows':''}${dc?.exchangeFlow?.netflow_btc==null?', exchange netflow':''}\n\nGenerate the full morning brief JSON now. Apply quad-normalization to all flows. Score each axis INDEPENDENTLY per Section F — do NOT double-count funding + F&G. Return ONLY valid JSON. No markdown. No preamble.`;
 
-  return marketBlock + phaseBlock + anchorsBlock + smaBlock + cmBlock + macroBlock + duneBlock + cmeBlock + etfBlock + lthBlock + stableBlock + volBlock + binanceWhaleBlock + newsBlock + qualitySummary;
+  const amtBlock = buildAMTPromptBlock(amt);
+  return marketBlock + phaseBlock + anchorsBlock + smaBlock + amtBlock + cmBlock + macroBlock + duneBlock + cmeBlock + etfBlock + lthBlock + stableBlock + volBlock + binanceWhaleBlock + newsBlock + qualitySummary;
 }
 
 // ── Call Anthropic Claude ─────────────────────────────────────────────────────
@@ -336,6 +338,9 @@ F. COMPOSITE SIGNAL SCORING (-10 to +10):
   macro (DXY / real yields / VIX): max ±1 point
   sentiment (Fear&Greed if not already used): max ±1 point
   stablecoin (USDT+USDC supply growth): max ±1 point
+  marketBalance (AMT — balance vs imbalance, see AMT MARKET BALANCE block): max ±1 point
+  Sum all axes, then CLAMP compositeScore to -10..+10.
+  AMT is a CONTEXT axis: it also decides how the flow axes are read (fade at the edges in BALANCE, follow in IMBALANCE).
 
   CRITICAL: Funding rate and Fear/Greed are CORRELATED. Score on SHARED "derivatives" axis (max ±1 total).
   CME basis is INDEPENDENT — always score separately.
@@ -355,12 +360,14 @@ Return ONLY valid JSON. No markdown fences. No preamble.
     "macro": { "score": 0, "signal": "" },
     "sentiment": { "score": 0, "signal": "" },
     "stablecoin": { "score": 0, "signal": "" },
+    "marketBalance": { "score": 0, "signal": "e.g. BALANCE, spot at upper edge of $78.7K–$87.4K value — fade VAH, no directional edge" },
     "scaleNote": "Range -10 to +10."
   },
   "overallBias": "STRONG BUY | BUY | NEUTRAL | CAUTION | SELL",
   "biasReason": "<=20 words",
   "headline": "<=15 words",
   "marketStatus": "ACCUMULATION PHASE | BREAKOUT WATCH | MOMENTUM | BULL RUN | DISTRIBUTION | DANGER ZONE",
+  "auctionState": { "state": "BALANCE | IMBALANCE_UP | IMBALANCE_DOWN | TESTING_VAH | TESTING_VAL | FAILED_AUCTION_HIGH | FAILED_AUCTION_LOW | UNAVAILABLE", "location": "", "poc": "", "vah": "", "val": "", "migration": "", "implication": "1 sentence: what the auction state means for today's action" },
   "correlationRegime": { "btcQqqCorrelation": "", "regime": "HIGH | MODERATE | LOW", "implication": "" },
   "priceAnalysis": { "trend": "", "keyLevel": "", "realizedPriceContext": "", "signal": "BULLISH | BEARISH | NEUTRAL | MIXED" },
   "whaleSignal": { "status": "ACCUMULATING | DISTRIBUTING | NEUTRAL | MIXED", "netflowBTC": "use LIVE blockchain.info netflow if provided", "netflowUSD": "", "netflowPctLiquid": "", "netflowPctVolume": "", "netflowPctMcap": "", "historicalContext": "", "detail": "", "actionable": "", "dataQuality": "LIVE | ESTIMATED" },
@@ -440,6 +447,7 @@ async function runBriefWorker() {
       duneCache:     allData,
       anchors,
       catalystNews:  allData.catalystNews || [],
+      amt:           allData.amt || null,
     });
 
     console.log('[Brief] Calling Claude...');
@@ -449,6 +457,11 @@ async function runBriefWorker() {
     console.log(`[Brief] Claude responded in ${((Date.now()-t0)/1000).toFixed(1)}s`);
 
     const parsedBrief = parseClaudeJSON(rawBrief);
+    // Composite now has 8 axes (max ±11 raw) — enforce the -10..+10 scale.
+    if (parsedBrief && parsedBrief.compositeScore != null) {
+      const cs = Number(parsedBrief.compositeScore);
+      if (Number.isFinite(cs)) parsedBrief.compositeScore = Math.max(-10, Math.min(10, Math.round(cs)));
+    }
     allData.brief         = parsedBrief;
     allData.briefCachedAt = new Date().toISOString();
     delete allData.brief_error; // clear stale error on success
