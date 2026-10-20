@@ -183,20 +183,28 @@ ${normRef}`;
 
   const dc = duneCache;
   let duneBlock = '';
-  if (dc?.mvrv || dc?.exchangeFlow) {
-    duneBlock = '\n\nDUNE ANALYTICS — BTC ON-CHAIN DATA:';
+  if (dc?.mvrv?.mvrv || dc?.exchangeFlow) {
+    duneBlock = '\n\nON-CHAIN DATA (BGeometrics realized price + blockchain.info exchange balances):';
     const ef = dc.exchangeFlow;
     if (ef?.netflow_btc!=null) {
-      duneBlock+=`\n  Exchange Netflow: ${ef.netflow_btc.toFixed(0)} BTC\n  Exchange Inflow:  ${(ef.inflow_btc||0).toFixed(0)} BTC\n  Exchange Outflow: ${(ef.outflow_btc||0).toFixed(0)} BTC`;
       const gross = (ef.inflow_btc||0)+(ef.outflow_btc||0);
-      duneBlock += gross < 5000 ? '\n  ⚠ PARTIAL DATA: cold/custody wallets only.' : '\n  INSTRUCTION: Negative = BTC leaving exchanges (accumulation). Apply quad-normalization.';
+      if (gross === 0) {
+        duneBlock += '\n  Exchange Netflow: NO DATA — legacy-address feed returned zero movement.\n  INSTRUCTION: Treat exchange netflow as UNAVAILABLE. Do not score it; rely on ETF flows and Binance taker pressure for the whale read.';
+      } else {
+        duneBlock+=`\n  Exchange Netflow: ${ef.netflow_btc.toFixed(0)} BTC\n  Exchange Inflow:  ${(ef.inflow_btc||0).toFixed(0)} BTC\n  Exchange Outflow: ${(ef.outflow_btc||0).toFixed(0)} BTC`;
+        duneBlock += gross < 5000 ? '\n  ⚠ PARTIAL DATA (proxy only): a handful of legacy cold wallets — low weight.' : '\n  INSTRUCTION: Negative = BTC leaving exchanges (accumulation). Apply quad-normalization.';
+      }
     }
     if (dc?.mvrv?.mvrv) {
       const mv = dc.mvrv;
       const zone = mv.mvrv<1?'UNDERVALUED (<1)':mv.mvrv<2?'FAIR VALUE (1-2)':mv.mvrv<3.5?'FAIR-HIGH (2-3.5)':mv.mvrv<5?'OVERVALUED (3.5-5)':'EXTREME (>5)';
-      duneBlock+=`\n\n  LIVE MVRV: ${mv.mvrv.toFixed(3)} → ${zone}${mv.realizedPrice?'\n  Realized Price: $'+Math.round(mv.realizedPrice).toLocaleString():''}\n  INSTRUCTION: LIVE MVRV — overrides training-knowledge estimates.`;
+      const label = mv.stale ? 'MVRV (realized price STALE — reused from a previous run)' : 'LIVE MVRV';
+      duneBlock+=`\n\n  ${label}: ${mv.mvrv.toFixed(3)} → ${zone}`
+        + (mv.realizedPrice ? `\n  Realized Price: $${Math.round(mv.realizedPrice).toLocaleString()} (as of ${mv.realizedDate||'n/a'}; MVRV = today's spot / realized price)` : '')
+        + (mv.lthRealizedPrice ? `\n  LTH Realized Price (LTH cost basis): $${Math.round(mv.lthRealizedPrice).toLocaleString()} → LTH MVRV ${mv.lthMvrv?.toFixed(2) ?? 'n/a'}` : '')
+        + `\n  INSTRUCTION: Use these values for realizedPriceContext and mvrvSignal — they override the training-knowledge realized price and LTH cost basis in the system prompt. Source: ${mv.source||'BGeometrics'}${mv.stale?'. Flag the staleness in mvrvSignal.':''}`;
     }
-  } else { duneBlock = '\n\nDUNE ANALYTICS: Unavailable. Use training knowledge.'; }
+  } else { duneBlock = '\n\nON-CHAIN DATA: MVRV and exchange netflow unavailable this cycle. Say so explicitly; do not present estimates as live.'; }
 
   const cmeBlock = cme?.cmeBasisPct!=null ? `\n\nCME FUTURES BASIS:\n  Basis (annualized): ${cme.cmeBasisPct>0?'+':''}${cme.cmeBasisPct}% → ${cme.cmeBasisPct>15?'STRONG CONTANGO':cme.cmeBasisPct>5?'HEALTHY CONTANGO':cme.cmeBasisPct>-5?'FLAT':'BACKWARDATION'}\n  Days to expiry: ${cme.cmeDaysToExpiry}d${cme.cmeNearExpiry?' ⚠ NEAR EXPIRY':''}\n  INSTRUCTION: CME basis is UNCORRELATED from perp funding — score independently.` : '\n\nCME FUTURES BASIS: Unavailable.';
 
@@ -238,7 +246,7 @@ ${normRef}`;
     newsBlock = '\n\nREGULATORY NEWS: Unavailable — use training knowledge for catalystWatch.';
   }
 
-  const qualitySummary = `\n\nDATA SOURCE QUALITY:\n- LIVE: price, funding, OI, F&G, options skew, gold, dominance, SMAs, CME basis${macros?.dxy!=null?', DXY':''}${macros?.vix!=null?', VIX':''}${macros?.tnxYield!=null?', 10Y yield':''}${tech?.btcQqqCorr!=null?', BTC-QQQ corr':''}${dc?.mvrv?.mvrv!=null?', MVRV':''}${etf?.total_million_usd!=null?', ETF flows':''}${lth?.lth_net_btc!=null?', LTH position':''}${st?.total_usd!=null?', stablecoin supply':''}${dc?.exchangeFlow?.netflow_btc!=null?', exchange netflow ('+( dc.exchangeFlow.source||'blockchain.info')+')':''}${wt?.net_taker_btc!=null?', Binance 24h taker pressure':''}${catalystNews?.length > 0 ? ', regulatory news' : ''}\n- ESTIMATED: STH SOPR${dc?.mvrv?.mvrv==null?', MVRV (use ~1.5 est.)':''}${etf?.total_million_usd==null?', ETF flows':''}${dc?.exchangeFlow?.netflow_btc==null?', exchange netflow':''}\n\nGenerate the full morning brief JSON now. Apply quad-normalization to all flows. Score each axis INDEPENDENTLY per Section F — do NOT double-count funding + F&G. Return ONLY valid JSON. No markdown. No preamble.`;
+  const qualitySummary = `\n\nDATA SOURCE QUALITY:\n- LIVE: price, funding, OI, F&G, options skew, gold, dominance, SMAs, CME basis${macros?.dxy!=null?', DXY':''}${macros?.vix!=null?', VIX':''}${macros?.tnxYield!=null?', 10Y yield':''}${tech?.btcQqqCorr!=null?', BTC-QQQ corr':''}${dc?.mvrv?.mvrv!=null?', MVRV':''}${etf?.total_million_usd!=null?', ETF flows':''}${lth?.lth_net_btc!=null?', LTH position':''}${st?.total_usd!=null?', stablecoin supply':''}${dc?.exchangeFlow?.netflow_btc!=null?', exchange netflow ('+( dc.exchangeFlow.source||'blockchain.info')+')':''}${wt?.net_taker_btc!=null?', Binance 24h taker pressure':''}${catalystNews?.length > 0 ? ', regulatory news' : ''}\n- ESTIMATED: STH SOPR${dc?.mvrv?.mvrv==null?', MVRV (unavailable — do not quote a number as live)':''}${etf?.total_million_usd==null?', ETF flows':''}${dc?.exchangeFlow?.netflow_btc==null?', exchange netflow':''}\n\nGenerate the full morning brief JSON now. Apply quad-normalization to all flows. Score each axis INDEPENDENTLY per Section F — do NOT double-count funding + F&G. Return ONLY valid JSON. No markdown. No preamble.`;
 
   const amtBlock = buildAMTPromptBlock(amt);
   return marketBlock + phaseBlock + anchorsBlock + smaBlock + amtBlock + cmBlock + macroBlock + duneBlock + cmeBlock + etfBlock + lthBlock + stableBlock + volBlock + binanceWhaleBlock + newsBlock + qualitySummary;
@@ -311,7 +319,7 @@ SECTION 2 - BACKGROUND CONTEXT (as of April 2026)
 NOTE: Live data in user message ALWAYS overrides this. REGULATORY NEWS BLOCK (from NewsAPI past 7 days) takes absolute priority for catalystWatch — use those fresh articles as primary sources for timing, outcomes, and impact assessment.
 - BTC ATH: $126,073 (Oct 2025) | Bear phase: Oct 2025–Feb 2026 | Recovery: Mar–Apr 2026
 - ETF AUM: IBIT ~$115B+ | Combined ~$130B+ | Baseline inflow: ~$264M/day
-- Realized Price: ~$45K | STH cost basis: ~$75K | LTH cost basis: ~$30K
+- Realized Price / LTH cost basis: use the live ON-CHAIN DATA block in the user message (training-era fallback only if missing: realized ~$45K, STH ~$75K, LTH ~$30K)
 - REGULATORY CATALYSTS: Clarity Act, SEC actions, CFTC commodity classification — CHECK REGULATORY NEWS BLOCK for fresh updates. Do NOT rely on training knowledge if news is available.
 
 SECTION 3 - QUAD-NORMALIZED SIGNAL KNOWLEDGE BASE

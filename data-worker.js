@@ -70,7 +70,7 @@ function loadEnv() {
 
 const ENV          = loadEnv();
 const DUNE_API_KEY = ENV.VITE_DUNE_API_KEY;
-if (!DUNE_API_KEY) console.warn('[Worker] VITE_DUNE_API_KEY missing — Dune-dependent fetches will be skipped');
+// Dune no longer used for scheduled runs (kept only for --schema probes).
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -1360,6 +1360,38 @@ async function fetchCME() {
   }
 }
 
+// ── BGeometrics (bitcoin-data.com) — realized price + LTH realized price ─────
+// Replaces Dune (Dune free plan lost query execution on 2026-09-10 → HTTP 401).
+// Free tier: no key, 8 req/h · 15 req/day, values delayed ~7 days.
+// We call 2 endpoints per run (4 runs/day = 8 calls) and derive a LIVE MVRV as
+// spot / realizedPrice — realized price moves slowly, so a 7-day lag barely
+// matters, while spot is always current.
+const BGEO_BASE = 'https://bitcoin-data.com/v1';
+async function fetchBGeometricsRealized() {
+  const get = async (metric, field) => {
+    const r = await fetch(`${BGEO_BASE}/${metric}/last`, {
+      headers: { 'User-Agent': UA, Accept: 'application/json' },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!r.ok) throw new Error(`${metric} HTTP ${r.status}`);
+    const j = await r.json();
+    const v = j?.[field] != null ? parseFloat(j[field]) : null;
+    if (!v || !isFinite(v) || v <= 0) throw new Error(`${metric}: no ${field} in response`);
+    return { value: v, date: j.d || null, delayed: !!j.delayed };
+  };
+  const rp = await get('realized-price', 'realizedPrice');
+  let lth = null;
+  try { lth = await get('lth-realized-price', 'lthRealizedPrice'); }
+  catch (e) { console.warn('[BGeometrics] LTH realized price failed (non-fatal):', e.message); }
+  return {
+    realizedPrice: rp.value,
+    lthRealizedPrice: lth?.value ?? null,
+    realizedDate: rp.date,
+    delayed: rp.delayed,
+    source: 'BGeometrics (bitcoin-data.com)',
+  };
+}
+
 // ── CoinMetrics community API ──────────────────────────────────────────────────
 async function fetchCoinMetrics() {
   const base = `https://community-api.coinmetrics.io/v4/timeseries/asset-metrics`;
@@ -1746,43 +1778,8 @@ async function runFetch() {
   // Early write so dashboard sees ETF/LTH/Stablecoin without waiting for MVRV.
   writeCache(payload);
 
-  // ── MVRV (Dune) ───────────────────────────────────────────────────────────
-  // RE-ENABLED (2026-05-16): Using 2500 free monthly credits for Dune MVRV.
-  // This provides direct on-chain data, fresher than CoinMetrics fallback.
-  // Fallback chain: Dune → CoinMetrics (free) → stale cache → training knowledge
-  //
-  if (DUNE_API_KEY) {
-    try {
-      const queryId = await getOrCreateQueryId();
-      console.log(`[MVRV] Triggering execution on query ${queryId}...`);
-      const exec = await dunePost(`/api/v1/query/${queryId}/execute`, {});
-      if (!exec.execution_id) throw new Error('No execution_id: ' + JSON.stringify(exec));
-      console.log(`[MVRV] Execution: ${exec.execution_id}  (polling every ${POLL_INTERVAL_MS / 1000}s, max ${MAX_WAIT_MS / 60_000}min)`);
-      const data = await pollExecution(exec.execution_id, 'MVRV');
-      const mvrv = parseMvrv(data);
-      if (mvrv) {
-        payload.mvrv = mvrv;
-        console.log(`[MVRV] ✓  ratio: ${mvrv.mvrv.toFixed(3)}  |  realized: $${Math.round(mvrv.realizedPrice || 0).toLocaleString()}`);
-      } else {
-        console.warn('[MVRV] Execution completed but result parse returned null');
-        payload.mvrv_error = 'Execution succeeded but no valid row returned';
-      }
-    } catch (e) {
-      console.error('[MVRV] ✗', e.message);
-      payload.mvrv_error = e.message;
-      try {
-        if (existsSync(CACHE_FILE)) {
-          const prev = JSON.parse(readFileSync(CACHE_FILE, 'utf8'));
-          if (prev.mvrv?.mvrv) {
-            payload.mvrv = { ...prev.mvrv, stale: true };
-            console.warn(`[MVRV] Using cached value from ${prev.cachedAt}: ${prev.mvrv.mvrv.toFixed(3)} (stale)`);
-          }
-        }
-      } catch (_) {}
-    }
-  } else {
-    console.log('[MVRV] Skipped — DUNE_API_KEY missing (CoinMetrics will provide MVRV fallback)');
-  }
+  // ── MVRV — now computed after the market snapshot (needs live spot price).
+  // Dune removed (free plan lost query execution 2026-09-10, HTTP 401).
 
   // ── Exchange Flows — blockchain.info primary, Dune fallback DISABLED ─────
   try {
@@ -1854,6 +1851,50 @@ async function runFetch() {
   // ── Market snapshot (BTC price, F&G, funding, OI, gold, dominance) ───────
   console.log('[Worker] Fetching market snapshot...');
   payload.market = await fetchMarketSnapshot();
+
+  // ── MVRV + realized price (BGeometrics) ──────────────────────────────────
+  // Fallback: previous run's realized price (re-priced against today's spot,
+  // flagged stale). Never use the old frozen Dune MVRV ratio.
+  {
+    const spot = payload.market?.price ?? null;
+    let rz = null;
+    try {
+      rz = await fetchBGeometricsRealized();
+    } catch (e) {
+      console.error('[MVRV/BGeometrics] ✗', e.message);
+      payload.mvrv_error = `BGeometrics: ${e.message}`;
+      try {
+        if (existsSync(CACHE_FILE)) {
+          const prev = JSON.parse(readFileSync(CACHE_FILE, 'utf8'));
+          const p = prev.mvrv;
+          if (p?.realizedPrice && p?.source?.startsWith('BGeometrics')) {
+            rz = { realizedPrice: p.realizedPrice, lthRealizedPrice: p.lthRealizedPrice ?? null,
+                   realizedDate: p.realizedDate ?? null, delayed: true, source: p.source, stale: true };
+            console.warn(`[MVRV] Reusing cached realized price from ${p.realizedDate}`);
+          }
+        }
+      } catch (_) {}
+    }
+    if (rz && spot) {
+      const mvrv = spot / rz.realizedPrice;
+      payload.mvrv = {
+        mvrv,
+        realizedPrice: rz.realizedPrice,
+        lthRealizedPrice: rz.lthRealizedPrice,
+        lthMvrv: rz.lthRealizedPrice ? spot / rz.lthRealizedPrice : null,
+        realizedDate: rz.realizedDate,
+        date: new Date().toISOString().slice(0, 10),
+        method: 'spot / realizedPrice',
+        source: rz.source,
+        stale: !!rz.stale,
+      };
+      if (!rz.stale) payload.mvrv_error = null;
+      console.log(`[MVRV] ✓  ${mvrv.toFixed(3)} (spot $${Math.round(spot).toLocaleString()} / realized $${Math.round(rz.realizedPrice).toLocaleString()} @ ${rz.realizedDate})${rz.lthRealizedPrice ? `  |  LTH realized $${Math.round(rz.lthRealizedPrice).toLocaleString()}` : ''}`);
+    } else {
+      payload.mvrv = null;
+      console.warn('[MVRV] Unavailable this cycle (no realized price or no spot)');
+    }
+  }
 
   // ── Technical data (SMAs + QQQ correlation) ──────────────────────────────
   console.log('[Worker] Fetching technical data (SMAs + QQQ)...');
