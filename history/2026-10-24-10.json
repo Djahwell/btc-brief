@@ -1,0 +1,464 @@
+{
+  "etfFlow": {
+    "total_million_usd": -137.9,
+    "date": "23 Oct 2026"
+  },
+  "lthData": {
+    "lth_supply_btc": 16341475,
+    "lth_net_btc": -14940,
+    "lth_days_gap": 1,
+    "date": "2026-10-24",
+    "prev_date": "2026-10-23",
+    "source_url": "https://www.bitcoinmagazinepro.com/charts/long-term-holder-supply/"
+  },
+  "stablecoinSupply": {
+    "usdt_supply_usd": 182437635141.61826,
+    "usdc_supply_usd": 71805573747.03789,
+    "total_usd": 254243208888.65613,
+    "delta_7d_usd": -1945810220.7194214,
+    "delta_7d_pct": -0.76,
+    "regime": "STABLE",
+    "date": "2026-10-24",
+    "source": "DefiLlama"
+  },
+  "mvrv_error": null,
+  "mvrv_query_id": "6985599",
+  "exflow_query_id": "6985606",
+  "cachedAt": "2026-10-24T10:30:19.380Z",
+  "market": {
+    "price": 80512.2,
+    "change24h": -0.71,
+    "volume24hUSD": 111306809.24273151,
+    "marketCap": 1610244000000,
+    "priceSource": "Kraken",
+    "fearGreedValue": 51,
+    "fearGreedLabel": "Neutral",
+    "fearGreed7d": [
+      51,
+      50,
+      68,
+      63,
+      55,
+      59,
+      53
+    ],
+    "fundingRate": 0.0000866552486872,
+    "fundingSource": "OKX",
+    "openInterest": 30646.39170000013,
+    "openInterestUSD": 2467408417.8287506,
+    "goldPrice": 3998.03,
+    "goldChange24h": -0.9074264693089293,
+    "btcGoldRatio": 20.14,
+    "btcDominance": 60.1
+  },
+  "tech": {
+    "sma200": 72899,
+    "sma50": 81794,
+    "sma20": 82528,
+    "candleCount": 210,
+    "cycleHigh": 86594,
+    "avgVol5d": 1812,
+    "avgVol20d": 2051,
+    "volTrendRatio": 0.88,
+    "volTrend": "STABLE",
+    "btcQqqCorr": null,
+    "corrWindow": 0
+  },
+  "options": {
+    "optionsSkew": 6.5,
+    "optionsPCRatio": 2,
+    "optionsPutIV": 42,
+    "optionsCallIV": 36
+  },
+  "macros": {
+    "dxy": 100.9,
+    "dxyChange": null,
+    "vix": 19.4,
+    "vixChange": null,
+    "tnxYield": 5,
+    "tnxChange": null,
+    "dxyApprox": true
+  },
+  "cme": null,
+  "coinMetrics": {
+    "date": "2026-10-23",
+    "activeAddresses": 644858,
+    "txCount": 913724,
+    "hashRate": 1215938858.6419249,
+    "totalFeesBTC": 2.4032665,
+    "refPrice": 80924.1837657744,
+    "txVolumeUSD": null,
+    "txVolumeArr90d": [],
+    "mvrv": null,
+    "realizedPrice": null,
+    "source": "CoinMetrics Community API"
+  },
+  "briefCachedAt": "2026-10-24T04:23:31.031Z",
+  "brief": {
+    "date": "Saturday, October 24 2026",
+    "compositeScore": -3,
+    "scoreDecomposition": {
+      "onChain": {
+        "score": -2,
+        "signal": "MVRV 1.511 sits in fair-value band (1-2), no systemic overvaluation. However, LTH net position is distributing at -29,560 BTC/day (-0.704% of liquid supply) — a material selling pressure signal. Exchange netflow is 0 BTC (partial/proxy data, low weight). LTH distribution dominates; -2 net."
+      },
+      "etfInstitutional": {
+        "score": -1,
+        "signal": "Farside reports -$28M net ETF outflow on 23 Oct (-341 BTC, -0.008% of liquid supply). Well below the $264M/day baseline. No Phase B confirmation inflow (>$500M/day) present. Mild negative."
+      },
+      "derivatives": {
+        "score": 0,
+        "signal": "Funding rate 0.0028% per 8h (3.1% annualized) — neutral, not elevated or in capitulation. Fear & Greed 51/100 (Neutral). Both metrics are correlated; scored once on this shared axis. No directional edge from either. Score: 0. Options skew 6.5 (put IV 42% vs call IV 36%) — slight put premium, consistent with hedging bias but not extreme."
+      },
+      "cmeBasis": {
+        "score": 0,
+        "signal": "CME futures basis unavailable. Cannot score institutional demand premium independently. Score: 0."
+      },
+      "macro": {
+        "score": -1,
+        "signal": "10Y yield at 5.0% — elevated real yield environment, materially bearish for non-yielding risk assets including BTC. DXY at 100.9 (neutral band). VIX 19.4 (normal, no panic). Gold at $4,001 (-0.61%), BTC/Gold ratio 20.21 — gold holding near ATH signals macro stress bid intact but not BTC-specific. Net macro: -1."
+      },
+      "sentiment": {
+        "score": 0,
+        "signal": "Fear & Greed 51/100 (Neutral). Already consumed in derivatives axis per protocol. Score: 0 here to avoid double-count."
+      },
+      "stablecoin": {
+        "score": -1,
+        "signal": "USDT+USDC at $254.3B, 7d delta -$1.9B. DefiLlama regime: STABLE. However, a net -$1.9B weekly contraction is a mild negative — dry powder is not building. Per scoring rules, CONTRACTING = -1."
+      },
+      "marketBalance": {
+        "score": -1,
+        "signal": "IMBALANCE_DOWN confirmed: 2/3 daily closes below 30d VAL ($81,683). Spot at $80,848, which is -24% through 30d value area (BELOW_VALUE). 7d POC at $81,661 — spot sits just below short-term support. Value migrating lower (-1.8% vs 30d POC). Sellers are accepting lower prices; initiative selling, follow the direction. Score: -1 per AMT instruction."
+      },
+      "scaleNote": "Range -10 to +10. Composite: -3. Scores: onChain -2, etfInstitutional -1, derivatives 0, cmeBasis 0, macro -1, sentiment 0, stablecoin -1, marketBalance -1."
+    },
+    "overallBias": "CAUTION",
+    "biasReason": "LTH distribution, ETF outflows, 5% yields, and IMBALANCE_DOWN auction all press below $83,835 Phase B→C threshold.",
+    "headline": "Below value area, LTH distributing — Phase C breakout stalls at 73%",
+    "marketStatus": "BREAKOUT WATCH",
+    "auctionState": {
+      "state": "IMBALANCE_DOWN",
+      "location": "Spot $80,848 — BELOW 30d VAL $81,683; INSIDE 7d value area ($80,805–$83,126)",
+      "poc": "$83,140 (30d) | $81,661 (7d)",
+      "vah": "$85,161 (30d) | $83,126 (7d)",
+      "val": "$81,683 (30d) | $80,805 (7d)",
+      "migration": "LOWER — 7d POC at $81,661 is -1.8% vs 30d POC $83,140; value migrating down",
+      "implication": "With IMBALANCE_DOWN confirmed, initiative sellers control the tape — any intraday bounce into $81,661–$83,140 POC cluster is a sell/fade opportunity, not a buy signal, until two daily closes reclaim 30d VAL $81,683."
+    },
+    "correlationRegime": {
+      "btcQqqCorrelation": "Unavailable",
+      "regime": "MODERATE",
+      "implication": "BTC-QQQ correlation data unavailable for today; assume moderate regime given 10Y at 5% compressing risk-asset multiples broadly — macro headwinds likely apply across risk assets including BTC."
+    },
+    "priceAnalysis": {
+      "trend": "Short-term bearish: spot $80,848 below 20d SMA $82,544 and 50d SMA $81,800, though still above 200d SMA $72,900 (Phase A/B anchor). Price has not closed above 30d VAH $85,161 — Phase B breakout is unconfirmed.",
+      "keyLevel": "Resistance: 30d POC $83,140 | 50d SMA $81,800 | 20d SMA $82,544 | Phase B→C trigger $83,835. Support: 7d VAL $80,805 | 30d VAL $81,683 | $80,000 round number | Phase A→B anchor $72,900.",
+      "realizedPriceContext": "Realized price $53,504 — spot is 51.1% above realized price, confirming broad market profitability. LTH cost basis $48,733 (LTH MVRV 1.66) — long-term holders deeply profitable, which motivates observed distribution at -29,560 BTC/day. MVRV 1.511 in fair-value zone; not yet euphoric (MVRV >3 would signal peak risk).",
+      "signal": "BEARISH"
+    },
+    "whaleSignal": {
+      "status": "NEUTRAL",
+      "netflowBTC": "0 BTC (blockchain.info balance delta — partial proxy, 16 legacy exchange addresses)",
+      "netflowUSD": "$0",
+      "netflowPctLiquid": "0.000%",
+      "netflowPctVolume": "0.000%",
+      "netflowPctMcap": "0.000%",
+      "historicalContext": "Zero netflow from this partial proxy is inconclusive; legacy cold wallets undercount real exchange activity. LTH net position data (-29,560 BTC/day) is the more reliable large-holder signal today.",
+      "detail": "Blockchain.info exchange balance delta is 0 BTC today — data marked PARTIAL (proxy only, low weight). No directional whale exchange flow confirmed from this source. LTH distribution at -29,560 BTC/day is the dominant large-holder signal and likely represents supply reaching exchanges or OTC desks off-chain.",
+      "actionable": "Do not rely on zero netflow as a bullish 'no selling' signal — it reflects data incompleteness. LTH distribution (-0.704% of liquid supply/day) is the operative whale signal and warrants caution.",
+      "dataQuality": "LIVE"
+    },
+    "binancePressure": {
+      "netTakerBTC": "Unavailable",
+      "buyVolumeBTC": "Unavailable",
+      "sellVolumeBTC": "Unavailable",
+      "buyRatioPct": "Unavailable",
+      "totalVolumeBTC": "Unavailable",
+      "pressure": "NEUTRAL",
+      "span": "24h",
+      "confluence": "Binance taker pressure data not provided in today's brief; cannot confirm or contradict the neutral exchange netflow reading — LTH distribution via Bitcoin Magazine Pro remains the primary directional signal.",
+      "dataQuality": "UNAVAILABLE"
+    },
+    "fundingRates": {
+      "rate8h": "0.0028%",
+      "annualized": "3.1%",
+      "regime": "NEUTRAL",
+      "signal": "Funding rate is benign — longs paying a modest premium but nowhere near the 0.01%+ 8h rates that signal leveraged froth. No imminent long squeeze risk from funding alone.",
+      "detail": "At 3.1% annualized, funding reflects mild bullish positioning consistent with a market hovering in Phase B. No capitulation (negative funding) and no extreme long (>10% annualized). Neutral carry environment.",
+      "squeeze_risk": "LOW"
+    },
+    "openInterest": {
+      "trend": "STABLE",
+      "regime": "30,355 BTC (~$2.5B) — moderate absolute level. OI-to-market-cap ratio is manageable. Daily volume at ~1,316 BTC is extremely thin, making OI appear large relative to vol.",
+      "detail": "OI/daily volume ratio is elevated given today's anomalously low spot volume ($0.1B / 1,316 BTC), suggesting derivatives market is oversized relative to spot liquidity today. Any directional move could be amplified. Saturday liquidity conditions apply.",
+      "leverageRisk": "MEDIUM"
+    },
+    "mvrvSignal": {
+      "estimatedZone": "FAIR VALUE — MVRV 1.511",
+      "implication": "Market is above realized price ($53,504) by 51%, meaning average holder is in profit but not in the euphoric zone (MVRV >3). Moderate distribution pressure is rational at this level — LTH MVRV of 1.66 gives LTHs incentive to realize gains.",
+      "cycleContext": "In prior cycles, MVRV 1.5-2.0 has corresponded to mid-cycle consolidation or secondary rally phases. At $80,848, BTC is well off the $124,767 rolling ATH (-35.3%). LTH distribution at current MVRV is not panic-selling — it is orderly profit-taking, potentially capping near-term upside without triggering a crash."
+    },
+    "etfFlows": {
+      "status": "OUTFLOW",
+      "totalNetUSD": "-$28M",
+      "totalNetBTC": "-341 BTC",
+      "totalNetPctLiquid": "-0.008%",
+      "ibitFlow": "Not broken out in today's Farside data",
+      "streakDays": "Single day reading; streak data unavailable",
+      "vsBaseline": "-$292M below $264M/day baseline — materially negative",
+      "detail": "ETF flows on 23 Oct were -$28M, the weakest signal for institutional demand in the current phase. Phase B confirmation requires >$500M/day inflow with a confirmed daily close above $83,835 — neither condition is close to being met.",
+      "trend": "DETERIORATING"
+    },
+    "stablecoinSignal": {
+      "status": "NEUTRAL",
+      "detail": "USDT+USDC combined at $254.3B; 7d delta is -$1.9B. DefiLlama regime classified as STABLE, but the weekly contraction means dry powder is not building on-chain. No fresh capital formation is evident to fuel a breakout through $83,835.",
+      "signal": "Mild negative — stablecoin supply declining weekly indicates reduced capital inflow potential; not alarming but confirms lack of fresh bid."
+    },
+    "macroContext": {
+      "riskLevel": "MEDIUM",
+      "dxy": "100.9",
+      "dxySignal": "NEUTRAL — DXY near 101 is in a historically neutral zone for BTC. Not a tailwind, not a headwind.",
+      "realYield": "10Y nominal at 5.0%; with CPI trailing ~3-3.5%, real yield ~1.5-2% — positive and elevated. Compresses multiples on non-yielding assets.",
+      "realYieldSignal": "BEARISH — 5% nominal 10Y is a material cost-of-capital headwind. Capital competes with Treasuries; institutional BTC allocation pressure is upward on return hurdles.",
+      "gold": "$4,001.02 (-0.61%). Gold near all-time highs signals macro uncertainty and safe-haven demand, but BTC is not capturing the same safe-haven bid today. BTC/Gold ratio at 20.21 — BTC underperforming gold in the current macro regime.",
+      "fedWatch": "No FOMC meeting imminent this week. 5% 10Y yield suggests market is not pricing near-term cuts aggressively — higher-for-longer narrative intact.",
+      "detail": "VIX at 19.4 indicates normal market stress (not panic). The combination of 5% yields + neutral DXY + gold near ATH paints a picture of macro uncertainty with capital rotating defensively. BTC at $80,848 is holding Phase B, but macro is not providing a tailwind for a breakout push above $83,835."
+    },
+    "todayAction": {
+      "recommendation": "HOLD",
+      "size": "Maintain current Phase B allocation. No new adds. 20% cash/stables DCA reserve intact — do not deploy until Phase B→C trigger conditions met.",
+      "trigger": "Phase B→C ADD signal requires: (1) confirmed daily close above $83,835 AND (2) ETF inflows >$500M/day AND (3) spot reclaims 30d POC $83,140 with acceptance (2 closes above). None of these are active today. On the downside, 7d VAL $80,805 is first support — monitor for close below this level.",
+      "stopAlert": "MONITORING",
+      "dynamicStop": "Hard stop unchanged at $51,898 (realized price derived). Tactical soft alert: daily close below $72,900 (200d SMA / Phase A→B boundary) would signal return to Phase A and trigger DCA protocol review. Current price $80,848 is 10.9% above 200d SMA — hard stop is not threatened today.",
+      "scoreJustification": "Composite score -3 (CAUTION). IMBALANCE_DOWN auction, LTH distributing at -0.704% liquid/day, ETF outflows -$292M below baseline, 5% 10Y yield, and stablecoin contraction all argue against adding exposure. MVRV 1.511 (fair value) and neutral funding prevent a REDUCE call. HOLD is the appropriate posture within Phase B."
+    },
+    "cmeBasis": {
+      "basisPct": "Unavailable",
+      "regime": "FLAT",
+      "signal": "No data — scored 0 on cmeBasis axis. Cannot assess institutional futures premium vs spot.",
+      "detail": "CME futures basis data not available in today's brief. This removes a key institutional demand signal. Absence of data defaults to neutral; do not infer contango or backwardation.",
+      "cmeOIvsPerp": "Unavailable"
+    },
+    "catalystWatch": [
+      {
+        "event": "OCC GENIUS Act Stablecoin Rule — Effective Date",
+        "timing": "January 2027 (finalized 2026-10-22)",
+        "impact": "BULLISH",
+        "note": "NewsAPI [2026-10-22] Crypto Briefing: OCC has finalized the GENIUS Act rule for stablecoins, effective January 2027. This solidifies US regulatory leadership in digital assets, likely boosting stablecoin market confidence and potentially expanding institutional on-ramps into crypto markets. Medium-term bullish for BTC ecosystem liquidity."
+      },
+      {
+        "event": "SoFi Tokenized Deposits Launch — First Consumer Bank",
+        "timing": "Live as of 2026-10-22",
+        "impact": "BULLISH",
+        "note": "NewsAPI [2026-10-22] Fortune: SoFi becomes first US consumer bank to launch tokenized deposits at 4.4% interest. Signals mainstreaming of blockchain-based banking rails and legitimizes digital-asset infrastructure. Incremental bullish for COIN and BTC infrastructure equities in the portfolio's 20% equity sleeve."
+      },
+      {
+        "event": "JPMorgan Asset Management — BTC Outperformance Outlook",
+        "timing": "Published 2026-10-22; medium-term 1-2 year horizon",
+        "impact": "BULLISH",
+        "note": "NewsAPI [2026-10-22] NaturalNews/JPMorgan: JPMorgan's asset management division says BTC may outperform stocks, bonds, and gold while flagging 'speculative' risk. Institutional validation from a formerly hostile house is a sentiment catalyst; watch for follow-through in ETF allocation data over coming weeks."
+      },
+      {
+        "event": "Crypto PAC Political Spending — Texas Senate Race",
+        "timing": "Active as of 2026-10-22; Texas Senate election cycle 2026",
+        "impact": "BULLISH",
+        "note": "NewsAPI [2026-10-22] Cointelegraph: Winklevoss PAC deploys $81K in Texas Senate race, part of broader crypto-aligned political spending push. Signals industry is investing in legislative influence ahead of the next congressional session — supportive of favorable regulatory outcomes in 2027 but no immediate price catalyst."
+      }
+    ],
+    "analystNote": "BTC at $80,848 is 73% through Phase B ($72,900–$83,835) but stalling below all major short-term moving averages (20d $82,544, 50d $81,800) and below the 30d value area ($81,683–$85,161), with IMBALANCE_DOWN auction state confirmed — initiative sellers control short-term price discovery and any bounce into the $81,661–$83,140 POC cluster should be treated as resistance, not a re-entry. The most important signal today is LTH net distribution at -29,560 BTC/day (-0.704% of liquid supply) — at LTH MVRV of 1.66, long-term holders have clear profit-realization incentive, and this supply needs to be absorbed by institutional ETF inflows before Phase C can be unlocked; yesterday's -$28M ETF reading is the opposite of absorption. The market regime flag 'NORMAL — insufficient history' (7 cycles vs 120-240 required for bear/SMA rules) means phase anchors are derived from realized price $53,504, 200d SMA $72,900, and rolling ATH $124,767 using heuristic logic — treat all phase boundaries as directionally correct but statistically immature, implying slightly wider confidence intervals around each trigger level. The GENIUS Act finalization (effective Jan 2027) and JPMorgan's bullish medium-term BTC stance are genuine medium-horizon tailwinds for our 1-2 year mandate, but they are insufficient to override the current week's negative flow configuration; the firm's 20% cash/stables DCA reserve is correctly sized for this environment and should not be deployed until Phase B→C conditions are simultaneously satisfied.",
+    "riskWarning": "LTH distribution at -29,560 BTC/day accelerates rather than decelerates — if this selling pressure is not met by ETF inflows recovering above the $264M/day baseline within 5-7 sessions, spot price risks breaking the 7d VAL $80,805 with potential to retest the 30d POC from below, threatening Phase B continuation and delaying any Phase C breakout indefinitely.",
+    "normalization": {
+      "currentPrice": "$80,848",
+      "marketCap": "$1.62T",
+      "dailyVolumeBTC": "~1,316 BTC ($0.1B) — anomalously thin; Saturday liquidity",
+      "volumeTrend": "STABLE (5d/20d ratio 0.87)",
+      "lthSellingBTC": "-29,560 BTC/day",
+      "lthSellingPctLiquid": "-0.704%",
+      "whaleNetflowBTC": "0 BTC (blockchain.info partial proxy — low weight, 16 legacy addresses)",
+      "whaleNetflowPctLiquid": "0.000%",
+      "whaleNetflowPctVolume": "0.000%",
+      "whaleNetflowPctMcap": "0.000%",
+      "etfFlowUSD": "-$28M",
+      "etfFlowBTC": "-341 BTC",
+      "etfFlowPctLiquid": "-0.008%"
+    }
+  },
+  "phaseAnchors": {
+    "hardStop": 51898,
+    "phaseA_low": 53504,
+    "phaseA_high": 72899,
+    "phaseB_high": 83834,
+    "phaseC_high": 122272,
+    "derivedFrom": {
+      "realized": 53503.6,
+      "sma200": 72899,
+      "cycleHigh": 86594,
+      "ath": 124767,
+      "realizedSource": "realizedPrice"
+    },
+    "derivationStatus": "NORMAL",
+    "computedAt": "2026-10-24T10:30:19.381Z",
+    "regime": "NORMAL",
+    "regimeReason": "no current price in latest snapshot",
+    "rawRegime": "NORMAL",
+    "regimeState": {
+      "promoted": "NORMAL",
+      "pending": null,
+      "pendingCount": 0,
+      "normalCount": 1416
+    },
+    "historyCycles": 0
+  },
+  "catalystNews": [
+    {
+      "title": "Winklevoss PAC moves into Texas Senate race with $81K ad buy",
+      "source": "Cointelegraph",
+      "date": "2026-10-22",
+      "url": "https://cointelegraph.com/news/winklevoss-pac-texas-senate-race-media-paxton-talarico",
+      "description": "While crypto-aligned PACs have stepped up spending in Ohio, a committee launched by the co-founders of crypto exchange Gemini made one of its first forays into the Lone Star State.",
+      "content": "Digital Freedom Fund, the Super political action committee (PAC) launched by Gemini co-founders Cameron and Tyler Winklevoss in 2025, announced additional expenditures for US Senate races in the 2026…"
+    },
+    {
+      "title": "SoFi becomes first consumer bank to launch tokenized deposits, offers 4.4% interest",
+      "source": "Fortune",
+      "date": "2026-10-22",
+      "url": "https://fortune.com/2026/10/22/sofi-tokenized-deposits/",
+      "description": "The offering comes amid a growing debate over the merits of stablecoins vs tokenized deposits.",
+      "content": "The convergence between traditional and blockchain-based worlds of finance continues to accelerate. The latest example came on Thursday when the personal finance company SoFi announced it is offering…"
+    },
+    {
+      "title": "JPMorgan says Bitcoin may outperform stocks, bonds and gold â but still warns of “speculative” risk",
+      "source": "Naturalnews.com",
+      "date": "2026-10-22",
+      "url": "https://www.naturalnews.com/2026-10-22-jpmorgan-says-bitcoin-may-outperform-stocks-bonds-gold.html",
+      "description": "JPMorgan Chase’s asset management division, in a notable departure from CEO Jamie Dimon’s long-held skepticism, has acknowledged in its 2027 “Long-Term Capital Market Assumptions” report that Bitcoin could outperform most major asset classes like equities, bo…",
+      "content": "<ul><li>JPMorgan Chase's asset management division, in a notable departure from CEO Jamie Dimon's long-held skepticism, has acknowledged in its 2027 \"Long-Term Capital Market Assumptions\" report that…"
+    },
+    {
+      "title": "OCC finalizes GENIUS Act rule for stablecoins, effective January 2027",
+      "source": "Crypto Briefing",
+      "date": "2026-10-22",
+      "url": "https://cryptobriefing.com/occ-finalizes-genius-act-rule-for-stablecoins-effective-january-2027/",
+      "description": "The GENIUS Act rule could solidify US leadership in digital assets, boosting market confidence and potentially influencing Bitcoin's future value.\nThe post OCC finalizes GENIUS Act rule for stablecoins, effective January 2027 appeared first on Crypto Briefing.",
+      "content": "The Office of the Comptroller of the Currency (OCC) has finalized its GENIUS Act rule, establishing a federal framework for payment stablecoins. This development, announced by the US Treasury, aims t…"
+    },
+    {
+      "title": "Thailand SEC says asset managers want crypto ETFs, but no one has applied yet",
+      "source": "Crypto Briefing",
+      "date": "2026-10-22",
+      "url": "https://cryptobriefing.com/thailand-sec-crypto-etf-interest-no-applications/",
+      "description": "The absence of formal applications for crypto ETFs in Thailand highlights regulatory caution and potential delays in market diversification.\nThe post Thailand SEC says asset managers want crypto ETFs, but no one has applied yet appeared first on Crypto Briefi…",
+      "content": "Several fund houses have sought consultations on spot Bitcoin and Ether products, though the regulator cannot confirm whether any will launch in 2026 Thailand’s Securities and Exchange Commission has…"
+    },
+    {
+      "title": "Thailand SEC says several companies eye crypto ETFs, none has applied",
+      "source": "Cointelegraph",
+      "date": "2026-10-22",
+      "url": "https://cointelegraph.com/news/thailand-sec-crypto-etf-applications",
+      "description": "Several companies have approached Thailand’s SEC about launching spot crypto ETFs, but no applications have been filed and the first approval date remains uncertain.",
+      "content": "Thailands new spot cryptocurrency exchange-traded fund (ETF) framework is attracting interest from asset managers, but the regulator has yet to receive its first application.\r\nSeveral asset managemen…"
+    },
+    {
+      "title": "Central Bank fines Irish-based unit of crypto giant Coinbase €3.3m",
+      "source": "The Irish Times",
+      "date": "2026-10-22",
+      "url": "https://www.irishtimes.com/business/2026/10/22/central-bank-fines-irish-based-unit-of-crypto-giant-coinbase-33m/",
+      "description": "Coinbase Global is the largest crypto exchange in the US and the world’s biggest custodian of Bitcoin",
+      "content": "The Central Bank of Ireland has fined a second Irish-regulated unit of Coinbase Global, one of the worlds largest crypto asset exchange operators. \r\nThe regulator has fined Coinbase Ireland, a licens…"
+    },
+    {
+      "title": "New DeepSeek ban in US, Swiss-Asia crypto ties deepen: Asia Express",
+      "source": "Cointelegraph",
+      "date": "2026-10-22",
+      "url": "https://cointelegraph.com/magazine/new-deepseek-ban-in-us-swiss-asia-crypto-ties-deepen-asia-express",
+      "description": "A Singapore is firm behind Switzerland’s new Bitcoin ETF, Crypto Valley partners with Vietnam on crypto tech. The US cracks down on DeepSeek and bans some overseas AI investments.",
+      "content": "CHINATreasury proposes blocks on US investments in AI and semiconductors in some foreign countries\r\nThe US Treasury has proposed new rules that would block investment in artificial intelligence proje…"
+    },
+    {
+      "title": "Zoning ordinance to go to Barren Fiscal Court after approval from planning/zoning board",
+      "source": "Bowling Green Daily News",
+      "date": "2026-10-22",
+      "url": "https://bgdailynews.com/2026/10/22/zoning-ordinance-to-go-to-barren-fiscal-court-after-approval-from-planning-zoning-board/",
+      "description": "GLASGOW — A proposed countywide zoning ordinance for Barren County cleared its first hurdle on Monday by gaining approval from the Joint City-County Planning Commission of Barren County. The board […]",
+      "content": "GLASGOW — A proposed countywide zoning ordinance for Barren County cleared its first hurdle on Monday by gaining approval from the Joint City-County Planning Commission of Barren County.\r\nThe board v…"
+    },
+    {
+      "title": "Bill Gates on Trial in the Netherlands: Why the PREP Act Is a License to Kill",
+      "source": "Naturalnews.com",
+      "date": "2026-10-22",
+      "url": "https://www.naturalnews.com/2026-10-22-bill-gates-on-trial-in-the-netherlands.html",
+      "description": "Bill Gates on Trial in the Netherlands I recently conducted an interview with Shannon Joy and Sasha Latypova at Catherine Austin Fitts’ Solari Studios on the eve of a landmark hearing in Leeuwarden, in The Netherlands. Tomorrow at 12:30 pm local time, a three…",
+      "content": "Bill Gates on Trial in the Netherlands\r\nI recently conducted an interview with Shannon Joy and Sasha Latypova at Catherine Austin Fitts' Solari Studios on the eve of a landmark hearing in Leeuwarden,…"
+    }
+  ],
+  "mvrv": {
+    "mvrv": 1.5047996770310783,
+    "realizedPrice": 53503.6,
+    "lthRealizedPrice": 48732.98,
+    "lthMvrv": 1.6521091055790142,
+    "realizedDate": "2026-10-17",
+    "date": "2026-10-24",
+    "method": "spot / realizedPrice",
+    "source": "BGeometrics (bitcoin-data.com)",
+    "stale": false
+  },
+  "exchangeFlow": {
+    "netflow_btc": 0,
+    "inflow_btc": 0,
+    "outflow_btc": 0,
+    "total_exchange_btc": 463866.38,
+    "exchange_addr_count": 6,
+    "elapsed_hours": 0,
+    "source": "blockchain.info balance delta (16 legacy exchange addresses)",
+    "date": "2026-10-24"
+  },
+  "_exchangeAddressBalances": {
+    "34xp4vRoCGJym3xR7yCVPFHoCNxv4Twseo": 248597.59293786,
+    "1P5ZEDWTKTFGxQjZphgWPQUpe554WKDfHQ": 0.03557311,
+    "3M219KR5vEneNb47ewrPfWyb5jQ2DjxRP6": 177341.50536676,
+    "3D2oetdNuZUqQHPJmcMDDHYoqkyNVsFk9r": 0.15395293,
+    "1HQ3Go3ggs8pFnXuHVHRytPCq5fGG8Hbhx": 0.01423332,
+    "3LQUu4v9z6KNch71j7kbj8GPeAGUo1FW6a": 37927.07837022
+  },
+  "binanceLargeTrades": {
+    "threshold_btc": 2,
+    "whale_buy_btc": 0,
+    "whale_sell_btc": 2.07,
+    "net_whale_btc": -2.07,
+    "whale_buy_count": 0,
+    "whale_sell_count": 1,
+    "whale_buy_ratio": 0,
+    "span_minutes": 8,
+    "pressure": "NEUTRAL",
+    "source": "Binance aggTrades (BTCUSDT, last 1000 trades)",
+    "date": "2026-10-11"
+  },
+  "amt": {
+    "state": "IMBALANCE_DOWN",
+    "reason": "2/3 daily closes below 30d VAL — sellers accepted lower prices; value being re-priced down",
+    "suggestedScore": -1,
+    "location": "BELOW_VALUE",
+    "price": 80512,
+    "poc": 83140,
+    "vah": 85161,
+    "val": 81683,
+    "vaWidthPct": 4.2,
+    "posInValuePct": -34,
+    "short": {
+      "poc": 81661,
+      "vah": 83126,
+      "val": 80805,
+      "location": "BELOW_7D_VALUE"
+    },
+    "migration": "LOWER",
+    "pocShiftPct": -1.8,
+    "coiling": false,
+    "closesAboveVAH": 0,
+    "closesBelowVAL": 2,
+    "lookbackDays": 30,
+    "shortLookbackDays": 7,
+    "asOf": "2026-10-23"
+  },
+  "snapshotAt": "2026-10-24T10:30:24.113Z",
+  "snapshotKey": "2026-10-24-10"
+}
