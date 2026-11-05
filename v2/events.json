@@ -1,0 +1,271 @@
+{
+ "schema": "brief-v2-events/1",
+ "generatedAt": "2026-11-05T16:34:08.496Z",
+ "sources": {
+  "fomc": {
+   "ok": true,
+   "url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+   "count": 57,
+   "fetchedAt": "2026-11-05T16:34:01.939Z"
+  },
+  "cpi": {
+   "ok": true,
+   "mode": "official schedule read by hand",
+   "url": "https://www.bls.gov/schedule/news_release/cpi.htm",
+   "readAt": "2026-11-05",
+   "coversTo": "2027-12-10",
+   "liveError": "HTTP 403 (browser)",
+   "stale": false
+  },
+  "payrolls": {
+   "ok": true,
+   "mode": "official schedule read by hand",
+   "url": "https://www.bls.gov/ces/publications/news-release-schedule.htm",
+   "readAt": "2026-11-05",
+   "coversTo": "2026-12-04",
+   "liveError": "HTTP 403 (browser)",
+   "stale": true
+  },
+  "options": {
+   "ok": true,
+   "rule": "last Friday 08:00 UTC (Deribit)",
+   "computedAt": "2026-11-05T16:34:08.495Z"
+  }
+ },
+ "events": [
+  {
+   "t": "2026-11-06T13:30:00.000Z",
+   "kind": "NFP",
+   "label": "US payrolls (Employment Situation)",
+   "impact": "high"
+  },
+  {
+   "t": "2026-11-10T13:30:00.000Z",
+   "kind": "CPI",
+   "label": "US CPI",
+   "impact": "high"
+  },
+  {
+   "t": "2026-11-27T08:00:00.000Z",
+   "kind": "OPTIONS",
+   "label": "Monthly BTC options expiry (Deribit)",
+   "impact": "medium"
+  },
+  {
+   "t": "2026-12-04T13:30:00.000Z",
+   "kind": "NFP",
+   "label": "US payrolls (Employment Situation)",
+   "impact": "high"
+  },
+  {
+   "t": "2026-12-09T19:00:00.000Z",
+   "kind": "FOMC",
+   "label": "FOMC decision + projections",
+   "impact": "high"
+  },
+  {
+   "t": "2026-12-10T13:30:00.000Z",
+   "kind": "CPI",
+   "label": "US CPI",
+   "impact": "high"
+  },
+  {
+   "t": "2026-12-25T08:00:00.000Z",
+   "kind": "OPTIONS",
+   "label": "Quarterly BTC options expiry (Deribit)",
+   "impact": "high"
+  },
+  {
+   "t": "2027-01-13T13:30:00.000Z",
+   "kind": "CPI",
+   "label": "US CPI",
+   "impact": "high"
+  },
+  {
+   "t": "2027-01-27T19:00:00.000Z",
+   "kind": "FOMC",
+   "label": "FOMC decision",
+   "impact": "high"
+  },
+  {
+   "t": "2027-01-29T08:00:00.000Z",
+   "kind": "OPTIONS",
+   "label": "Monthly BTC options expiry (Deribit)",
+   "impact": "medium"
+  },
+  {
+   "t": "2027-02-11T13:30:00.000Z",
+   "kind": "CPI",
+   "label": "US CPI",
+   "impact": "high"
+  },
+  {
+   "t": "2027-02-26T08:00:00.000Z",
+   "kind": "OPTIONS",
+   "label": "Monthly BTC options expiry (Deribit)",
+   "impact": "medium"
+  },
+  {
+   "t": "2027-03-10T13:30:00.000Z",
+   "kind": "CPI",
+   "label": "US CPI",
+   "impact": "high"
+  },
+  {
+   "t": "2027-03-17T18:00:00.000Z",
+   "kind": "FOMC",
+   "label": "FOMC decision + projections",
+   "impact": "high"
+  },
+  {
+   "t": "2027-03-26T08:00:00.000Z",
+   "kind": "OPTIONS",
+   "label": "Quarterly BTC options expiry (Deribit)",
+   "impact": "high"
+  },
+  {
+   "t": "2027-04-13T12:30:00.000Z",
+   "kind": "CPI",
+   "label": "US CPI",
+   "impact": "high"
+  },
+  {
+   "t": "2027-04-28T18:00:00.000Z",
+   "kind": "FOMC",
+   "label": "FOMC decision",
+   "impact": "high"
+  },
+  {
+   "t": "2027-04-30T08:00:00.000Z",
+   "kind": "OPTIONS",
+   "label": "Monthly BTC options expiry (Deribit)",
+   "impact": "medium"
+  },
+  {
+   "t": "2027-05-12T12:30:00.000Z",
+   "kind": "CPI",
+   "label": "US CPI",
+   "impact": "high"
+  },
+  {
+   "t": "2027-05-28T08:00:00.000Z",
+   "kind": "OPTIONS",
+   "label": "Monthly BTC options expiry (Deribit)",
+   "impact": "medium"
+  },
+  {
+   "t": "2027-06-09T18:00:00.000Z",
+   "kind": "FOMC",
+   "label": "FOMC decision + projections",
+   "impact": "high"
+  },
+  {
+   "t": "2027-06-10T12:30:00.000Z",
+   "kind": "CPI",
+   "label": "US CPI",
+   "impact": "high"
+  },
+  {
+   "t": "2027-06-25T08:00:00.000Z",
+   "kind": "OPTIONS",
+   "label": "Quarterly BTC options expiry (Deribit)",
+   "impact": "high"
+  },
+  {
+   "t": "2027-07-14T12:30:00.000Z",
+   "kind": "CPI",
+   "label": "US CPI",
+   "impact": "high"
+  },
+  {
+   "t": "2027-07-28T18:00:00.000Z",
+   "kind": "FOMC",
+   "label": "FOMC decision",
+   "impact": "high"
+  },
+  {
+   "t": "2027-07-30T08:00:00.000Z",
+   "kind": "OPTIONS",
+   "label": "Monthly BTC options expiry (Deribit)",
+   "impact": "medium"
+  },
+  {
+   "t": "2027-08-11T12:30:00.000Z",
+   "kind": "CPI",
+   "label": "US CPI",
+   "impact": "high"
+  },
+  {
+   "t": "2027-08-27T08:00:00.000Z",
+   "kind": "OPTIONS",
+   "label": "Monthly BTC options expiry (Deribit)",
+   "impact": "medium"
+  },
+  {
+   "t": "2027-09-14T12:30:00.000Z",
+   "kind": "CPI",
+   "label": "US CPI",
+   "impact": "high"
+  },
+  {
+   "t": "2027-09-15T18:00:00.000Z",
+   "kind": "FOMC",
+   "label": "FOMC decision + projections",
+   "impact": "high"
+  },
+  {
+   "t": "2027-09-24T08:00:00.000Z",
+   "kind": "OPTIONS",
+   "label": "Quarterly BTC options expiry (Deribit)",
+   "impact": "high"
+  },
+  {
+   "t": "2027-10-14T12:30:00.000Z",
+   "kind": "CPI",
+   "label": "US CPI",
+   "impact": "high"
+  },
+  {
+   "t": "2027-10-27T18:00:00.000Z",
+   "kind": "FOMC",
+   "label": "FOMC decision",
+   "impact": "high"
+  },
+  {
+   "t": "2027-10-29T08:00:00.000Z",
+   "kind": "OPTIONS",
+   "label": "Monthly BTC options expiry (Deribit)",
+   "impact": "medium"
+  },
+  {
+   "t": "2027-11-10T13:30:00.000Z",
+   "kind": "CPI",
+   "label": "US CPI",
+   "impact": "high"
+  },
+  {
+   "t": "2027-11-26T08:00:00.000Z",
+   "kind": "OPTIONS",
+   "label": "Monthly BTC options expiry (Deribit)",
+   "impact": "medium"
+  },
+  {
+   "t": "2027-12-08T19:00:00.000Z",
+   "kind": "FOMC",
+   "label": "FOMC decision + projections",
+   "impact": "high"
+  },
+  {
+   "t": "2027-12-10T13:30:00.000Z",
+   "kind": "CPI",
+   "label": "US CPI",
+   "impact": "high"
+  },
+  {
+   "t": "2027-12-31T08:00:00.000Z",
+   "kind": "OPTIONS",
+   "label": "Quarterly BTC options expiry (Deribit)",
+   "impact": "high"
+  }
+ ]
+}
