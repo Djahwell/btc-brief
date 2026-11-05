@@ -4,11 +4,12 @@
   "binance_funding": "6d0f4b9a73d8894262e78c1f491786a89ad813788216d7e172732923f6dc3686",
   "binance_premium_index_1h": "3c63d57e4bcb5714c3c317e47a2cfd1bc50a57a514e2b510db87f6330d43c8d0",
   "bitstamp_daily": "12eec185602b30ffc1707bb23711032871114245d5eb78c1d290e10940ef9fd4",
+  "bmp_lth": "e061cc660a11ff70dab03176a8db43da2c6a5e6e816247d2b3946fac8e064c4c",
   "coinbase_daily": "02cd9f62481d91fcb9072fff5fc04b037741516347c18063795f582c996165a4",
-  "coinbase_premium_legs_1h": "8659de4519f930bd697e51b2e27e3ff423b9f27ef547e8a1a24902fda9b224e9",
+  "coinbase_premium_legs_1h": "6990af70101f1b3847853233977de538de4bdf3394ba9288cde21c67493ef821",
   "coinmetrics_mvrv": "cc89c193a1708715316e30503a656bca3ccd717c3f9d58d726a72a43cbaee892",
   "fear_greed": "d6cadb301415e581eda17153f66729e67f4be6c0ca44bc9f77fafcaaaec0f31c",
-  "stablecoins_usdt_usdc": "5b4af2368eef09f951a819bb88aacfe701c0eb57360600964544a0f691828e74"
+  "stablecoins_usdt_usdc": "5fdc7a5d998c3be5bdb7bdf6153cc92807c466d384091be4c825ae70c45f1b13"
  },
  "results": [
   {
@@ -80,12 +81,16 @@
      "asOf": "2021-11-08"
     },
     "T2+": {
-     "score": null,
-     "reason": "lth stale"
+     "score": 0,
+     "pct": 39.5,
+     "raw": 1181.6666666666667,
+     "asOf": "2021-11-08"
     },
     "T2-": {
-     "score": null,
-     "reason": "lth stale"
+     "score": 0,
+     "pct": 39.5,
+     "raw": 1181.6666666666667,
+     "asOf": "2021-11-08"
     },
     "T3": {
      "score": 3,
@@ -145,14 +150,14 @@
     "V-T1/T2+": {
      "score": -1,
      "band": "Neutral",
-     "active": 3,
+     "active": 4,
      "of": 4,
      "withheld": false
     },
     "V-T1/T2-": {
      "score": -1,
      "band": "Neutral",
-     "active": 3,
+     "active": 4,
      "of": 4,
      "withheld": false
     },
@@ -248,12 +253,16 @@
      "asOf": "2022-06-18"
     },
     "T2+": {
-     "score": null,
-     "reason": "lth stale"
+     "score": -4,
+     "pct": 14.549938347718866,
+     "raw": -5870,
+     "asOf": "2022-06-18"
     },
     "T2-": {
-     "score": null,
-     "reason": "lth stale"
+     "score": 4,
+     "pct": 14.549938347718866,
+     "raw": -5870,
+     "asOf": "2022-06-18"
     },
     "T3": {
      "score": -7,
@@ -311,16 +320,16 @@
      "withheld": false
     },
     "V-T1/T2+": {
-     "score": 1,
+     "score": -1,
      "band": "Neutral",
-     "active": 3,
+     "active": 4,
      "of": 4,
      "withheld": false
     },
     "V-T1/T2-": {
-     "score": 1,
+     "score": 2,
      "band": "Neutral",
-     "active": 3,
+     "active": 4,
      "of": 4,
      "withheld": false
     },
@@ -416,12 +425,16 @@
      "asOf": "2022-11-23"
     },
     "T2+": {
-     "score": null,
-     "reason": "lth stale"
+     "score": -6,
+     "pct": 11.748173130972456,
+     "raw": -6702.666666666667,
+     "asOf": "2022-11-23"
     },
     "T2-": {
-     "score": null,
-     "reason": "lth stale"
+     "score": 6,
+     "pct": 11.748173130972456,
+     "raw": -6702.666666666667,
+     "asOf": "2022-11-23"
     },
     "T3": {
      "score": -5,
@@ -479,16 +492,16 @@
      "withheld": false
     },
     "V-T1/T2+": {
-     "score": 1,
+     "score": -1,
      "band": "Neutral",
-     "active": 3,
+     "active": 4,
      "of": 4,
      "withheld": false
     },
     "V-T1/T2-": {
-     "score": 1,
-     "band": "Neutral",
-     "active": 3,
+     "score": 3,
+     "band": "Bull",
+     "active": 4,
      "of": 4,
      "withheld": false
     },
@@ -584,12 +597,16 @@
      "asOf": "2024-03-12"
     },
     "T2+": {
-     "score": null,
-     "reason": "lth stale"
+     "score": -9,
+     "pct": 2.4444444444444446,
+     "raw": -20018.533333333333,
+     "asOf": "2024-03-12"
     },
     "T2-": {
-     "score": null,
-     "reason": "lth stale"
+     "score": 9,
+     "pct": 2.4444444444444446,
+     "raw": -20018.533333333333,
+     "asOf": "2024-03-12"
     },
     "T3": {
      "score": 8,
@@ -647,16 +664,16 @@
      "withheld": false
     },
     "V-T1/T2+": {
-     "score": 1,
+     "score": -2,
      "band": "Neutral",
-     "active": 3,
+     "active": 4,
      "of": 4,
      "withheld": false
     },
     "V-T1/T2-": {
-     "score": 1,
-     "band": "Neutral",
-     "active": 3,
+     "score": 3,
+     "band": "Bull",
+     "active": 4,
      "of": 4,
      "withheld": false
     },
@@ -752,12 +769,16 @@
      "asOf": "2025-04-06"
     },
     "T2+": {
-     "score": null,
-     "reason": "lth stale"
+     "score": 2,
+     "pct": 78.90151515151516,
+     "raw": 9767.7,
+     "asOf": "2025-04-06"
     },
     "T2-": {
-     "score": null,
-     "reason": "lth stale"
+     "score": -2,
+     "pct": 78.90151515151516,
+     "raw": 9767.7,
+     "asOf": "2025-04-06"
     },
     "T3": {
      "score": 0,
@@ -815,16 +836,16 @@
      "withheld": false
     },
     "V-T1/T2+": {
-     "score": 0,
+     "score": 1,
      "band": "Neutral",
-     "active": 3,
+     "active": 4,
      "of": 4,
      "withheld": false
     },
     "V-T1/T2-": {
-     "score": 0,
+     "score": -1,
      "band": "Neutral",
-     "active": 3,
+     "active": 4,
      "of": 4,
      "withheld": false
     },
