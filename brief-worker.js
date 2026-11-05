@@ -18,12 +18,14 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join, dirname }                                       from 'path';
 import { fileURLToPath }                                       from 'url';
 import { buildAMTPromptBlock } from './scripts/amt.js';
+import { ensureFresh, buildFreshnessBlock, ABORT_HOURS } from './scripts/freshness.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
 
 const ALL_DATA_FILE  = join(__dirname, 'public', 'all_data.json');
-const WORKER_VERSION = '3.0.0'; // slim: data fetching delegated to data-worker.js
+const WORKER_VERSION = '3.1.0'; // 3.1: staleness guard (scripts/freshness.js)
+const DRY_RUN = process.env.BRIEF_DRY_RUN === '1'; // build prompt + freshness, skip Claude + write
 
 // ── Load .env ─────────────────────────────────────────────────────────────────
 function loadEnv() {
@@ -427,7 +429,23 @@ async function runBriefWorker() {
 
   console.log(`[Brief] all_data.json loaded — cachedAt: ${allData.cachedAt || 'unknown'} | price: $${allData.market.price.toLocaleString()}`);
 
-  if (!ANTHROPIC_KEY) {
+  // ── Staleness guard (2026-11-05) ────────────────────────────────────────────
+  // If the cache is older than STALE_HOURS, refresh price + AMT live from
+  // Kraken and tell Claude which inputs are still old. If it's very old AND
+  // the live refresh failed, abort rather than publish a misleading brief.
+  const freshness = await ensureFresh(allData);
+  if (freshness.status === 'FRESH') {
+    console.log(`[Brief] Data fresh (${freshness.ageHours}h old).`);
+  } else {
+    console.warn(`[Brief] ⚠ ${freshness.status}: cache ${freshness.ageHours}h old | live refreshed: ${freshness.liveRefreshed.join(', ') || 'none'}${freshness.refreshError ? ' | error: ' + freshness.refreshError : ''}`);
+    if (freshness.liveRefreshed.includes('price')) console.warn(`[Brief]   price $${freshness.staleSnapshotPrice?.toLocaleString()} (snapshot) → $${freshness.livePrice?.toLocaleString()} (live) | AMT: ${allData.amt?.state}`);
+    if (freshness.status === 'STALE_UNREFRESHED' && (freshness.ageHours == null || freshness.ageHours > ABORT_HOURS)) {
+      console.error(`[Brief] FATAL: cache older than ${ABORT_HOURS}h and live refresh failed. Aborting WITHOUT calling Anthropic.`);
+      process.exit(1);
+    }
+  }
+
+  if (!ANTHROPIC_KEY && !DRY_RUN) {
     console.error('[Brief] FATAL: VITE_ANTHROPIC_API_KEY missing. Aborting.');
     process.exit(1);
   }
@@ -458,10 +476,17 @@ async function runBriefWorker() {
       amt:           allData.amt || null,
     });
 
+    const finalMessage = buildFreshnessBlock(freshness) + userMessage;
+    if (DRY_RUN) {
+      console.log('[Brief] DRY RUN — prompt head:\n' + finalMessage.slice(0, 1800));
+      console.log('[Brief] DRY RUN — AMT:', JSON.stringify(allData.amt));
+      return;
+    }
+
     console.log('[Brief] Calling Claude...');
     const t0 = Date.now();
     const systemPrompt = buildSystemPrompt(anchors);
-    const rawBrief = await callClaude(systemPrompt, userMessage);
+    const rawBrief = await callClaude(systemPrompt, finalMessage);
     console.log(`[Brief] Claude responded in ${((Date.now()-t0)/1000).toFixed(1)}s`);
 
     const parsedBrief = parseClaudeJSON(rawBrief);
@@ -469,6 +494,10 @@ async function runBriefWorker() {
     if (parsedBrief && parsedBrief.compositeScore != null) {
       const cs = Number(parsedBrief.compositeScore);
       if (Number.isFinite(cs)) parsedBrief.compositeScore = Math.max(-10, Math.min(10, Math.round(cs)));
+    }
+    parsedBrief.dataFreshness = freshness;
+    if (freshness.status === 'STALE_UNREFRESHED' && parsedBrief.headline) {
+      parsedBrief.headline = `⚠ STALE DATA (${freshness.ageHours}h old) — ${parsedBrief.headline}`;
     }
     allData.brief         = parsedBrief;
     allData.briefCachedAt = new Date().toISOString();
