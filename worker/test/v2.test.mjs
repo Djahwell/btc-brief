@@ -113,6 +113,8 @@ test('commentary checks: numbers must come from the snapshot, no number words, d
   const pb = JSON.parse(JSON.stringify(p)); pb.tendency_3_to_9_months = { score: 4, band: 'Bull', active: 4, of: 4 };
   assert.match(checkText('These are untested candidate scores. The entry reading is bullish today.', pb).join(), /bullish wording/);     // only the tendency is Bull
   assert.deepEqual(checkText('These are untested candidate scores. The tendency reading is +4, Bull, a bullish backdrop.', pb), []);
+  assert.deepEqual(checkText('These are untested candidate scores; the entry reading is not bearish.', p), []);
+  assert.match(checkText('These are untested candidate scores; the entry is not bearish yet, but bearish.', p).join(), /bearish wording/);
 });
 
 test('commentary endpoint: auth, once a day, failed checks never published', async () => {

@@ -30,7 +30,7 @@ async function binanceSpotHourly(http, startSec, endSec) {
 function computeFromLegs(cb, usdt, bn, endSec) {
   const hours = [...cb.keys()].filter(t => usdt.has(t) && bn.has(t)).sort((a, b) => a - b);
   const adj = new Map(hours.map(t => [t, (cb.get(t) / (bn.get(t) * usdt.get(t)) - 1) * 100]));
-  const last24 = hours.filter(t => t >= endSec - 24 * H).map(t => adj.get(t));
+  const last24 = hours.filter(t => t >= endSec - 24 * H && t < endSec).map(t => adj.get(t));   // never an hour at/after endSec (Board re-check)
   const curDayStart = Math.floor(endSec / 86400) * 86400;
   const byDay = new Map();
   for (const t of hours) { const d = Math.floor(t / 86400) * 86400; if (d >= curDayStart) continue; if (!byDay.has(d)) byDay.set(d, []); byDay.get(d).push(adj.get(t)); }

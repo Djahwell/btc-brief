@@ -107,9 +107,9 @@ test('package parity: shipped engine files are byte-identical to engine/MANIFEST
 
 // Board build review #3: parity through the REAL live code paths (Binance hourly premium, Coinbase/
 // Binance legs, the cycle's frozen evaluation) on recorded (synthetic) data, against the backtest view.
-test('parity: frozen live evaluation == backtest evaluation for the same day (real live code)', () => {
+for (const hhmm of ['00:22', '01:52']) test(`parity: frozen live evaluation == backtest evaluation for the same day (real live code, freeze at ${hhmm})`, () => {
   const tmp = sandbox();
-  const D = new Date().toISOString().slice(0, 10); const T = Date.parse(D + 'T00:22:00Z');
+  const D = new Date().toISOString().slice(0, 10); const T = Date.parse(`${D}T${hhmm}:00Z`);
   const pre = path.join(tmp, 'test', 'preload.js');
   fs.writeFileSync(pre, `Date.now = () => ${T}; globalThis.fetch = require('./mockfetch.js').mk({ now: ${T}, synthLegs: true }).fetch;`);
   execFileSync(process.execPath, ['-r', pre, 'cycle.js', '--dry-run'], { cwd: tmp, encoding: 'utf8' });

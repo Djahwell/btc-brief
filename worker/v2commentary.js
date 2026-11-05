@@ -52,6 +52,13 @@ function payloadNumbers(p) {
   return out;
 }
 
+// True when every occurrence of the direction word is directly negated ("not bearish", "not yet bearish").
+function onlyNegated(sent, root) {
+  const all = (sent.match(new RegExp(`\\b${root}(ish)?\\b`, 'g')) || []).length;
+  const neg = (sent.match(new RegExp(`\\bnot\\s+(?:\\w+\\s+)?${root}(ish)?\\b`, 'g')) || []).length;
+  return all > 0 && all === neg;
+}
+
 const NUMBER_WORDS = /\b(zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|billion|dozen|half|quarter|double|twice|triple)\b/i;
 
 export function checkText(text, p) {
@@ -90,8 +97,8 @@ export function checkText(text, p) {
     const mE = /\bentry\b/.test(sent), mT = /\btendency\b/.test(sent);
     const pool = (mE && !mT) ? [val(E)] : (mT && !mE) ? [val(T)] : [val(E), val(T)];
     const has = f => pool.some(x => x != null && f(x));
-    if (/\bbull(ish)?\b|\bfavou?rable\b|\bgood time to (buy|enter|get in)\b|\bbuy signal\b/.test(sent) && !/\bnot\b[^.]*\bbull/.test(sent) && !has(x => x >= 3)) fails.push("bullish wording without a matching Bull score");
-    if (/\bbear(ish)?\b|\bunfavou?rable\b|\bsell signal\b/.test(sent) && !/\bnot\b[^.]*\bbear/.test(sent) && !has(x => x <= -3)) fails.push("bearish wording without a matching Bear score");
+    if (/\bbull(ish)?\b|\bfavou?rable\b|\bgood time to (buy|enter|get in)\b|\bbuy signal\b/.test(sent) && !onlyNegated(sent, 'bull') && !has(x => x >= 3)) fails.push("bullish wording without a matching Bull score");
+    if (/\bbear(ish)?\b|\bunfavou?rable\b|\bsell signal\b/.test(sent) && !onlyNegated(sent, 'bear') && !has(x => x <= -3)) fails.push("bearish wording without a matching Bear score");
     if (/strong bull/.test(sent) && !has(x => x >= 6)) fails.push("'strong bull' without a Strong bull score");
     if (/strong bear/.test(sent) && !has(x => x <= -6)) fails.push("'strong bear' without a Strong bear score");
   }
