@@ -1,6 +1,6 @@
 {
   "schema": "brief-v2-declaration/1",
-  "status": "DRAFT \u2014 not frozen. Frozen copy and sha256 go in STAGE4-DECLARATION.md before any Stage 4 run.",
+  "status": "STAGE 4 DECLARATION v1 \u2014 frozen 2026-11-05 (STAGE4-DECLARATION.md records this file's hash). Any change = a new declaration and a new trial.",
   "referenceStart": "2018-01-01",
   "warmupDays": 365,
   "percentileMap": {
