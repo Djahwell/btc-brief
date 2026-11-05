@@ -18,6 +18,7 @@
 
 export const V2_KEY = "v2:snapshot";
 export const V2_ALERT_KEY = "v2:alert";
+export const V2_INSTALLED_KEY = "v2:installedAt";
 const MAX_BODY = 256 * 1024;          // bytes
 const MAX_FUTURE_MS = 2 * 60 * 1000;  // reject timestamps > 2 min ahead (clock error)
 const MAX_PAST_MS = 10 * 60 * 1000;   // reject pushes signed > 10 min ago (replay)
@@ -90,11 +91,13 @@ export async function handleV2(request, env, now = Date.now()) {
     const rec = await env.BRIEF_KV.get(V2_KEY, "json");
     if (!rec) return out({ error: "no snapshot yet" }, 404);
     const gen = Date.parse(rec.snapshot.generatedAt);
+    // Public response: internal run details (errors, disk, paths) are not exposed.
+    const { runs, ...pub } = rec.snapshot;
     return out({
       servedAt: new Date(now).toISOString(),
       ageSec: Number.isFinite(gen) ? Math.round((now - gen) / 1000) : null,
       receivedAt: rec.receivedAt,
-      snapshot: rec.snapshot,
+      snapshot: { ...pub, runs: runs ? { durationMs: runs.durationMs, errorCount: Array.isArray(runs.errors) ? runs.errors.length : null } : null },
     });
   }
 
@@ -109,27 +112,39 @@ export async function handleV2(request, env, now = Date.now()) {
   return out({ error: "not found" }, 404);
 }
 
-// Cron: one notification when the snapshot goes stale, one when it recovers.
+// Cron: one notification when the snapshot goes stale (or never arrives within 1 h of the
+// first cron run after deploy), one when it recovers. An alert is only marked as sent when the
+// notification actually went out, so a failed ntfy call is retried on the next run.
 export async function scheduledV2(env, now = Date.now(), fetchImpl = fetch) {
   if (!env.BRIEF_KV) return "no kv";
+  let installedAt = await env.BRIEF_KV.get(V2_INSTALLED_KEY);
+  if (!installedAt) { installedAt = new Date(now).toISOString(); await env.BRIEF_KV.put(V2_INSTALLED_KEY, installedAt); }
   const rec = await env.BRIEF_KV.get(V2_KEY, "json");
-  if (!rec) return "no snapshot yet";            // nothing installed yet: stay quiet
-  const ageSec = Math.round((now - Date.parse(rec.snapshot.generatedAt)) / 1000);
   const alert = (await env.BRIEF_KV.get(V2_ALERT_KEY, "json")) || { active: false };
-  const stale = !(ageSec <= STALE_ALERT_SEC);
-  const notify = async (title, msg) => {
-    if (!env.NTFY_TOPIC) return;
-    await fetchImpl(`https://ntfy.sh/${encodeURIComponent(env.NTFY_TOPIC)}`, {
-      method: "POST", body: msg, headers: { Title: title, Priority: stale ? "high" : "default" },
-    }).catch(() => {});
+  let stale, msg;
+  if (!rec) {
+    const waitedSec = Math.round((now - Date.parse(installedAt)) / 1000);
+    if (waitedSec < 3600) return "waiting for first snapshot";
+    stale = true; msg = `No VPS snapshot has arrived ${Math.round(waitedSec / 60)} min after the V2 route was deployed. Is brief-v2-cycle installed and is V2_PUSH_SECRET identical on both sides?`;
+  } else {
+    const ageSec = Math.round((now - Date.parse(rec.snapshot.generatedAt)) / 1000);
+    stale = !(ageSec <= STALE_ALERT_SEC);
+    msg = stale ? `Last VPS snapshot is ${Math.round(ageSec / 60)} min old (seq ${rec.snapshot.seq}). Check brief-v2-cycle on the VPS.` : `Snapshots flowing again (age ${ageSec}s, seq ${rec.snapshot.seq}).`;
+  }
+  const notify = async (title, body) => {
+    if (!env.NTFY_TOPIC) return true;                       // no topic configured: nothing to send
+    try {
+      const r = await fetchImpl(`https://ntfy.sh/${encodeURIComponent(env.NTFY_TOPIC)}`, { method: "POST", body, headers: { Title: title, Priority: stale ? "high" : "default" } });
+      return !!r && r.ok !== false;
+    } catch { return false; }
   };
   if (stale && !alert.active) {
-    await notify("BTC Brief V2: data stale", `Last VPS snapshot is ${Math.round(ageSec / 60)} min old (seq ${rec.snapshot.seq}). Check brief-v2-cycle on the VPS.`);
+    if (!(await notify("BTC Brief V2: data stale", msg))) return "alert send failed (will retry)";
     await env.BRIEF_KV.put(V2_ALERT_KEY, JSON.stringify({ active: true, since: new Date(now).toISOString() }));
     return "alerted";
   }
   if (!stale && alert.active) {
-    await notify("BTC Brief V2: recovered", `Snapshots flowing again (age ${ageSec}s, seq ${rec.snapshot.seq}).`);
+    if (!(await notify("BTC Brief V2: recovered", msg))) return "recovery send failed (will retry)";
     await env.BRIEF_KV.put(V2_ALERT_KEY, JSON.stringify({ active: false, since: new Date(now).toISOString() }));
     return "recovered";
   }

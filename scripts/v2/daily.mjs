@@ -5,6 +5,10 @@
 // each input has its own asOf. Missing = null, never 0. Nothing here scores anything.
 import { getJSON, writeJSON, writeGz, input, isoDay, coinbaseCandles, bitstampDaily, CODE_VERSION } from './lib.mjs';
 import { fetchBMPLTHData } from './lth.mjs';
+import { readFileSync } from 'fs';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const { computeFromLegs } = require('../../vps/brief-v2/lib/cbpremium.js');   // same code as the VPS (STAGE2-PLAN §8.8)
 
 const OUT = process.env.OUT || 'out/v2';
 const NOW = Date.now();
@@ -100,6 +104,28 @@ try {
   if (!lth) throw new Error('BMP extraction failed or price alignment rejected');
   result.inputs.lth_net_30d = input({ value: lth.lth_net_30d_avg, unit: 'BTC/day', window: '30d average', asOf: lth.date, source: 'Bitcoin Magazine Pro LTH supply (scraped; dated by price alignment)', scope: 'network-wide, single provider', quality: lth.date ? 'OK' : 'STALE', staleAfterSec: 3 * DAY, extra: { lth_net_7d_avg: lth.lth_net_7d_avg, lth_supply_btc: lth.lth_supply_btc, daily_noise_sd: lth.lth_daily_noise_sd, align_err_pct: lth.align_err_pct } });
 } catch (e) { fail('lth_net_30d', e); }
+
+// 6. E5a reproducibility copy (§8.8): same products, same completed hours, same code as the VPS.
+//    The VPS compares its own daily medians with these; > 0.2 bp raises an alarm there.
+try {
+  const H = 3600; const endH = Math.floor(NOW / 1000 / H) * H; const startH = endH - 31 * 24 * H;
+  const legs = async p => new Map((await coinbaseCandles(p, H, startH, endH)).map(x => [x.t, x.c]));
+  const cbm = await legs('BTC-USD'); const usm = await legs('USDT-USD');
+  const bnm = new Map();
+  const rows = await getJSON(`https://data-api.binance.vision/api/v3/klines?symbol=BTCUSDT&interval=1h&limit=1000&startTime=${startH * 1000}`);
+  for (const r of rows) { const t = Number(r[0]) / 1000; if (t >= startH && t < endH) bnm.set(t, Number(r[4])); }
+  const r = computeFromLegs(cbm, usm, bnm, endH);
+  result.inputs.coinbase_premium_adj_repro = input({ value: r.value, unit: '%', window: '24h median (reproducibility copy; the VPS value is the live one)', asOf: r.lastHour ? new Date((r.lastHour + H) * 1000).toISOString() : null, source: 'Coinbase BTC-USD, Coinbase USDT-USD, Binance BTCUSDT (vision), hourly', scope: 'reproducibility check only', quality: 'OK', staleAfterSec: DAY, extra: { z30: r.z, dayMedians: r.dayMedians } });
+} catch (e) { fail('coinbase_premium_adj_repro', e); }
+
+// 7. Carry forward (06:10 run): an input that worked earlier today but fails now keeps its last good
+//    value with its ORIGINAL asOf, flagged carriedForward, so it is never silently dropped or relabelled.
+try {
+  const prev = JSON.parse(readFileSync(`${OUT}/daily.json`, 'utf8'));
+  for (const [k, v] of Object.entries(prev.inputs || {})) {
+    if ((!result.inputs[k] || result.inputs[k].value == null) && v?.value != null) result.inputs[k] = { ...v, carriedForward: true, carriedFrom: prev.generatedAt };
+  }
+} catch { /* first run: nothing to carry */ }
 
 for (const [k, v] of Object.entries(result.inputs)) if (!v) delete result.inputs[k];
 writeJSON(`${OUT}/daily.json`, result);

@@ -5,8 +5,8 @@
 const BUDGET = { binanceWeightLimit: 2400, maxShare: 0.20 };   // stop Binance calls above 20% of the IP limit
 
 class Http {
-  constructor({ vintage, fetchImpl = globalThis.fetch, now = () => Date.now(), log = console } = {}) {
-    this.vintage = vintage; this.fetch = fetchImpl; this.now = now; this.log = log;
+  constructor({ vintage, fetchImpl = globalThis.fetch, now = () => Date.now(), log = console, deadline = Infinity } = {}) {
+    this.vintage = vintage; this.fetch = fetchImpl; this.now = now; this.log = log; this.deadline = deadline; this.deadlineHit = false;
     this.binanceStopped = false; this.maxWeightSeen = 0; this.calls = 0; this.errors = [];
   }
   isBinanceFutures(url) { return /^https:\/\/(fapi|dapi)\.binance\.com\//.test(url); }
@@ -15,6 +15,9 @@ class Http {
   async json(name, url, { timeout = 12000, store = true } = {}) {
     const fut = this.isBinanceFutures(url);
     if (fut && this.binanceStopped) throw Object.assign(new Error('binance budget guard: skipped'), { code: 'BUDGET' });
+    const left = this.deadline - Date.now();
+    if (left < 2000) { this.deadlineHit = true; throw Object.assign(new Error('cycle deadline reached: skipped'), { code: 'DEADLINE' }); }
+    timeout = Math.min(timeout, left - 1000);
     this.calls++;
     let r;
     try {

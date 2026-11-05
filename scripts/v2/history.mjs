@@ -26,16 +26,28 @@ function save(name, meta, rows, tsOf, step) {
 }
 async function step(name, fn) { try { await fn(); } catch (e) { manifest.errors.push({ file: name, error: String(e?.message || e).slice(0, 200) }); console.warn(`[v2-history] ${name} FAILED: ${e?.message || e}`); } }
 
-// Single-entry zip (data.binance.vision monthly files) → text.
+// data.binance.vision monthly zip (one CSV) → text. Reads the central directory (authoritative sizes,
+// handles data descriptors), refuses ZIP64 and encrypted entries rather than guessing.
 function unzipFirst(buf) {
-  if (buf.readUInt32LE(0) !== 0x04034b50) throw new Error('not a zip');
-  const method = buf.readUInt16LE(8), csize = buf.readUInt32LE(18), nlen = buf.readUInt16LE(26), elen = buf.readUInt16LE(28);
-  const start = 30 + nlen + elen;
-  // sizes may be in a data descriptor (csize 0); take everything up to the central directory then
-  let end = csize ? start + csize : buf.indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02]), start);
-  const data = buf.subarray(start, end);
-  return (method === 8 ? inflateRawSync(data) : data).toString('utf8');
+  let eocd = -1;
+  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 66000); i--) if (buf.readUInt32LE(i) === 0x06054b50) { eocd = i; break; }
+  if (eocd < 0) throw new Error('zip: no end-of-central-directory');
+  const cdOff = buf.readUInt32LE(eocd + 16);
+  if (cdOff === 0xffffffff) throw new Error('zip: ZIP64 not supported');
+  if (buf.readUInt32LE(cdOff) !== 0x02014b50) throw new Error('zip: bad central directory');
+  const flags = buf.readUInt16LE(cdOff + 8), method = buf.readUInt16LE(cdOff + 10);
+  const csize = buf.readUInt32LE(cdOff + 20), lho = buf.readUInt32LE(cdOff + 42);
+  if (flags & 1) throw new Error('zip: encrypted entry');
+  if (csize === 0xffffffff || lho === 0xffffffff) throw new Error('zip: ZIP64 entry');
+  if (buf.readUInt32LE(lho) !== 0x04034b50) throw new Error('zip: bad local header');
+  const start = lho + 30 + buf.readUInt16LE(lho + 26) + buf.readUInt16LE(lho + 28);
+  const data = buf.subarray(start, start + csize);
+  if (method === 0) return data.toString('utf8');
+  if (method === 8) return inflateRawSync(data).toString('utf8');
+  throw new Error(`zip: method ${method}`);
 }
+// Binance archive timestamps: ms today; µs in some newer datasets. Normalise to seconds by magnitude.
+const tsSec = v => { const n = Number(v); return n > 1e14 ? Math.floor(n / 1e6) : n > 1e11 ? Math.floor(n / 1000) : n; };   // µs → s, ms → s, s → s
 function* months(fromY, fromM) {
   const d = new Date(Date.UTC(fromY, fromM - 1, 1));
   const lastFull = new Date(Date.UTC(new Date(now).getUTCFullYear(), new Date(now).getUTCMonth() - 1, 1));
@@ -84,13 +96,13 @@ await step('coinbase_premium_legs_1h', async () => {
 // 3. Binance premium index (1h) and funding, 2020→ (monthly archive)
 await step('binance_premium_index_1h', async () => {
   const { rows, missing } = await binanceArchive('pi', 'premiumIndexKlines/BTCUSDT/1h/BTCUSDT-1h', 2020, 1, f => {
-    const t = Math.floor(Number(f[0]) / (Number(f[0]) > 1e12 ? 1000 : 1)); const close = Number(f[4]);
+    const t = tsSec(f[0]); const close = Number(f[4]);
     return { t, close: close === 0 ? null : close, open: Number(f[1]) };   // exact zeros = placeholders → missing
   });
   save('binance_premium_index_1h', { source: 'data.binance.vision premiumIndexKlines BTCUSDT 1h', unit: 'fraction', missingMonths: missing }, rows, r => r.t, HOUR);
 });
 await step('binance_funding', async () => {
-  const { rows, missing } = await binanceArchive('fr', 'fundingRate/BTCUSDT/BTCUSDT-fundingRate', 2020, 1, f => ({ t: Math.floor(Number(f[0]) / 1000), interval_h: Number(f[1]), rate: Number(f[2]) }));
+  const { rows, missing } = await binanceArchive('fr', 'fundingRate/BTCUSDT/BTCUSDT-fundingRate', 2020, 1, f => ({ t: tsSec(f[0]), interval_h: Number(f[1]), rate: Number(f[2]) }));
   save('binance_funding', { source: 'data.binance.vision fundingRate BTCUSDT', unit: 'fraction per interval', missingMonths: missing }, rows, r => r.t, null);
 });
 

@@ -17,20 +17,25 @@ function parseTs(s) {
   const t = Date.parse(s); return Number.isFinite(t) ? t : null;
 }
 
+// Columns are located by the header row (not assumed by position). Required: ts, venue, inst, liq, btc.
+const REQUIRED = ['ts', 'venue', 'inst', 'liq', 'btc'];
 function readRows(file) {
   let txt;
   try { txt = fs.readFileSync(file, 'utf8'); } catch { return { rows: [], exists: false }; }
   const complete = txt.endsWith('\n') ? txt : txt.slice(0, txt.lastIndexOf('\n') + 1);
   const lines = complete.split('\n').filter(Boolean);
+  if (!lines.length) return { rows: [], exists: true, bad: 0, header: null };       // freshly created empty file is normal
+  const header = lines[0].split(',').map(x => x.trim());
+  const col = Object.fromEntries(REQUIRED.map(k => [k, header.indexOf(k)]));
+  if (REQUIRED.some(k => col[k] < 0)) return { rows: [], exists: true, bad: lines.length, header: header.join(','), headerError: `missing column(s): ${REQUIRED.filter(k => col[k] < 0).join(', ')}` };
   const rows = []; let bad = 0;
-  for (const line of lines) {
+  for (const line of lines.slice(1)) {
     const f = line.split(',');
-    if (f[0] === 'ts') continue;
-    const t = parseTs(f[0]); const side = f[3]; const btc = Number(f[5]);
+    const t = parseTs(f[col.ts]); const side = f[col.liq]; const btc = Number(f[col.btc]);
     if (t == null || (side !== 'L' && side !== 'S') || !Number.isFinite(btc)) { bad++; continue; }
-    rows.push({ t, venue: f[1], inst: f[2], side, btc });
+    rows.push({ t, venue: f[col.venue], inst: f[col.inst], side, btc });
   }
-  return { rows, exists: true, bad };
+  return { rows, exists: true, bad, header: header.join(',') };
 }
 
 function dayNames(nowMs) {
@@ -49,11 +54,11 @@ function isActive(unit) {
 
 async function computeE4({ dir, statusFile, unit = 'maisontoe-liq' }, nowMs, totalOiBtc, isActiveImpl = isActive) {
   const from = nowMs - 24 * 3600 * 1000;
-  const seen = new Set(); let long = 0, short = 0, n = 0, bad = 0, files = 0;
+  const seen = new Set(); let long = 0, short = 0, n = 0, bad = 0, files = 0, parsed = 0; const headerErrors = [];
   const byVenue = {};
   for (const d of dayNames(nowMs)) {
     const r = readRows(path.join(dir, `${d}.csv`));
-    if (!r.exists) continue; files++; bad += r.bad || 0;
+    if (!r.exists) continue; files++; bad += r.bad || 0; parsed += r.rows.length; if (r.headerError) headerErrors.push(`${d}: ${r.headerError}`);
     for (const x of r.rows) {
       if (x.t < from || x.t > nowMs) continue;
       const key = `${x.t}|${x.venue}|${x.inst}|${x.side}|${x.btc}`; if (seen.has(key)) continue; seen.add(key);
@@ -65,6 +70,10 @@ async function computeE4({ dir, statusFile, unit = 'maisontoe-liq' }, nowMs, tot
   try { statusAgeSec = Math.round((nowMs - fs.statSync(statusFile).mtimeMs) / 1000); } catch { /* missing */ }
   const active = await isActiveImpl(unit);
   const alive = active === 'active' && statusAgeSec != null && statusAgeSec <= 300;
+  // A parse problem must never read as "no liquidations": bad rows with no good rows → MISSING.
+  const unreadable = headerErrors.length > 0 || (bad > 0 && parsed === 0);
+  if (unreadable) return { value: null, pct_of_oi: null, byVenue: null, unit: 'BTC', window: '24h', asOf: null,
+    scope: 'liquidation files unreadable', quality: 'MISSING', heartbeat: { service: active || 'unknown', statusAgeSec, filesRead: files, badRows: bad, headerErrors } };
   return {
     value: alive ? { long_btc: long, short_btc: short, count: n } : null,
     pct_of_oi: alive && totalOiBtc ? { long: long / totalOiBtc * 100, short: short / totalOiBtc * 100 } : null,
@@ -72,6 +81,7 @@ async function computeE4({ dir, statusFile, unit = 'maisontoe-liq' }, nowMs, tot
     unit: 'BTC', window: '24h', asOf: alive ? new Date(nowMs).toISOString() : null,
     scope: 'Binance, Bybit, OKX perps via maisontoe-liq — LOWER BOUND (Binance publishes one liquidation per symbol per second)',
     quality: alive ? 'OK' : 'STALE', heartbeat: { service: active || 'unknown', statusAgeSec, filesRead: files, badRows: bad },
+    note: 'identical rows (same ts, venue, inst, side, size) are counted once',
   };
 }
 

@@ -52,7 +52,7 @@ test('OI in BTC from live specs; a spec change fails that venue and no partial t
   const m = mk({ now: NOW }); const state = {};
   const d = await computeDerivs(new Http({ fetchImpl: m.fetch, log: quiet }), state, NOW);
   assert.deepEqual(d.errors, []);
-  const exp = 85000.123 + 900000 * 100 / 80380.5 + 52000.5 + 560000000 / 80390 + 33564.1080000001191 + 10150.9786711356652154;
+  const exp = 85000.123 + 900000 * 100 / 80380.5 + 52000.5 + 560000000 / 80390 + 33564.1080000001191 + 8165000.59999999913 * 100 / 80434;   // OKX inverse via mark price (§8.7)
   assert.ok(Math.abs(d.total_btc - exp) < 1e-6, `${d.total_btc} vs ${exp}`);
   const bad = await computeDerivs(new Http({ fetchImpl: mk({ now: NOW, binanceContractSize: 10 }).fetch, log: quiet }), {}, NOW);
   assert.equal(bad.venues.binance, null); assert.equal(bad.total_btc, null); assert.ok(bad.partial_total_btc > 0);
@@ -100,4 +100,24 @@ test('push signature is identical to the Worker verifier (worker/v2.js)', async 
   const w = await import(path.join(__dirname, '../../../worker/v2.js'));
   const a = sign('k', '123', '/v2/snapshot', '{"x":1}'); const b = await w.sign('k', '123', '/v2/snapshot', '{"x":1}');
   assert.equal(a, b);
+});
+
+test('liquidations: unknown header or all-bad rows → MISSING, never zero', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'liq2-')); const status = path.join(dir, 's.json'); fs.writeFileSync(status, '{}');
+  const T = Date.UTC(2026, 10, 5, 12);
+  fs.writeFileSync(path.join(dir, '2026-11-05.csv'), `time,exchange,symbol,side,qty\n${T - 1000},binance,BTCUSDT,SELL,1\n`);
+  const r = await computeE4({ dir, statusFile: status }, T, 1e5, async () => 'active');
+  assert.equal(r.quality, 'MISSING'); assert.equal(r.value, null); assert.match(r.heartbeat.headerErrors[0], /missing column/);
+  fs.writeFileSync(path.join(dir, '2026-11-05.csv'), `ts,venue,inst,liq,price,btc,usd,raw\n${T - 1000},binance,BTCUSDT,SELL,1,x,1,x\n`);
+  const r2 = await computeE4({ dir, statusFile: status }, T, 1e5, async () => 'active');
+  assert.equal(r2.quality, 'MISSING');
+});
+test('cycle deadline: requests stop near the deadline instead of being killed by systemd', async () => {
+  const m = mk({ now: NOW }); const http = new Http({ fetchImpl: m.fetch, log: quiet, deadline: Date.now() + 1500 });
+  await assert.rejects(http.json('x', 'https://www.okx.com/api/v5/public/funding-rate?instId=BTC-USDT-SWAP'), /deadline/);
+  assert.equal(http.deadlineHit, true); assert.equal(m.calls.length, 0);
+});
+test('funding check: time-weighted and plain-mean rebuilds both reported', async () => {
+  const m = mk({ now: NOW }); const r = await computeE3a(new Http({ fetchImpl: m.fetch, log: quiet }), {}, NOW);
+  const p = r.check.prints.find(x => x.err_bp != null); assert.ok(p && 'err_bp_plain_mean' in p && 'rebuilt_weighted' in p);
 });

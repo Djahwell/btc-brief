@@ -40,7 +40,7 @@ async function main() {
   const vintage = new Vintage(path.join(BASE, 'vintages'));
   const gzipped = vintage.compressFinishedDays();
   const state = new State(path.join(BASE, 'state.json'));
-  const http = new Http({ vintage });
+  const http = new Http({ vintage, deadline: t0 + (cfg.cycleDeadlineSec ?? 140) * 1000 });   // always leave time to save and push
   const now = Date.now();
   const errors = [];
 
@@ -59,18 +59,29 @@ async function main() {
 
   const inputs = {
     perp_premium_binance_8h: rec({ ...(e3a?.scored || {}), source: 'Binance fapi premiumIndexKlines 1m (BTCUSDT)', scope: 'Binance BTCUSDT perp (scored series; OKX/Bybit cross-checks only)', staleAfterSec: 1800, crosscheck: e3a?.crosscheck ?? null, check_series: e3a?.check ?? null }),
-    funding_context: rec({ value: der?.funding ?? null, unit: 'fraction per funding interval', window: 'last/current interval', asOf: new Date(now).toISOString(), source: 'Binance premiumIndex, Bybit tickers, OKX funding-rate', scope: 'context only (dead band at 0.01%; not scored)', quality: der && Object.values(der.funding).some(v => v != null) ? 'OK' : 'MISSING', staleAfterSec: 1800 }),
-    oi_btc_total: rec({ value: der?.total_btc ?? null, unit: 'BTC', window: 'spot', asOf: new Date(now).toISOString(), source: 'Binance fapi/dapi, Bybit v5, OKX v5 open interest (contract specs checked live)', scope: 'USDT-linear + USD-inverse perps on Binance, Bybit, OKX (USDC perps excluded)', quality: der?.total_btc != null ? 'OK' : (der?.partial_total_btc != null ? 'STALE' : 'MISSING'), staleAfterSec: 1800, chg24h_pct: der?.chg24h_pct ?? null, chg7d_pct: der?.chg7d_pct ?? null, partial_total_btc: der?.partial_total_btc ?? null, byVenue: der?.venues ?? null }),
+    funding_context: rec({ value: der && Object.values(der.funding).some(v => v != null) ? der.funding : null, unit: 'fraction per funding interval', window: 'last/current interval', asOf: new Date(now).toISOString(), source: 'Binance premiumIndex, Bybit tickers, OKX funding-rate', scope: 'context only (dead band at 0.01%; not scored)', quality: der && Object.values(der.funding).some(v => v != null) ? 'OK' : 'MISSING', staleAfterSec: 1800 }),
+    oi_btc_total: rec({ value: der?.total_btc ?? null, unit: 'BTC', window: 'spot', asOf: der?.asOf ?? null, source: 'Binance fapi/dapi, Bybit v5, OKX v5 open interest (contract specs checked live)', scope: 'USDT-linear + USD-inverse perps on Binance, Bybit, OKX (USDC perps excluded)', quality: der?.total_btc != null ? 'OK' : 'MISSING', staleAfterSec: 1800, chg24h_pct: der?.chg24h_pct ?? null, chg7d_pct: der?.chg7d_pct ?? null, partial_total_btc: der?.partial_total_btc ?? null, byVenue: der?.venues ?? null }),
     coinbase_premium_adj: rec({ ...(e5a || {}), source: 'Coinbase BTC-USD, Coinbase USDT-USD, Binance BTCUSDT (vision mirror), hourly closes', scope: 'US spot (Coinbase) vs offshore spot (Binance), USDT corrected', staleAfterSec: 7200 }),
     liquidations_24h: rec({ ...(e4 || {}), source: 'maisontoe-liq recorder files (read-only)', staleAfterSec: 1800 }),
   };
 
-  state.data.seq = (state.data.seq || 0) + 1;
+  // E5a reproducibility check (§8.8): the GitHub job computes the same daily medians with the same code;
+  // compare on the days both have. Divergence > 0.2 bp raises an alarm flag.
+  const repro = daily?.inputs?.coinbase_premium_adj_repro?.dayMedians;
+  if (inputs.coinbase_premium_adj && repro && e5a?.dayMedians) {
+    const common = Object.keys(repro).filter(d => d in e5a.dayMedians);
+    const diffs = common.map(d => Math.abs(repro[d] - e5a.dayMedians[d]) * 100);    // % → bp
+    const maxBp = diffs.length ? Math.max(...diffs) : null;
+    inputs.coinbase_premium_adj.repro_check = { days: common.length, max_diff_bp: maxBp, alarm_bp: 0.2, status: maxBp == null ? 'MISSING' : maxBp <= 0.2 ? 'OK' : 'ALARM' };
+    if (maxBp != null && maxBp > 0.2) errors.push(`E5a reproducibility ALARM: VPS vs GitHub daily medians differ by ${maxBp.toFixed(3)} bp`);
+  }
+  // seq: time-based floor so a lost/corrupt state.json can never lock pushes out (Worker needs increasing seq)
+  state.data.seq = Math.max((state.data.seq || 0) + 1, Math.floor(Date.now() / 1000));
   const snap = {
     schema: 'brief-v2/1', codeVersion: CODE_VERSION, seq: state.data.seq, generatedAt: new Date().toISOString(), host: 'vps',
     inputs, daily: { url: cfg.dailyUrl, generatedAt: daily?.generatedAt ?? null, inputs: dailyInputs, errors: daily?.errors ?? null },
     runs: {
-      durationMs: Date.now() - t0, httpCalls: http.calls, binanceMaxUsedWeight1m: http.maxWeightSeen, binanceBudgetStopped: http.binanceStopped,
+      durationMs: Date.now() - t0, deadlineHit: http.deadlineHit, httpCalls: http.calls, binanceMaxUsedWeight1m: http.maxWeightSeen, binanceBudgetStopped: http.binanceStopped,
       clock, disk: { freeGB: +(disk.freeBytes / 1e9).toFixed(1), freePct: +disk.freePct.toFixed(1), storeMB: +(dirBytes(BASE) / 1e6).toFixed(1) }, gzippedFiles: gzipped,
       errors: [...errors, ...http.errors.map(e => `${e.name}: ${e.error}`)].slice(0, 40), dryRun: DRY,
     },
@@ -80,7 +91,15 @@ async function main() {
   if (!DRY) {
     if (!process.env.V2_PUSH_SECRET) push = { ok: false, skipped: 'V2_PUSH_SECRET not set' };
     else if (!clock.synced) push = { ok: false, skipped: 'clock not NTP-synchronised (Worker would reject or misorder)' };
-    else { try { push = await pushSnapshot({ workerUrl: cfg.workerUrl, secret: process.env.V2_PUSH_SECRET }, snap); } catch (e) { push = { ok: false, error: e.message }; } }
+    else {
+      try {
+        push = await pushSnapshot({ workerUrl: cfg.workerUrl, secret: process.env.V2_PUSH_SECRET }, snap);
+        if (push.status === 409 && Number.isInteger(push.body?.have)) {          // Worker holds a higher seq: catch up once
+          snap.seq = push.body.have + 1; state.data.seq = snap.seq;
+          push = await pushSnapshot({ workerUrl: cfg.workerUrl, secret: process.env.V2_PUSH_SECRET }, snap);
+        }
+      } catch (e) { push = { ok: false, error: e.message }; }
+    }
   }
   archiveSnapshot(path.join(BASE, 'snapshots'), snap, { pushed: !!push.ok, receivedAt: push.body?.receivedAt ?? null, pushStatus: push.status ?? push.skipped ?? push.error ?? null });
   state.save();

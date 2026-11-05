@@ -15,7 +15,8 @@ cd worker
 `wrangler deploy` replaces the whole script, so first confirm the live Worker is the V1 code in this repo:
 ```bash
 npx wrangler deployments list | head -20        # note the current version id (for rollback)
-git diff HEAD~10 -- worker.js | head -40         # V2 changes only: one import, one /v2/ route, one scheduled()
+git diff e532abc -- worker/worker.js            # V2 changes only: one import, one /v2/ route, one scheduled()
+# Also compare with the live script in the Cloudflare dashboard (Workers → btc-brief → Edit code): it should match worker.js at e532abc.
 ```
 V1 smoke test (save the output):
 ```bash
@@ -49,4 +50,5 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST https://btc-brief.joel-toe.work
 ```bash
 npx wrangler rollback <version id noted in step 1>
 ```
-V2 keys (`v2:snapshot`, `v2:alert`) can stay in KV; V1 never reads them.
+V2 keys (`v2:snapshot`, `v2:alert`, `v2:installedAt`) can stay in KV; V1 never reads them.
+Check afterwards in the dashboard (Workers → btc-brief → Settings → Triggers) whether the 15-minute cron is still listed (not verified whether rollback removes it). If it is, it is harmless (the V1 script has no scheduled handler) but you can delete it there.

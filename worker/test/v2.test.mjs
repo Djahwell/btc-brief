@@ -42,7 +42,7 @@ test('stale alert fires once, recovers once', async () => {
   const env = { BRIEF_KV: kv(), V2_PUSH_SECRET: SECRET, NTFY_TOPIC: 'topic' }; const sent = [];
   const f = async (u, o) => { sent.push(o.headers.Title); return new Response('ok'); };
   const t = Date.UTC(2026, 10, 5, 10);
-  assert.equal(await scheduledV2(env, t, f), 'no snapshot yet');
+  assert.equal(await scheduledV2(env, t, f), 'waiting for first snapshot');
   await post(env, snap(1, t), t);
   assert.equal(await scheduledV2(env, t + 10 * 60000, f), 'ok');
   assert.equal(await scheduledV2(env, t + 50 * 60000, f), 'alerted');
@@ -56,4 +56,18 @@ test('V1 routing unchanged: unknown path 404, /v2 routed', async () => {
   assert.equal((await worker.fetch(new Request('https://w.dev/nope'), env, {})).status, 404);
   assert.equal((await worker.fetch(new Request('https://w.dev/v2/health'), env, {})).status, 200);
   assert.equal(typeof worker.scheduled, 'function');
+});
+
+test('no snapshot ever → alert after 1 h; failed ntfy is retried; public GET hides run details', async () => {
+  const env = { BRIEF_KV: kv(), V2_PUSH_SECRET: SECRET, NTFY_TOPIC: 'topic' }; const t = Date.UTC(2026, 10, 5, 10); const sent = [];
+  let up = false; const f = async (u, o) => { if (!up) throw new Error('ntfy down'); sent.push(o.headers.Title); return new Response('ok'); };
+  assert.equal(await scheduledV2(env, t, f), 'waiting for first snapshot');
+  assert.equal(await scheduledV2(env, t + 61 * 60000, f), 'alert send failed (will retry)');
+  up = true;
+  assert.equal(await scheduledV2(env, t + 76 * 60000, f), 'alerted');
+  assert.deepEqual(sent, ['BTC Brief V2: data stale']);
+  const body = JSON.stringify({ schema: 'brief-v2/1', seq: 7, generatedAt: new Date(t).toISOString(), inputs: {}, runs: { durationMs: 900, errors: ['x: secret path /home/u'], disk: { freeGB: 9 } } });
+  await post(env, body, t);
+  const j = await (await handleV2(new Request('https://w.dev/v2/snapshot'), env, t + 1000)).json();
+  assert.deepEqual(j.snapshot.runs, { durationMs: 900, errorCount: 1 });
 });

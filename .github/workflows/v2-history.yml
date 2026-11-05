@@ -29,14 +29,15 @@ jobs:
             git worktree add _data v2-data
           else
             git worktree add --detach _data
-            cd _data && git checkout --orphan v2-data && git rm -rf . >/dev/null 2>&1 || true
+            cd _data
+            git checkout --orphan v2-data
+            git rm -rf --quiet . 2>/dev/null || true      # empty tree on a brand-new orphan is fine
             echo "# BTC Brief V2 data branch (generated; do not edit)" > README.md
           fi
       - name: Build history files
         env: { OUT: _data/v2 }
         run: node scripts/v2/history.mjs
-      - name: Commit and push
-        if: always()
+      - name: Commit and push (only when every history file built)
         run: |
           cd _data
           git config user.name  "btc-brief-v2-bot"

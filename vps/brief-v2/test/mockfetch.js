@@ -45,6 +45,7 @@ function mk(opts = {}) {
       if (u.pathname === '/api/v5/public/instruments') return res(fx(q.get('instId') === 'BTC-USD-SWAP' ? 'okx_inst_usd.json' : 'okx_inst_usdt.json'));
       if (u.pathname === '/api/v5/public/open-interest') return res(fx(q.get('instId') === 'BTC-USD-SWAP' ? 'okx_oi_usd.json' : 'okx_oi_usdt.json'));
       if (u.pathname === '/api/v5/public/funding-rate') return res(fx('okx_funding.json'));
+      if (u.pathname === '/api/v5/public/mark-price') return res(fx('okx_mark_usd.json'));
     }
     if (u.host === 'api.exchange.coinbase.com') {
       const prod = u.pathname.split('/')[2]; const s = Date.parse(q.get('start')) / 1000, e = Date.parse(q.get('end')) / 1000; const rows = [];

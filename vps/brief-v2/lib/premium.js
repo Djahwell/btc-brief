@@ -26,11 +26,19 @@ function rollingMean(bars, nowMs, hours = 8) {
   return { value: w.length ? mean(w.map(b => b.c)) : null, bars: w.length, coverage: w.length / expected };
 }
 
-// Rebuild one funding print at time T (ms) with interval hours
-function rebuildFunding(bars, T, intervalH) {
-  const w = bars.filter(b => b.t >= T - intervalH * 60 * MIN && b.t < T);
+// Rebuild one funding print at time T (ms) with interval hours.
+// weighted=true: Binance's documented method, a time-weighted average with weights 1..n rising
+// toward the end of the interval (the GATED check series). weighted=false: plain mean (reported
+// alongside). On hourly history 2020→2026 both matched 7,159 prints to a 0.16 bp median.
+// Interest (0.01%/8h) and clamp (±0.05%) are scaled for non-8 h intervals — verify on VPS if
+// Binance ever moves BTCUSDT off 8 h (it reports the interval in fundingInfo).
+function rebuildFunding(bars, T, intervalH, weighted = true) {
+  const w = bars.filter(b => b.t >= T - intervalH * 60 * MIN && b.t < T).sort((a, b) => a.t - b.t);
   if (w.length < intervalH * 60 * 0.9) return null;
-  const P = mean(w.map(b => b.c));
+  const start = T - intervalH * 60 * MIN;
+  let P;
+  if (weighted) { let sw = 0, sx = 0; for (const b of w) { const k = Math.round((b.t - start) / MIN) + 1; sw += k; sx += k * b.c; } P = sx / sw; }
+  else P = mean(w.map(b => b.c));
   const I = 0.0001 * (intervalH / 8);
   const cap = 0.0005 * (intervalH / 8);
   return P + Math.min(cap, Math.max(-cap, I - P));
@@ -59,8 +67,10 @@ async function fundingChecks(http, bars, intervalH) {
   const prints = await http.json('binance_funding_prints', 'https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&limit=5');
   return prints.map(p => {
     const T = Number(p.fundingTime); const actual = Number(p.fundingRate);
-    const rebuilt = rebuildFunding(bars, T, intervalH);
-    return { fundingTime: new Date(T).toISOString(), actual, rebuilt, err_bp: rebuilt == null ? null : Math.round((rebuilt - actual) * 1e4 * 1000) / 1000 };
+    const rebuilt = rebuildFunding(bars, T, intervalH, true);
+    const plain = rebuildFunding(bars, T, intervalH, false);
+    const bp = x => x == null || !Number.isFinite(actual) ? null : Math.round((x - actual) * 1e4 * 1000) / 1000;
+    return { fundingTime: new Date(T).toISOString(), actual, rebuilt_weighted: rebuilt, err_bp: bp(rebuilt), err_bp_plain_mean: bp(plain) };
   });
 }
 
@@ -73,7 +83,8 @@ async function okxPremium8h(http, nowMs) {
     const oldest = Number(d[d.length - 1].ts); if (oldest < from) break;
     after = `&after=${oldest}`;
   }
-  return vals.length ? { value: mean(vals), n: vals.length } : { value: null, n: 0 };
+  // coverage: OKX sampling is about one value per minute (verify on VPS); report how much of 8 h was reached
+  return vals.length ? { value: mean(vals), n: vals.length, coverage: Math.min(1, vals.length / 480) } : { value: null, n: 0, coverage: 0 };
 }
 
 async function bybitPremium8h(http) {
@@ -94,10 +105,10 @@ async function computeE3a(http, state, nowMs) {
   const xs = {};
   try { xs.okx = await okxPremium8h(http, nowMs); } catch (e) { xs.okx = { value: null, error: e.message }; }
   try { xs.bybit = await bybitPremium8h(http); } catch (e) { xs.bybit = { value: null, error: e.message }; }
-  const others = [xs.okx.value, xs.bybit.value].filter(v => v != null);
+  const others = [xs.okx.coverage >= 0.5 ? xs.okx.value : null, xs.bybit.value].filter(v => v != null && Number.isFinite(v));
   let xStatus = 'MISSING', diffPP = null;
   if (rm.value != null && others.length) { diffPP = (rm.value - median(others)) * 100; xStatus = Math.abs(diffPP) <= XCHECK_PP ? 'OK' : 'CROSSCHECK_FAIL'; }
-  res.crosscheck = { okx_pct: xs.okx.value == null ? null : xs.okx.value * 100, bybit_pct: xs.bybit.value == null ? null : xs.bybit.value * 100, diff_pp: diffPP, tolerance_pp: XCHECK_PP, status: xStatus };
+  res.crosscheck = { okx_coverage: xs.okx.coverage ?? null, okx_pct: xs.okx.value == null ? null : xs.okx.value * 100, bybit_pct: xs.bybit.value == null ? null : xs.bybit.value * 100, diff_pp: diffPP, tolerance_pp: XCHECK_PP, status: xStatus };
   const fresh = rm.coverage >= 0.9;
   res.scored = {
     value: fresh ? rm.value * 100 : null, unit: '%', window: '8h rolling mean of 1m closes', bars: rm.bars, coverage: Math.round(rm.coverage * 1000) / 1000,

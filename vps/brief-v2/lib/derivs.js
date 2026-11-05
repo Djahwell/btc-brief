@@ -48,6 +48,15 @@ async function venueOkx(http) {
     if (Number(spec?.ctVal) !== exp.ctVal || spec?.ctValCcy !== exp.ctValCcy) throw new Error(`OKX ${inst} spec ${spec?.ctVal} ${spec?.ctValCcy} ≠ declared ${exp.ctVal} ${exp.ctValCcy}`);
     const oi = (await http.json(`okx_oi_${inst}`, `https://www.okx.com/api/v5/public/open-interest?instType=SWAP&instId=${inst}`))?.data?.[0];
     const row = { contracts: Number(oi.oi), oi_btc: Number(oi.oiCcy), oi_usd: Number(oi.oiUsd), time: Number(oi.ts) };
+    if (exp.ctValCcy === 'USD') {
+      // §8.7: inverse contracts converted with the mark price at (about) the same time; OKX's oiCcy kept as a check
+      const mk = (await http.json('okx_mark_BTC-USD-SWAP', 'https://www.okx.com/api/v5/public/mark-price?instType=SWAP&instId=BTC-USD-SWAP'))?.data?.[0];
+      const mark = Number(mk?.markPx);
+      if (!(mark > 0)) throw new Error('OKX BTC-USD-SWAP mark price missing');
+      const viaMark = row.contracts * exp.ctVal / mark;
+      if (!(Math.abs(viaMark / row.oi_btc - 1) < 0.01)) throw new Error(`OKX inverse OI: contracts×100/mark ${viaMark} vs oiCcy ${row.oi_btc}`);
+      row.mark = mark; row.oi_btc = viaMark;
+    }
     // Consistency check against the live spec: linear oiCcy = contracts × ctVal; inverse oiUsd = contracts × ctVal.
     const chk = exp.ctValCcy === 'BTC' ? row.contracts * exp.ctVal / row.oi_btc : row.contracts * exp.ctVal / row.oi_usd;
     if (!(Math.abs(chk - 1) < 0.01)) throw new Error(`OKX ${inst} OI units inconsistent with spec (ratio ${chk})`);
@@ -72,16 +81,20 @@ async function computeDerivs(http, state, nowMs) {
   for (const [v, fn] of [['binance', venueBinance], ['bybit', venueBybit], ['okx', venueOkx]]) {
     try { venues[v] = await fn(http); } catch (e) { venues[v] = null; errors.push(`${v}: ${e.message}`); }
   }
+  // A venue with any non-finite value is treated as failed (never summed, never stored in history)
+  for (const [k, v] of Object.entries(venues)) if (v && !Object.values(v).every(r => Number.isFinite(r.oi_btc) && r.oi_btc > 0)) { venues[k] = null; errors.push(`${k}: non-finite OI`); }
   const complete = Object.values(venues).every(Boolean);
-  let total = 0; for (const v of Object.values(venues)) if (v) for (const r of Object.values(v)) total += r.oi_btc;
+  let total = 0; let oldest = null;
+  for (const v of Object.values(venues)) if (v) for (const r of Object.values(v)) { total += r.oi_btc; if (Number.isFinite(r.time) && (oldest == null || r.time < oldest)) oldest = r.time; }
   const totalOk = complete ? total : null;            // never a partial total presented as the market
   const ch = oiChanges(state, totalOk, nowMs);
+  const fin = x => (Number.isFinite(x) ? x : null);
   const funding = {
-    binance: venues.binance?.BTCUSDT?.funding ?? null,
-    bybit: venues.bybit?.BTCUSDT?.funding ?? null,
-    okx: venues.okx?.['BTC-USDT-SWAP']?.funding ?? null,
+    binance: fin(venues.binance?.BTCUSDT?.funding),
+    bybit: fin(venues.bybit?.BTCUSDT?.funding),
+    okx: fin(venues.okx?.['BTC-USDT-SWAP']?.funding),
   };
-  return { venues, total_btc: totalOk, partial_total_btc: complete ? null : total, ...ch, funding, errors, instruments: INSTRUMENTS };
+  return { venues, total_btc: totalOk, partial_total_btc: complete ? null : total, asOf: oldest ? new Date(oldest).toISOString() : null, ...ch, funding, errors, instruments: INSTRUMENTS };
 }
 
 module.exports = { computeDerivs, oiChanges, INSTRUMENTS };

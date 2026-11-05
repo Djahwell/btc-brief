@@ -3,7 +3,8 @@
 // Rebuilt every cycle from COMPLETED hourly candles, same products and alignment as the audited history:
 //   adj = Coinbase BTC-USD ÷ (Binance BTC-USDT × Coinbase USDT-USD) − 1   (hourly closes)
 // value = median of the last 24 completed hours (%)
-// z     = (value − mean(D)) / sd(D), D = the 30 previous completed UTC days' medians of hourly adj
+// z     = (value − mean(D)) / sd(D), D = the 30 previous completed UTC calendar days' medians of hourly adj
+//         (population sd; a day counts only with ≥ 20 hours). Declared definition (STAGE2-PLAN §8.8).
 const H = 3600, DAYS = 31;
 
 const median = a => { const s = [...a].sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
@@ -42,7 +43,8 @@ function computeFromLegs(cb, usdt, bn, endSec) {
     const sd = Math.sqrt(D.reduce((s, x) => s + (x - mu) ** 2, 0) / D.length);
     z = sd > 0 ? (value - mu) / sd : null;
   }
-  return { value, z, hours24: last24.length, days: D.length, lastHour: hours.length ? hours[hours.length - 1] : null, adj };
+  const dayMedians = Object.fromEntries(days.map((d, i) => [new Date(d * 1000).toISOString().slice(0, 10), D[i]]));
+  return { value, z, hours24: last24.length, days: D.length, lastHour: hours.length ? hours[hours.length - 1] : null, adj, dayMedians };
 }
 
 async function computeE5a(http, state, vintage, nowMs) {
@@ -63,7 +65,7 @@ async function computeE5a(http, state, vintage, nowMs) {
   return {
     value: r.value, z30: r.z, unit: '%', window: '24h median of hourly USDT-adjusted premium; z vs 30 prior daily medians',
     asOf: r.lastHour ? new Date((r.lastHour + H) * 1000).toISOString() : null,
-    hours24: r.hours24, days: r.days, quality: r.value == null ? 'MISSING' : complete ? 'OK' : 'STALE',
+    hours24: r.hours24, days: r.days, dayMedians: r.dayMedians, quality: r.value == null ? 'MISSING' : complete ? 'OK' : 'STALE',
   };
 }
 

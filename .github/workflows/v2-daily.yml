@@ -34,7 +34,9 @@ jobs:
             git worktree add _data v2-data
           else
             git worktree add --detach _data
-            cd _data && git checkout --orphan v2-data && git rm -rf . >/dev/null 2>&1 || true
+            cd _data
+            git checkout --orphan v2-data
+            git rm -rf --quiet . 2>/dev/null || true      # empty tree on a brand-new orphan is fine
             echo "# BTC Brief V2 data branch (generated; do not edit)" > README.md
           fi
       - name: Run daily job
