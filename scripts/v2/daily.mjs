@@ -3,7 +3,7 @@
 // STAGE2-PLAN v1.1 §1, §7, §8.10. Writes OUT/daily.json (+ raw vintages).
 // Every input carries value/unit/window/asOf/fetchedAt/source/scope/quality/staleAfterSec;
 // each input has its own asOf. Missing = null, never 0. Nothing here scores anything.
-import { getJSON, writeJSON, writeGz, input, isoDay, coinbaseCandles, bitstampDaily, CODE_VERSION } from './lib.mjs';
+import { getJSON, getBuffer, writeJSON, writeGz, input, isoDay, coinbaseCandles, bitstampDaily, CODE_VERSION, unzipFirst, tsSec, sleep } from './lib.mjs';
 import { fetchBMPLTHData } from './lth.mjs';
 import { buildLTHRows, lthNet30 } from './lthalign.mjs';
 import { readFileSync } from 'fs';
@@ -123,6 +123,28 @@ try {
   const r = computeFromLegs(cbm, usm, bnm, endH);
   result.inputs.coinbase_premium_adj_repro = input({ value: r.value, unit: '%', window: '24h median (reproducibility copy; the VPS value is the live one)', asOf: r.lastHour ? new Date((r.lastHour + H) * 1000).toISOString() : null, source: 'Coinbase BTC-USD, Coinbase USDT-USD, Binance BTCUSDT (vision), hourly', scope: 'reproducibility check only', quality: 'OK', staleAfterSec: DAY, extra: { z30: r.z, dayMedians: r.dayMedians } });
 } catch (e) { fail('coinbase_premium_adj_repro', e); }
+
+// 6b. E3a percentile references between monthly history builds: one 8 h mean of the Binance premium
+//     index per day, ending at that day's 00:00 UTC (all 8 hourly closes required; exact zeros are
+//     placeholders → missing). Same definition as engine-v2/view.js prepare(). Daily archives only.
+try {
+  const hours = new Map();
+  for (let k = 40; k >= 1; k--) {
+    const day = isoDay((endSec - k * DAY) * 1000);
+    try {
+      const txt = unzipFirst(await getBuffer(`https://data.binance.vision/data/futures/um/daily/premiumIndexKlines/BTCUSDT/1h/BTCUSDT-1h-${day}.zip`));
+      for (const line of txt.split('\n')) { if (!/^\d/.test(line)) continue; const f = line.split(','); const c = Number(f[4]); if (c !== 0 && Number.isFinite(c)) hours.set(tsSec(f[0]), c); }
+    } catch (e) { /* not published yet or missing: those days simply have no reference */ }
+    await sleep(100);
+  }
+  const rows = [];
+  for (let k = 39; k >= 0; k--) {
+    const d = endSec - k * DAY; const xs = [];
+    for (let h = 8; h >= 1; h--) { const v = hours.get(d - h * 3600); if (v != null) xs.push(v); }
+    if (xs.length === 8) rows.push({ d: isoDay(d * 1000), v: xs.reduce((a, b) => a + b, 0) / 8 });
+  }
+  result.series.premium8h = { unit: 'fraction', window: '8 h mean of hourly closes ending at 00:00 UTC', rows };
+} catch (e) { fail('premium8h', e); }
 
 // 7. Carry forward (06:10 run): an input that worked earlier today but fails now keeps its last good
 //    value with its ORIGINAL asOf, flagged carriedForward, so it is never silently dropped or relabelled.

@@ -1,3 +1,4 @@
+import { inflateRawSync } from 'zlib';
 // BTC Brief V2 — shared helpers for the GitHub-side jobs (daily.mjs, history.mjs).
 import { mkdirSync, writeFileSync } from 'fs';
 import { dirname } from 'path';
@@ -77,3 +78,26 @@ export async function bitstampDaily(startSec, endSec) {
   }
   return [...out.values()].sort((a, b) => a.t - b.t);
 }
+
+// data.binance.vision monthly zip (one CSV) → text. Reads the central directory (authoritative sizes,
+// handles data descriptors), refuses ZIP64 and encrypted entries rather than guessing.
+export function unzipFirst(buf) {
+  let eocd = -1;
+  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 66000); i--) if (buf.readUInt32LE(i) === 0x06054b50) { eocd = i; break; }
+  if (eocd < 0) throw new Error('zip: no end-of-central-directory');
+  const cdOff = buf.readUInt32LE(eocd + 16);
+  if (cdOff === 0xffffffff) throw new Error('zip: ZIP64 not supported');
+  if (buf.readUInt32LE(cdOff) !== 0x02014b50) throw new Error('zip: bad central directory');
+  const flags = buf.readUInt16LE(cdOff + 8), method = buf.readUInt16LE(cdOff + 10);
+  const csize = buf.readUInt32LE(cdOff + 20), lho = buf.readUInt32LE(cdOff + 42);
+  if (flags & 1) throw new Error('zip: encrypted entry');
+  if (csize === 0xffffffff || lho === 0xffffffff) throw new Error('zip: ZIP64 entry');
+  if (buf.readUInt32LE(lho) !== 0x04034b50) throw new Error('zip: bad local header');
+  const start = lho + 30 + buf.readUInt16LE(lho + 26) + buf.readUInt16LE(lho + 28);
+  const data = buf.subarray(start, start + csize);
+  if (method === 0) return data.toString('utf8');
+  if (method === 8) return inflateRawSync(data).toString('utf8');
+  throw new Error(`zip: method ${method}`);
+}
+// Binance archive timestamps: ms today; µs in some newer datasets. Normalise to seconds by magnitude.
+export const tsSec = v => { const n = Number(v); return n > 1e14 ? Math.floor(n / 1e6) : n > 1e11 ? Math.floor(n / 1000) : n; };   // µs → s, ms → s, s → s
