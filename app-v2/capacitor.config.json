@@ -1,0 +1,11 @@
+{
+  "appId": "com.maisontoe.btcbriefv2",
+  "appName": "BTC Brief V2",
+  "webDir": "www",
+  "server": {
+    "url": "https://djahwell.github.io/btc-brief/v2/",
+    "androidScheme": "https",
+    "errorPath": "offline.html"
+  },
+  "android": { "backgroundColor": "#0e1116" }
+}

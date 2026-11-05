@@ -1,0 +1,53 @@
+name: V2 Android app (APK)
+# Builds the separate "BTC Brief V2" app (com.maisontoe.btcbriefv2, D-12) and publishes the APK as a
+# GitHub release asset. V1's app and files are untouched. The app only wraps the V2 page.
+on:
+  workflow_dispatch:
+  push:
+    paths: ['app-v2/**', '.github/workflows/v2-apk.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - uses: actions/setup-java@v4
+        with: { distribution: 'temurin', java-version: '21' }
+      - name: Signing key (fixed key from secrets, so new builds install over old ones)
+        env: { KS: '${{ secrets.V2_APK_KEYSTORE_B64 }}' }
+        run: |
+          mkdir -p ~/.android
+          if [ -n "$KS" ]; then
+            echo "$KS" | base64 -d > ~/.android/debug.keystore
+            echo "SIGNING=fixed" >> "$GITHUB_ENV"
+          else
+            echo "::warning::V2_APK_KEYSTORE_B64 secret not set — this APK is signed with a one-off key; the next build will not install over it."
+            echo "SIGNING=one-off" >> "$GITHUB_ENV"
+          fi
+      - name: Generate the Android project
+        working-directory: app-v2
+        run: |
+          npm ci
+          npx cap add android
+          # Same icon set as V1 (app name differs: "BTC Brief V2")
+          for d in ../android/app/src/main/res/mipmap-*; do cp -r "$d" android/app/src/main/res/; done
+          npx cap sync android
+          sed -i "s/versionCode 1$/versionCode ${{ github.run_number }}/; s/versionName \"1.0\"/versionName \"2.0.${{ github.run_number }}\"/" android/app/build.gradle
+      - name: Build APK
+        working-directory: app-v2/android
+        run: ./gradlew --no-daemon assembleDebug
+      - name: Publish release
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          APK=app-v2/android/app/build/outputs/apk/debug/app-debug.apk
+          cp "$APK" btc-brief-v2.apk
+          sha256sum btc-brief-v2.apk
+          TAG="v2-apk-${{ github.run_number }}"
+          gh release create "$TAG" btc-brief-v2.apk --title "BTC Brief V2 app (build ${{ github.run_number }})" \
+            --notes "Install on Android: open this page on the phone, tap btc-brief-v2.apk, allow install. Signing: $SIGNING. Wraps https://djahwell.github.io/btc-brief/v2/ (no data logic in the app)." --latest=false

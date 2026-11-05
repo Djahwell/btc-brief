@@ -1,0 +1,9 @@
+{
+  "name": "btc-brief-v2-app",
+  "version": "2.0.0",
+  "private": true,
+  "description": "BTC Brief V2 Android wrapper (D-12). No data logic: loads the V2 page, which reads the Worker.",
+  "scripts": { "sync": "cap sync android" },
+  "dependencies": { "@capacitor/android": "8.3.1", "@capacitor/core": "8.3.1" },
+  "devDependencies": { "@capacitor/cli": "8.3.1" }
+}
