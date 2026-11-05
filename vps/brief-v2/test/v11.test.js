@@ -3,7 +3,7 @@
 const test = require('node:test'); const assert = require('node:assert/strict');
 const fs = require('fs'); const os = require('os'); const path = require('path'); const { execFileSync } = require('child_process');
 const { acceptance } = require('../lib/history');
-const { freezeDaily } = require('../lib/store');
+const { freezeDaily, frozenRecord } = require('../lib/store');
 const { engineDir, codeHash } = require('../lib/score');
 
 function sandbox() {
@@ -82,6 +82,9 @@ test('frozen daily snapshot: first cycle reading the day\'s daily.json before 02
   assert.equal(freezeDaily(dir, { a: 4 }, { dailyGeneratedAt: '2026-11-20T06:10:00Z' }, at2(1, 52)), null);
   assert.equal(freezeDaily(dir, { a: 5 }, { dailyGeneratedAt: '2026-11-20T06:10:00Z' }, at2(2, 7)), 'missing');
   assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'frozen', '2026-11-21.json'))).missing, true);
+  assert.deepEqual(frozenRecord(dir, '2026-11-21'), { date: '2026-11-21', missing: true, reason: "no cycle read that day's daily.json before 02:07 UTC" });
+  assert.equal(frozenRecord(dir, '2026-11-20').missing, false);
+  assert.equal(frozenRecord(dir, '2026-11-22'), null);
 });
 
 test('package parity: shipped engine files are byte-identical to engine/MANIFEST (packaged copy only)', { skip: !fs.existsSync(path.join(__dirname, '..', 'engine', 'MANIFEST')) }, () => {

@@ -9,11 +9,15 @@
 //                       HMAC-SHA256 of `${ts}\n${path}\n${body}` with V2_PUSH_SECRET).
 //   GET  /v2/snapshot   Latest snapshot + servedAt, ageSec (computed now).
 //   GET  /v2/health     Small status object (age, seq, alert state).
+//   GET  /v2/frozen     Frozen daily records (?since=YYYY-MM-DD) for the track-record job.
+//   GET  /v2/commentary Today's Claude paragraph (404 if none).
+//   POST /v2/commentary Write it (Bearer V2_COMMENTARY_TOKEN; once per UTC day; checks in v2commentary.js).
 //   scheduled()         Every 15 min: if the snapshot is older than 45 min,
 //                       send ONE phone notification via ntfy (NTFY_TOPIC), and one
 //                       "recovered" notification when it comes back.
 //
-// Secrets (wrangler secret put, use `echo -n`): V2_PUSH_SECRET, NTFY_TOPIC (optional).
+// Secrets (wrangler secret put, use `echo -n`): V2_PUSH_SECRET, NTFY_TOPIC (optional),
+// V2_COMMENTARY_TOKEN and ANTHROPIC_API_KEY (commentary only).
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const V2_KEY = "v2:snapshot";
@@ -24,13 +28,18 @@ const MAX_FUTURE_MS = 2 * 60 * 1000;  // reject timestamps > 2 min ahead (clock 
 const MAX_PAST_MS = 10 * 60 * 1000;   // reject pushes signed > 10 min ago (replay)
 export const STALE_ALERT_SEC = 45 * 60;
 
-const enc = new TextEncoder();
+import { handleCommentary } from "./v2commentary.js";
 
+const enc = new TextEncoder();
+const FROZEN_PREFIX = "v2:frozen:";
+const MAX_FROZEN = 16 * 1024;
+
+export function v2Cors() { return cors(); }
 function cors() {
   return {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, X-Timestamp, X-Signature",
+    "Access-Control-Allow-Headers": "Content-Type, X-Timestamp, X-Signature, Authorization",
   };
 }
 function out(body, status = 200, extra = {}) {
@@ -83,8 +92,18 @@ export async function handleV2(request, env, now = Date.now()) {
       return out({ error: "stale seq", have: prev.snapshot.seq }, 409);
     }
     const receivedAt = new Date(now).toISOString();
+    // Frozen daily record (track record, STAGE3-PLAN §6): stored once per date, never overwritten.
+    let frozen = null;
+    if (snap.frozen && /^\d{4}-\d{2}-\d{2}$/.test(snap.frozen.date || "")) {
+      const fk = FROZEN_PREFIX + snap.frozen.date;
+      const fb = JSON.stringify(snap.frozen);
+      if (fb.length > MAX_FROZEN) frozen = "too large";
+      else if (await env.BRIEF_KV.get(fk)) frozen = "kept existing";
+      else { await env.BRIEF_KV.put(fk, fb); frozen = "stored"; }
+      delete snap.frozen;
+    }
     await env.BRIEF_KV.put(V2_KEY, JSON.stringify({ receivedAt, snapshot: snap }));
-    return out({ ok: true, seq: snap.seq, receivedAt });
+    return out({ ok: true, seq: snap.seq, receivedAt, frozen });
   }
 
   if (url.pathname === "/v2/snapshot" && request.method === "GET") {
@@ -99,6 +118,22 @@ export async function handleV2(request, env, now = Date.now()) {
       receivedAt: rec.receivedAt,
       snapshot: { ...pub, runs: runs ? { durationMs: runs.durationMs, errorCount: Array.isArray(runs.errors) ? runs.errors.length : null } : null },
     });
+  }
+
+  if (url.pathname === "/v2/frozen" && request.method === "GET") {
+    const since = url.searchParams.get("since") || "2000-01-01";
+    const rows = []; let cursor;
+    do {
+      const l = await env.BRIEF_KV.list({ prefix: FROZEN_PREFIX, cursor });
+      for (const k of l.keys) if (k.name.slice(FROZEN_PREFIX.length) >= since) rows.push(await env.BRIEF_KV.get(k.name, "json"));
+      cursor = l.list_complete ? null : l.cursor;
+    } while (cursor);
+    rows.sort((a, b) => (a.date < b.date ? -1 : 1));
+    return out({ count: rows.length, rows });
+  }
+
+  if (url.pathname === "/v2/commentary" && (request.method === "GET" || request.method === "POST")) {
+    return handleCommentary(request, env, now, fetch, out);
   }
 
   if (url.pathname === "/v2/health" && request.method === "GET") {

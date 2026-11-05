@@ -9,7 +9,7 @@
 const fs = require('fs');
 const path = require('path');
 const { Http } = require('./lib/http');
-const { Vintage, State, archiveSnapshot, freezeDaily } = require('./lib/store');
+const { Vintage, State, archiveSnapshot, freezeDaily, frozenRecord } = require('./lib/store');
 const { refreshHistory, loadHistory } = require('./lib/history');
 const { scoreSnapshot } = require('./lib/score');
 const { computeE3a } = require('./lib/premium');
@@ -104,6 +104,14 @@ async function main() {
     },
   };
 
+  // Frozen daily snapshot (track record). Decided and written BEFORE the push so the Worker gets it;
+  // the compact record rides along on every push until one push succeeds (Worker never overwrites).
+  const frozen = freezeDaily(path.join(BASE, 'snapshots'), snap, { dailyGeneratedAt: daily?.generatedAt ?? null }, now);
+  if (frozen) { console.log(`[cycle] frozen daily snapshot: ${frozen}`); state.data.frozenPending = new Date(now).toISOString().slice(0, 10); }
+  if (state.data.frozenPending) {
+    const rec = frozenRecord(path.join(BASE, 'snapshots'), state.data.frozenPending);
+    if (rec) snap.frozen = rec; else delete state.data.frozenPending;
+  }
   let push = { ok: false, status: null, skipped: DRY ? 'dry-run' : null };
   if (!DRY) {
     if (!process.env.V2_PUSH_SECRET) push = { ok: false, skipped: 'V2_PUSH_SECRET not set' };
@@ -118,8 +126,7 @@ async function main() {
       } catch (e) { push = { ok: false, error: e.message }; }
     }
   }
-  const frozen = freezeDaily(path.join(BASE, 'snapshots'), snap, { dailyGeneratedAt: daily?.generatedAt ?? null }, now);
-  if (frozen) console.log(`[cycle] frozen daily snapshot: ${frozen}`);
+  if (push.ok && snap.frozen) delete state.data.frozenPending;
   archiveSnapshot(path.join(BASE, 'snapshots'), snap, { pushed: !!push.ok, receivedAt: push.body?.receivedAt ?? null, pushStatus: push.status ?? push.skipped ?? push.error ?? null });
   state.save();
   fs.writeFileSync(path.join(BASE, 'status.json'), JSON.stringify({ lastRun: snap.generatedAt, seq: snap.seq, push, runs: snap.runs, quality: Object.fromEntries(Object.entries(inputs).map(([k, v]) => [k, v.quality])) }, null, 1));

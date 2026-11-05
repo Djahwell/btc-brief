@@ -26,7 +26,7 @@
 //   GET /brief  → returns all_data.json (adds { regenerating: true } if stale)
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { handleV2, scheduledV2 } from "./v2.js";
+import { handleV2, scheduledV2, v2Cors } from "./v2.js";
 
 export default {
   async fetch(request, env, ctx) {
@@ -34,6 +34,7 @@ export default {
 
     // CORS preflight — APK is a webview so it sends standard CORS headers.
     if (request.method === "OPTIONS") {
+      if (url.pathname.startsWith("/v2/")) return new Response(null, { status: 204, headers: { ...v2Cors(), "Access-Control-Max-Age": "86400" } });
       return new Response(null, { status: 204, headers: corsHeaders() });
     }
 

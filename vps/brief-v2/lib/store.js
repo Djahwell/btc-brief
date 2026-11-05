@@ -61,4 +61,17 @@ function freezeDaily(dir, snap, { dailyGeneratedAt }, now = Date.now()) {
   return 'frozen';
 }
 
-module.exports = { Vintage, State, archiveSnapshot, freezeDaily, day, FREEZE_DEADLINE_MIN };
+// Compact copy of a frozen day for the Worker (track record): scores, family scores, hashes. ~2 KB.
+function frozenRecord(dir, date) {
+  let f; try { f = JSON.parse(fs.readFileSync(path.join(dir, 'frozen', `${date}.json`), 'utf8')); } catch { return null; }
+  if (f.missing) return { date, missing: true, reason: f.reason };
+  const e = f.snapshot.engine || {};
+  return {
+    date, missing: false, seq: f.snapshot.seq, generatedAt: f.snapshot.generatedAt, frozenAt: f.frozenAt,
+    engine: { status: e.status ?? null, withheld: e.withheld ?? true, reason: e.reason ?? null, declarationHash: e.declarationHash ?? null, engineCodeHash: e.engineCodeHash ?? null,
+      primary: e.primary ?? null, scores: e.scores ?? null,
+      families: e.families ? Object.fromEntries(Object.entries(e.families).map(([k, v]) => [k, { score: v.score ?? null, asOf: v.asOf ?? null }])) : null },
+  };
+}
+
+module.exports = { Vintage, State, archiveSnapshot, freezeDaily, frozenRecord, day, FREEZE_DEADLINE_MIN };
