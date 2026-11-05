@@ -96,12 +96,13 @@ test('liquidations: partial last line ignored, both day files read, ts formats, 
   assert.equal(parseTs('1793868848000'), 1793868848000); assert.equal(parseTs('1793868848'), 1793868848000); assert.equal(parseTs('2026-11-05T00:00:00Z'), Date.UTC(2026, 10, 5));
 });
 
-test('push signature is identical to the Worker verifier (worker/v2.js)', async () => {
-  const w = await import(path.join(__dirname, '../../../worker/v2.js'));
-  const a = sign('k', '123', '/v2/snapshot', '{"x":1}'); const b = await w.sign('k', '123', '/v2/snapshot', '{"x":1}');
-  assert.equal(a, b);
+test('push signature matches the Worker verifier (fixed vector from worker/v2.js; live compare when the repo is present)', async () => {
+  // Vector computed with worker/v2.js sign('k','123','/v2/snapshot','{"x":1}') at commit 0d4139b.
+  const VECTOR = 'f346cf9baff73b3eb3644f3e852e6f457dd6871a331883e1c1ca9613a1c15e40';
+  assert.equal(sign('k', '123', '/v2/snapshot', '{"x":1}'), VECTOR);
+  const wp = path.join(__dirname, '../../../worker/v2.js');
+  if (fs.existsSync(wp)) { const w = await import(wp); assert.equal(await w.sign('k', '123', '/v2/snapshot', '{"x":1}'), VECTOR); }
 });
-
 test('liquidations: unknown header or all-bad rows → MISSING, never zero', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'liq2-')); const status = path.join(dir, 's.json'); fs.writeFileSync(status, '{}');
   const T = Date.UTC(2026, 10, 5, 12);
