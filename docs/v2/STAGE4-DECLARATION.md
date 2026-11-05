@@ -349,5 +349,24 @@ Consequences, declared now:
 
 ## J. Freeze record
 - Frozen by the builder on 2026-11-05 after the Stage 3 build review (PASS WITH CHANGES, all items closed).
-- Board check of v1: CHANGES REQUIRED (10 items, all additions) → §K and the frozen harness added (v1.1). Board check of v1.1: pending.
+- Board check of v1: CHANGES REQUIRED (10 items, all additions) → §K and the frozen harness added (v1.1).
+- Board check of v1.1 (172df0c): CHANGES REQUIRED, 1 item (a never-long rule could pass a tendency segment) → §K.3 rule added, harness refrozen; gate tests added (changed code file, wrong history set); withheld-share flags added (v1.2).
+- **Board check of v1.2: FREEZE OK.** Freeze commit `2eb2296`; `stage4/frozen.json` sha256 `ccff511d6719d47df700501978fe4e4958b78ef588113587bb21992bc7e66769`; declarationHash `f241978d…` unchanged.
 - Stop-gate: the test runs only after Djahwell answers "go" to the run list (6 trials, the sensitivities, the Maison Toé relevance report). The Maison Toé trades are on Djahwell's Mac (`CryptoBrain/maisontoe/v4/engine/runs/`); staging them needs his OK.
+
+## L. Family availability over all days (Board item 9; no outcomes used)
+
+Count of days on which each family or card is active, at D 00:00 with the declared lags. Computed from the frozen history set with the frozen engine. The main row runs to 2026-10-31; the test itself stops at 2026-10-29.
+
+| Window | Days | E1 | E2 | E3a | E5a | E7 | T1 | T2+ | T3 | T4 | Entry card (V-E1/E6a) | Tendency card (V-T1/T2+) | Tendency without T2 | Robustness card |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 2019-01-01 → 2020-05-10 | 496 | 495 | 496 | 0 | 0 | 496 | 494 | 490 | 495 | 197 | 0 | 490 | 197 | 495 |
+| 2020-05-11 → 2021-05-31 | 386 | 386 | 386 | 105 | 3 | 386 | 386 | 386 | 386 | 386 | 106 | 386 | 386 | 386 |
+| 2021-06-01 → 2026-10-31 | 1,979 | 1,979 | 1,979 | 1,910 | 1,977 | 1,979 | 1,979 | 1,975 | 1,979 | 1,979 | 1,979 | 1,979 | 1,979 | 1,979 |
+
+Withheld shares (reported, not acted on):
+- **Main window:** the entry card is withheld on 0% of days. E3a is withheld on 3.5% (Binance archive gaps) and quorum carries those days.
+- **S1:** the tendency card is withheld on 1.2% of days. The no-T2 sensitivity is withheld on 60% of S1, so it is excluded from S1 as declared.
+- **Robustness window:** the robustness card is withheld on 0.1% of days.
+
+No share relevant to a pass criterion exceeds 10%.
