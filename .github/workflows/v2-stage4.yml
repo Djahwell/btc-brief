@@ -1,0 +1,39 @@
+name: V2 Stage 4 test (frozen run)
+# Runs the frozen Stage 4 harness once (STAGE4-DECLARATION v1.2). The runner itself refuses unless the
+# declaration, engine, harness and history hashes equal stage4/frozen.json and stage4/GO holds the
+# declarationHash (Djahwell's go, 2026-11-05). Results are committed to v2-data under stage4/.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: v2-data-branch
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Frozen history set (v2-data)
+        run: |
+          git fetch origin v2-data
+          mkdir -p _data && git archive FETCH_HEAD v2/history | tar -x -C _data
+      - name: Harness tests (synthetic)
+        run: cd stage4 && node --test test/*.test.js
+      - name: Run Stage 4 (frozen)
+        run: node --max-old-space-size=6000 stage4/run.js _data/v2/history _out
+      - name: Publish results to v2-data
+        run: |
+          git worktree add _pub origin/v2-data
+          cd _pub && git checkout -B v2-data
+          D=$(date -u +%Y-%m-%d)
+          mkdir -p stage4/$D && cp ../_out/* stage4/$D/
+          gzip -9 stage4/$D/evals*.json
+          git config user.name "btc-brief-v2-bot"; git config user.email "actions@users.noreply.github.com"
+          git add stage4 && git commit -q -m "stage4 results $D (declaration f241978d) [skip ci]" && git push origin v2-data
