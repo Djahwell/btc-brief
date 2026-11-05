@@ -1,0 +1,881 @@
+{
+ "constants": {
+  "entryCandidates": [
+   "V-E1/E6a",
+   "V-E1/E6b",
+   "V-E2/E6a",
+   "V-E2/E6b"
+  ],
+  "tendencyCandidates": [
+   "V-T1/T2+",
+   "V-T1/T2-"
+  ],
+  "preferenceOrder": [
+   "V-E1/E6a",
+   "V-E1/E6b",
+   "V-E2/E6a",
+   "V-E2/E6b"
+  ],
+  "mainWindow": [
+   "2021-06-01",
+   "2026-10-29"
+  ],
+  "robustnessWindow": [
+   "2019-01-01",
+   "2021-05-31"
+  ],
+  "segments": {
+   "S1": [
+    "2019-01-01",
+    "2020-05-10"
+   ],
+   "S2": [
+    "2020-05-11",
+    "2024-04-19"
+   ],
+   "S3": [
+    "2024-04-20",
+    "2026-10-31"
+   ]
+  },
+  "bullPlus": 3,
+  "minEpisodes": 30,
+  "minShift": 60,
+  "alpha": 0.05,
+  "reps": 10000,
+  "seed": 20261105,
+  "blockFloor": 20,
+  "maeMarginPP": 0.005,
+  "costPerSwitch": 0.001,
+  "sensitivityBlocks": [
+   10,
+   40,
+   60
+  ],
+  "minLongShare": 0.1,
+  "withheldFlagShare": 0.1,
+  "lagPlusOne": {
+   "fear_greed": 2,
+   "mvrv": 3,
+   "lth": 3,
+   "stablecoins": 3
+  }
+ },
+ "entry": [
+  {
+   "candidate": "V-E1/E6a",
+   "days": 1977,
+   "scoredDays": 1977,
+   "withheldDays": 0,
+   "withheldShare": 0,
+   "withheldFlag": false,
+   "H1": {
+    "stat": 0.013972925456560982,
+    "p": 0.08714362560516406,
+    "shifts": 1858,
+    "holmReject": false
+   },
+   "H2": {
+    "stat": 0.001848314717360704,
+    "p": 0.4669176976869285,
+    "holmReject": false
+   },
+   "episodes": {
+    "byBand": {
+     "Neutral": 143,
+     "Bull": 90,
+     "Bear": 54,
+     "Strong bull": 2
+    },
+    "bullPlus": 88,
+    "nonBullPlus": 89,
+    "sufficient": true
+   },
+   "C3": {
+    "maeDiff": 0.018106738078699558,
+    "upper975": 0.026896192567986126,
+    "block": 45,
+    "politisWhite": 44.31288778753533,
+    "pass": false
+   },
+   "C5": {
+    "bandMeans": {
+     "Strong bear": {
+      "n": 0,
+      "episodes": 0,
+      "mean": null
+     },
+     "Bear": {
+      "n": 92,
+      "episodes": 54,
+      "mean": 0.003629291470456813
+     },
+     "Neutral": {
+      "n": 1678,
+      "episodes": 143,
+      "mean": 0.003851065301513085
+     },
+     "Bull": {
+      "n": 205,
+      "episodes": 90,
+      "mean": 0.017531811995702768
+     },
+     "Strong bull": {
+      "n": 2,
+      "episodes": 2,
+      "mean": 0.04657924586761919
+     }
+    },
+    "eligibleBands": [
+     "Bear",
+     "Neutral",
+     "Bull"
+    ],
+    "monotone": true,
+    "spearman": 0.016059383518791288,
+    "spearmanP": 0.3265196342119419,
+    "pass": false
+   },
+   "pass": false,
+   "passWithoutNumber": false
+  },
+  {
+   "candidate": "V-E1/E6b",
+   "days": 1977,
+   "scoredDays": 1977,
+   "withheldDays": 0,
+   "withheldShare": 0,
+   "withheldFlag": false,
+   "H1": {
+    "stat": 0.014537896570675541,
+    "p": 0.08015061861215707,
+    "shifts": 1858,
+    "holmReject": false
+   },
+   "H2": {
+    "stat": 0.002413285831475263,
+    "p": 0.4427111350188273,
+    "holmReject": false
+   },
+   "episodes": {
+    "byBand": {
+     "Neutral": 142,
+     "Bull": 89,
+     "Bear": 54,
+     "Strong bull": 2
+    },
+    "bullPlus": 87,
+    "nonBullPlus": 88,
+    "sufficient": true
+   },
+   "C3": {
+    "maeDiff": 0.018677617850257865,
+    "upper975": 0.027732736195464337,
+    "block": 45,
+    "politisWhite": 44.31451821565119,
+    "pass": false
+   },
+   "C5": {
+    "bandMeans": {
+     "Strong bear": {
+      "n": 0,
+      "episodes": 0,
+      "mean": null
+     },
+     "Bear": {
+      "n": 92,
+      "episodes": 54,
+      "mean": 0.003629291470456813
+     },
+     "Neutral": {
+      "n": 1679,
+      "episodes": 142,
+      "mean": 0.003796418733152969
+     },
+     "Bull": {
+      "n": 204,
+      "episodes": 89,
+      "mean": 0.018048637167128394
+     },
+     "Strong bull": {
+      "n": 2,
+      "episodes": 2,
+      "mean": 0.04657924586761919
+     }
+    },
+    "eligibleBands": [
+     "Bear",
+     "Neutral",
+     "Bull"
+    ],
+    "monotone": true,
+    "spearman": 0.015881086306122557,
+    "spearmanP": 0.33082302313071543,
+    "pass": false
+   },
+   "pass": false,
+   "passWithoutNumber": false
+  },
+  {
+   "candidate": "V-E2/E6a",
+   "days": 1977,
+   "scoredDays": 1977,
+   "withheldDays": 0,
+   "withheldShare": 0,
+   "withheldFlag": false,
+   "H1": {
+    "stat": 0.015478040795010656,
+    "p": 0.06831629908552986,
+    "shifts": 1858,
+    "holmReject": false
+   },
+   "H2": {
+    "stat": 0.003353430055810378,
+    "p": 0.40451855836471223,
+    "holmReject": false
+   },
+   "episodes": {
+    "byBand": {
+     "Neutral": 134,
+     "Bull": 81,
+     "Bear": 54,
+     "Strong bull": 2
+    },
+    "bullPlus": 79,
+    "nonBullPlus": 80,
+    "sufficient": true
+   },
+   "C3": {
+    "maeDiff": 0.020174067641453734,
+    "upper975": 0.029311577380295953,
+    "block": 45,
+    "politisWhite": 44.23213193417869,
+    "pass": false
+   },
+   "C5": {
+    "bandMeans": {
+     "Strong bear": {
+      "n": 0,
+      "episodes": 0,
+      "mean": null
+     },
+     "Bear": {
+      "n": 92,
+      "episodes": 54,
+      "mean": 0.003629291470456813
+     },
+     "Neutral": {
+      "n": 1691,
+      "episodes": 134,
+      "mean": 0.003792126048921528
+     },
+     "Bull": {
+      "n": 192,
+      "episodes": 81,
+      "mean": 0.018977207741311054
+     },
+     "Strong bull": {
+      "n": 2,
+      "episodes": 2,
+      "mean": 0.04657924586761919
+     }
+    },
+    "eligibleBands": [
+     "Bear",
+     "Neutral",
+     "Bull"
+    ],
+    "monotone": true,
+    "spearman": 0.01602367258373878,
+    "spearmanP": 0.32867132867132864,
+    "pass": false
+   },
+   "pass": false,
+   "passWithoutNumber": false
+  },
+  {
+   "candidate": "V-E2/E6b",
+   "days": 1977,
+   "scoredDays": 1977,
+   "withheldDays": 0,
+   "withheldShare": 0,
+   "withheldFlag": false,
+   "H1": {
+    "stat": 0.016084678324716165,
+    "p": 0.06024744486282948,
+    "shifts": 1858,
+    "holmReject": false
+   },
+   "H2": {
+    "stat": 0.003960067585515887,
+    "p": 0.3862291554599247,
+    "holmReject": false
+   },
+   "episodes": {
+    "byBand": {
+     "Neutral": 133,
+     "Bull": 80,
+     "Bear": 54,
+     "Strong bull": 2
+    },
+    "bullPlus": 78,
+    "nonBullPlus": 79,
+    "sufficient": true
+   },
+   "C3": {
+    "maeDiff": 0.02078987427245514,
+    "upper975": 0.03044581180116006,
+    "block": 45,
+    "politisWhite": 44.23250943484227,
+    "pass": false
+   },
+   "C5": {
+    "bandMeans": {
+     "Strong bear": {
+      "n": 0,
+      "episodes": 0,
+      "mean": null
+     },
+     "Bear": {
+      "n": 92,
+      "episodes": 54,
+      "mean": 0.003629291470456813
+     },
+     "Neutral": {
+      "n": 1692,
+      "episodes": 133,
+      "mean": 0.003737934175975872
+     },
+     "Bull": {
+      "n": 191,
+      "episodes": 80,
+      "mean": 0.01953677701207773
+     },
+     "Strong bull": {
+      "n": 2,
+      "episodes": 2,
+      "mean": 0.04657924586761919
+     }
+    },
+    "eligibleBands": [
+     "Bear",
+     "Neutral",
+     "Bull"
+    ],
+    "monotone": true,
+    "spearman": 0.01584175709071759,
+    "spearmanP": 0.33082302313071543,
+    "pass": false
+   },
+   "pass": false,
+   "passWithoutNumber": false
+  }
+ ],
+ "entryPassing": [],
+ "entryChosen": null,
+ "tendency": [
+  {
+   "candidate": "V-T1/T2+",
+   "segments": {
+    "S1": {
+     "days": 496,
+     "withheldDays": 6,
+     "withheldShare": 0.012096774193548387,
+     "withheldFlag": false,
+     "longShare": 0.012096774193548387,
+     "rule": {
+      "totalLogReturn": 0.32360567040297455,
+      "maxDrawdown": 0.033267543404040145,
+      "ratio": 9.727368999650109,
+      "switches": 4
+     },
+     "alwaysLong": {
+      "totalLogReturn": 0.8596189369727316,
+      "maxDrawdown": 0.6242798264776322,
+      "ratio": 1.3769769589111198,
+      "switches": 1
+     },
+     "sma200": {
+      "totalLogReturn": -0.07259057375283057,
+      "maxDrawdown": 0.47703064173740506,
+      "ratio": -0.1521717210627113,
+      "switches": 5
+     },
+     "beatsBoth": false
+    },
+    "S2": {
+     "days": 1440,
+     "withheldDays": 0,
+     "withheldShare": 0,
+     "withheldFlag": false,
+     "longShare": 0.008333333333333333,
+     "rule": {
+      "totalLogReturn": -0.115048118401678,
+      "maxDrawdown": 0.11261672556726265,
+      "ratio": -1.0215899798379695,
+      "switches": 4
+     },
+     "alwaysLong": {
+      "totalLogReturn": 1.9887617205023624,
+      "maxDrawdown": 0.7667059828725821,
+      "ratio": 2.593904006136955,
+      "switches": 1
+     },
+     "sma200": {
+      "totalLogReturn": 1.5691285300410602,
+      "maxDrawdown": 0.7246673525418799,
+      "ratio": 2.1653087096267076,
+      "switches": 25
+     },
+     "beatsBoth": false
+    },
+    "S3": {
+     "days": 925,
+     "withheldDays": 0,
+     "withheldShare": 0,
+     "withheldFlag": false,
+     "longShare": 0.025945945945945945,
+     "rule": {
+      "totalLogReturn": 0.07116412810596048,
+      "maxDrawdown": 0.10381056416892842,
+      "ratio": 0.6855191345473937,
+      "switches": 12
+     },
+     "alwaysLong": {
+      "totalLogReturn": 0.1917854981630248,
+      "maxDrawdown": 0.5307577953158948,
+      "ratio": 0.3613427816898638,
+      "switches": 1
+     },
+     "sma200": {
+      "totalLogReturn": -0.06716615708283194,
+      "maxDrawdown": 0.32233584532068216,
+      "ratio": -0.2083732171208274,
+      "switches": 29
+     },
+     "beatsBoth": false
+    }
+   },
+   "pass": false,
+   "label": "descriptive"
+  },
+  {
+   "candidate": "V-T1/T2-",
+   "segments": {
+    "S1": {
+     "days": 496,
+     "withheldDays": 6,
+     "withheldShare": 0.012096774193548387,
+     "withheldFlag": false,
+     "longShare": 0.11088709677419355,
+     "rule": {
+      "totalLogReturn": 0.409124598225826,
+      "maxDrawdown": 0.1836596872525611,
+      "ratio": 2.2276232979925257,
+      "switches": 28
+     },
+     "alwaysLong": {
+      "totalLogReturn": 0.8596189369727316,
+      "maxDrawdown": 0.6242798264776322,
+      "ratio": 1.3769769589111198,
+      "switches": 1
+     },
+     "sma200": {
+      "totalLogReturn": -0.07259057375283057,
+      "maxDrawdown": 0.47703064173740506,
+      "ratio": -0.1521717210627113,
+      "switches": 5
+     },
+     "beatsBoth": true
+    },
+    "S2": {
+     "days": 1440,
+     "withheldDays": 0,
+     "withheldShare": 0,
+     "withheldFlag": false,
+     "longShare": 0.04236111111111111,
+     "rule": {
+      "totalLogReturn": 0.025676665066077596,
+      "maxDrawdown": 0.22396407626183823,
+      "ratio": 0.11464635532021125,
+      "switches": 36
+     },
+     "alwaysLong": {
+      "totalLogReturn": 1.9887617205023624,
+      "maxDrawdown": 0.7667059828725821,
+      "ratio": 2.593904006136955,
+      "switches": 1
+     },
+     "sma200": {
+      "totalLogReturn": 1.5691285300410602,
+      "maxDrawdown": 0.7246673525418799,
+      "ratio": 2.1653087096267076,
+      "switches": 25
+     },
+     "beatsBoth": false
+    },
+    "S3": {
+     "days": 925,
+     "withheldDays": 0,
+     "withheldShare": 0,
+     "withheldFlag": false,
+     "longShare": 0.016216216216216217,
+     "rule": {
+      "totalLogReturn": -0.11051131647135638,
+      "maxDrawdown": 0.10462380236693991,
+      "ratio": -1.0562731803970151,
+      "switches": 10
+     },
+     "alwaysLong": {
+      "totalLogReturn": 0.1917854981630248,
+      "maxDrawdown": 0.5307577953158948,
+      "ratio": 0.3613427816898638,
+      "switches": 1
+     },
+     "sma200": {
+      "totalLogReturn": -0.06716615708283194,
+      "maxDrawdown": 0.32233584532068216,
+      "ratio": -0.2083732171208274,
+      "switches": 29
+     },
+     "beatsBoth": false
+    }
+   },
+   "pass": false,
+   "label": "descriptive"
+  }
+ ],
+ "sensitivities": {
+  "robustness": {
+   "statistic": "H1 difference, robustness card (E1, E2, E7 at 3/3), Bull+ ≥ +3",
+   "value": 0.022534851196071803,
+   "primaryMainH1": 0.013972925456560982,
+   "label": "consistent"
+  },
+  "blocks": {
+   "10": {
+    "maeDiff": 0.018106738078699558,
+    "upper975": 0.026434461816548703,
+    "block": 10,
+    "politisWhite": 44.31288778753533,
+    "pass": false
+   },
+   "40": {
+    "maeDiff": 0.018106738078699558,
+    "upper975": 0.027088621133341085,
+    "block": 40,
+    "politisWhite": 44.31288778753533,
+    "pass": false
+   },
+   "60": {
+    "maeDiff": 0.018106738078699558,
+    "upper975": 0.026883470175732338,
+    "block": 60,
+    "politisWhite": 44.31288778753533,
+    "pass": false
+   }
+  },
+  "lagPlusOne": {
+   "entry": [
+    {
+     "candidate": "V-E1/E6a",
+     "H1": {
+      "stat": 0.013171045830978233,
+      "p": 0.08929532006455083,
+      "shifts": 1858
+     },
+     "H2": {
+      "stat": 0.001046435091777955,
+      "p": 0.49381387842926305
+     },
+     "C3": false,
+     "C5": false
+    },
+    {
+     "candidate": "V-E1/E6b",
+     "H1": {
+      "stat": 0.013814286443174206,
+      "p": 0.0844540075309306,
+      "shifts": 1858
+     },
+     "H2": {
+      "stat": 0.0016896757039739276,
+      "p": 0.46960731576116194
+     },
+     "C3": false,
+     "C5": false
+    },
+    {
+     "candidate": "V-E2/E6a",
+     "H1": {
+      "stat": 0.015523306790336405,
+      "p": 0.05917159763313609,
+      "shifts": 1858
+     },
+     "H2": {
+      "stat": 0.0033986960511361262,
+      "p": 0.392684238838085
+     },
+     "C3": false,
+     "C5": false
+    },
+    {
+     "candidate": "V-E2/E6b",
+     "H1": {
+      "stat": 0.016118813456640544,
+      "p": 0.05110274341043572,
+      "shifts": 1858
+     },
+     "H2": {
+      "stat": 0.003994202717440266,
+      "p": 0.3657880580957504
+     },
+     "C3": false,
+     "C5": false
+    }
+   ],
+   "tendency": [
+    {
+     "candidate": "V-T1/T2+",
+     "segments": {
+      "S1": {
+       "days": 496,
+       "withheldDays": 7,
+       "withheldShare": 0.014112903225806451,
+       "withheldFlag": false,
+       "longShare": 0.012096774193548387,
+       "rule": {
+        "totalLogReturn": 0.09294251071924764,
+        "maxDrawdown": 0.03423379265548965,
+        "ratio": 2.71493467447708,
+        "switches": 4
+       },
+       "alwaysLong": {
+        "totalLogReturn": 0.8596189369727316,
+        "maxDrawdown": 0.6242798264776322,
+        "ratio": 1.3769769589111198,
+        "switches": 1
+       },
+       "sma200": {
+        "totalLogReturn": -0.07259057375283057,
+        "maxDrawdown": 0.47703064173740506,
+        "ratio": -0.1521717210627113,
+        "switches": 5
+       },
+       "beatsBoth": false
+      },
+      "S2": {
+       "days": 1440,
+       "withheldDays": 0,
+       "withheldShare": 0,
+       "withheldFlag": false,
+       "longShare": 0.008333333333333333,
+       "rule": {
+        "totalLogReturn": 0.0716870339050975,
+        "maxDrawdown": 0.0656930618862005,
+        "ratio": 1.091242086253801,
+        "switches": 4
+       },
+       "alwaysLong": {
+        "totalLogReturn": 1.9887617205023624,
+        "maxDrawdown": 0.7667059828725821,
+        "ratio": 2.593904006136955,
+        "switches": 1
+       },
+       "sma200": {
+        "totalLogReturn": 1.5691285300410602,
+        "maxDrawdown": 0.7246673525418799,
+        "ratio": 2.1653087096267076,
+        "switches": 25
+       },
+       "beatsBoth": false
+      },
+      "S3": {
+       "days": 925,
+       "withheldDays": 0,
+       "withheldShare": 0,
+       "withheldFlag": false,
+       "longShare": 0.02702702702702703,
+       "rule": {
+        "totalLogReturn": 0.060984352200363925,
+        "maxDrawdown": 0.06372240523947315,
+        "ratio": 0.9570315491259404,
+        "switches": 14
+       },
+       "alwaysLong": {
+        "totalLogReturn": 0.1917854981630248,
+        "maxDrawdown": 0.5307577953158948,
+        "ratio": 0.3613427816898638,
+        "switches": 1
+       },
+       "sma200": {
+        "totalLogReturn": -0.06716615708283194,
+        "maxDrawdown": 0.32233584532068216,
+        "ratio": -0.2083732171208274,
+        "switches": 29
+       },
+       "beatsBoth": false
+      }
+     },
+     "pass": false
+    },
+    {
+     "candidate": "V-T1/T2-",
+     "segments": {
+      "S1": {
+       "days": 496,
+       "withheldDays": 7,
+       "withheldShare": 0.014112903225806451,
+       "withheldFlag": false,
+       "longShare": 0.10483870967741936,
+       "rule": {
+        "totalLogReturn": 0.22574665161576624,
+        "maxDrawdown": 0.26994561126882477,
+        "ratio": 0.8362671671330004,
+        "switches": 30
+       },
+       "alwaysLong": {
+        "totalLogReturn": 0.8596189369727316,
+        "maxDrawdown": 0.6242798264776322,
+        "ratio": 1.3769769589111198,
+        "switches": 1
+       },
+       "sma200": {
+        "totalLogReturn": -0.07259057375283057,
+        "maxDrawdown": 0.47703064173740506,
+        "ratio": -0.1521717210627113,
+        "switches": 5
+       },
+       "beatsBoth": false
+      },
+      "S2": {
+       "days": 1440,
+       "withheldDays": 0,
+       "withheldShare": 0,
+       "withheldFlag": false,
+       "longShare": 0.04583333333333333,
+       "rule": {
+        "totalLogReturn": 0.10893022833808863,
+        "maxDrawdown": 0.2640813620392186,
+        "ratio": 0.412487376984641,
+        "switches": 30
+       },
+       "alwaysLong": {
+        "totalLogReturn": 1.9887617205023624,
+        "maxDrawdown": 0.7667059828725821,
+        "ratio": 2.593904006136955,
+        "switches": 1
+       },
+       "sma200": {
+        "totalLogReturn": 1.5691285300410602,
+        "maxDrawdown": 0.7246673525418799,
+        "ratio": 2.1653087096267076,
+        "switches": 25
+       },
+       "beatsBoth": false
+      },
+      "S3": {
+       "days": 925,
+       "withheldDays": 0,
+       "withheldShare": 0,
+       "withheldFlag": false,
+       "longShare": 0.016216216216216217,
+       "rule": {
+        "totalLogReturn": -0.04263781660222923,
+        "maxDrawdown": 0.06793387667491535,
+        "ratio": -0.6276370301413003,
+        "switches": 8
+       },
+       "alwaysLong": {
+        "totalLogReturn": 0.1917854981630248,
+        "maxDrawdown": 0.5307577953158948,
+        "ratio": 0.3613427816898638,
+        "switches": 1
+       },
+       "sma200": {
+        "totalLogReturn": -0.06716615708283194,
+        "maxDrawdown": 0.32233584532068216,
+        "ratio": -0.2083732171208274,
+        "switches": 29
+       },
+       "beatsBoth": false
+      }
+     },
+     "pass": false
+    }
+   ]
+  },
+  "tendencyNoT2_S2S3": {
+   "candidate": "T-noT2 (sensitivity)",
+   "segments": {
+    "S2": {
+     "days": 1440,
+     "withheldDays": 0,
+     "withheldShare": 0,
+     "withheldFlag": false,
+     "longShare": 0.0020833333333333333,
+     "rule": {
+      "totalLogReturn": -0.12576858714627073,
+      "maxDrawdown": 0.11818111260109976,
+      "ratio": -1.0642020909955485,
+      "switches": 6
+     },
+     "alwaysLong": {
+      "totalLogReturn": 1.9887617205023624,
+      "maxDrawdown": 0.7667059828725821,
+      "ratio": 2.593904006136955,
+      "switches": 1
+     },
+     "sma200": {
+      "totalLogReturn": 1.5691285300410602,
+      "maxDrawdown": 0.7246673525418799,
+      "ratio": 2.1653087096267076,
+      "switches": 25
+     },
+     "beatsBoth": false
+    },
+    "S3": {
+     "days": 925,
+     "withheldDays": 0,
+     "withheldShare": 0,
+     "withheldFlag": false,
+     "longShare": 0,
+     "rule": {
+      "totalLogReturn": 0,
+      "maxDrawdown": 0,
+      "ratio": 0,
+      "switches": 0
+     },
+     "alwaysLong": {
+      "totalLogReturn": 0.1917854981630248,
+      "maxDrawdown": 0.5307577953158948,
+      "ratio": 0.3613427816898638,
+      "switches": 1
+     },
+     "sma200": {
+      "totalLogReturn": -0.06716615708283194,
+      "maxDrawdown": 0.32233584532068216,
+      "ratio": -0.2083732171208274,
+      "switches": 29
+     },
+     "beatsBoth": false
+    }
+   },
+   "pass": false
+  }
+ },
+ "identity": {
+  "declarationHash": "f241978d70ea0d7c6af12a96b8552d2cfa4a322798b5411fba014ff4f4207287",
+  "ranAt": "2026-11-05T16:31:38.424Z",
+  "history": {
+   "coinbase_daily": "02cd9f62481d91fcb9072fff5fc04b037741516347c18063795f582c996165a4",
+   "bitstamp_daily": "12eec185602b30ffc1707bb23711032871114245d5eb78c1d290e10940ef9fd4",
+   "coinbase_premium_legs_1h": "6990af70101f1b3847853233977de538de4bdf3394ba9288cde21c67493ef821",
+   "binance_premium_index_1h": "3c63d57e4bcb5714c3c317e47a2cfd1bc50a57a514e2b510db87f6330d43c8d0",
+   "fear_greed": "d6cadb301415e581eda17153f66729e67f4be6c0ca44bc9f77fafcaaaec0f31c",
+   "coinmetrics_mvrv": "cc89c193a1708715316e30503a656bca3ccd717c3f9d58d726a72a43cbaee892",
+   "stablecoins_usdt_usdc": "5fdc7a5d998c3be5bdb7bdf6153cc92807c466d384091be4c825ae70c45f1b13",
+   "bmp_lth": "e061cc660a11ff70dab03176a8db43da2c6a5e6e816247d2b3946fac8e064c4c"
+  }
+ }
+}
