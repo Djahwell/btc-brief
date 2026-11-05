@@ -1,0 +1,11 @@
+name: V2 events source check (no commit)
+on: { workflow_dispatch: {} }
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: OUT=_tmp node scripts/v2/events.mjs && node -e "const e=require('./_tmp/events.json');console.log(JSON.stringify(e.sources));for(const x of e.events.slice(0,40))console.log(x.t,x.kind,x.label)"
