@@ -91,11 +91,15 @@ jobs:
         run: npm ci
 
       - name: Install Playwright Chromium
+        # Non-fatal: only the LTH scrape needs it. Actions runs `bash -e`, so the
+        # old `if [ $? -ne 0 ]` fallback never ran and one failure killed the
+        # whole refresh (incident 2026-11-04/05).
+        continue-on-error: true
         run: |
           echo "Installing Playwright Chromium..."
-          npx playwright install chromium --with-deps
-          if [ $? -ne 0 ]; then
-            echo "WARNING: Playwright installation failed, but continuing (LTH data may be unavailable)"
+          if ! npx playwright install chromium --with-deps; then
+            echo "::warning::Playwright install with deps failed — retrying browser only"
+            npx playwright install chromium || echo "::warning::Playwright unavailable — LTH data will be missing"
           fi
           echo "Playwright installation check complete"
 
