@@ -35,7 +35,9 @@ env:
 
 jobs:
   refresh-data:
-    runs-on: ubuntu-latest
+    # Pinned (2026-11-05): ubuntu-latest moved to 26.04, which Playwright 1.59
+    # doesn't support → LTH scrape install failed and killed the refresh.
+    runs-on: ubuntu-24.04
     timeout-minutes: 30       # Dune MVRV ~10min + Playwright ~2min
 
     steps:
