@@ -17,7 +17,7 @@ const CONST = {
   robustnessWindow: ['2019-01-01', '2021-05-31'],
   segments: { S1: ['2019-01-01', '2020-05-10'], S2: ['2020-05-11', '2024-04-19'], S3: ['2024-04-20', '2026-10-31'] },
   bullPlus: 3, minEpisodes: 30, minShift: 60, alpha: 0.05, reps: 10000, seed: 20261105, blockFloor: 20,
-  maeMarginPP: 0.005, costPerSwitch: 0.001, sensitivityBlocks: [10, 40, 60],
+  maeMarginPP: 0.005, costPerSwitch: 0.001, sensitivityBlocks: [10, 40, 60], minLongShare: 0.10, withheldFlagShare: 0.10,
   lagPlusOne: { fear_greed: 2, mvrv: 3, lth: 3, stablecoins: 3 },   // bars, E3a, E5a unchanged; grace unchanged
 };
 
@@ -75,7 +75,7 @@ function entryTests(rows, outs, decl, cand, blockOverride = null) {
   let mono = eligible.length >= 2; for (let i = 1; i < eligible.length; i++) if (bandMeans[eligible[i]].mean < bandMeans[eligible[i - 1]].mean) mono = false;
   const sp = S.circularShiftP(N, k => S.spearman(S.rotate(sc, k), ret), CONST.minShift);
   return {
-    candidate: cand, days: N, scoredDays: sc.filter(x => x != null).length, withheldDays: sc.filter(x => x == null).length,
+    candidate: cand, days: N, scoredDays: sc.filter(x => x != null).length, withheldDays: sc.filter(x => x == null).length, withheldShare: sc.filter(x => x == null).length / N, withheldFlag: sc.filter(x => x == null).length / N > CONST.withheldFlagShare,
     H1: { stat: h1.observed, p: h1.p, shifts: h1.shifts }, H2: { stat: h2.observed, p: h2.p },
     episodes: { byBand: epBand, bullPlus: epBull.bullPlus || 0, nonBullPlus: epBull.other || 0, sufficient: bullOk },
     C3: { maeDiff, upper975: c3upper, block, politisWhite: pw, pass: Number.isFinite(c3upper) && c3upper < CONST.maeMarginPP },
@@ -96,7 +96,11 @@ function tendencyTests(rowsAll, bars, decl, cand, segs = Object.keys(CONST.segme
     const sma = i => { if (i < 199) return null; let s = 0; for (let k = i - 199; k <= i; k++) s += closes[k]; return s / 200; };
     const ma = rows.map(r => { const i = idx.get(addDays(r.d, -1)); const s0 = sma(i), s1 = sma(i - 20); return s0 != null && s1 != null && closes[i] > s0 && s0 > s1 ? 1 : 0; });
     const R = S.exposureBacktest(rule, lr, CONST.costPerSwitch), A = S.exposureBacktest(always, lr, CONST.costPerSwitch), M = S.exposureBacktest(ma, lr, CONST.costPerSwitch);
-    res[seg] = { days: rows.length, withheldDays: rows.filter(r => r.scores[cand] == null).length, rule: R, alwaysLong: A, sma200: M, beatsBoth: R.ratio > A.ratio && R.ratio > M.ratio };
+    const withheld = rows.filter(r => r.scores[cand] == null).length; const longShare = rows.length ? rule.reduce((a, b) => a + b, 0) / rows.length : 0;
+    // §K.3a: a segment passes only if the rule beats both benchmarks AND is long on ≥ 10% of days AND its ratio is > 0
+    // (a never-long or mostly-withheld rule cannot pass by sitting flat through a falling market).
+    res[seg] = { days: rows.length, withheldDays: withheld, withheldShare: rows.length ? withheld / rows.length : null, withheldFlag: rows.length ? withheld / rows.length > CONST.withheldFlagShare : null,
+      longShare, rule: R, alwaysLong: A, sma200: M, beatsBoth: R.ratio > A.ratio && R.ratio > M.ratio && longShare >= CONST.minLongShare && R.ratio > 0 };
   }
   return { candidate: cand, segments: res, pass: Object.values(res).every(s => s.beatsBoth) };
 }

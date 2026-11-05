@@ -39,6 +39,38 @@ test('outcomes use the Stage 4 definitions', () => {
   assert.deepEqual(H.outcomesFor(['2026-01-10'], bars)[0], { ret7: null, mae7: null });
 });
 
+test('a never-long rule cannot pass a tendency segment', () => {
+  const decl = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '..', '..', 'engine-v2', 'declaration.json'), 'utf8'));
+  const bars = []; let p = 10000; for (let d = '2018-01-01'; d <= '2026-11-04'; d = H.addDays(d, 1)) { p *= 0.999; bars.push({ d, c: p, l: p, h: p }); }   // falling market
+  const evals = []; for (let d = '2019-01-01'; d <= '2026-10-31'; d = H.addDays(d, 1)) evals.push({ d, scores: { 'V-T1/T2+': 0 } });
+  const t = H.tendencyTests(evals, bars, decl, 'V-T1/T2+');
+  assert.equal(t.segments.S2.longShare, 0); assert.equal(t.segments.S2.beatsBoth, false); assert.equal(t.pass, false);
+});
+
+function gateCopy() {
+  const fs = require('fs'), os = require('os'), path = require('path');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 's4-')); const src = path.join(__dirname, '..', '..');
+  fs.cpSync(path.join(src, 'engine-v2'), path.join(root, 'engine-v2'), { recursive: true });
+  fs.cpSync(path.join(src, 'stage4'), path.join(root, 'stage4'), { recursive: true });
+  const fz = JSON.parse(fs.readFileSync(path.join(root, 'stage4', 'frozen.json')));
+  fs.writeFileSync(path.join(root, 'stage4', 'GO'), fz.declarationHash);
+  return { root, fz };
+}
+const runGate = (root, hist) => { const { execFileSync } = require('child_process'); const path = require('path'); try { execFileSync(process.execPath, [path.join(root, 'stage4', 'run.js'), hist, path.join(root, 'out')], { stdio: 'pipe' }); return 'RAN'; } catch (e) { return String(e.stderr); } };
+
+test('runner gate: a changed code file is refused', () => {
+  const fs = require('fs'), path = require('path'); const { root } = gateCopy();
+  fs.appendFileSync(path.join(root, 'stage4', 'stats.js'), '\n// edit');
+  assert.match(runGate(root, '/nonexistent'), /stage4\/stats.js changed since the freeze/);
+});
+
+test('runner gate: a history file that is not the frozen set is refused', () => {
+  const fs = require('fs'), path = require('path'), zlib = require('zlib'); const { root, fz } = gateCopy();
+  const hd = path.join(root, 'hist'); fs.mkdirSync(hd);
+  for (const k of Object.keys(fz.history)) fs.writeFileSync(path.join(hd, `${k}.json.gz`), zlib.gzipSync('{"rows":[]}'));
+  assert.match(runGate(root, hd), /is not the frozen set/);
+});
+
 test('runner refuses without GO and without the frozen history', () => {
   const { execFileSync } = require('child_process'); const path = require('path');
   let msg = ''; try { execFileSync(process.execPath, [path.join(__dirname, '..', 'run.js'), '/nonexistent', '/tmp/x'], { stdio: 'pipe' }); } catch (e) { msg = String(e.stderr); }

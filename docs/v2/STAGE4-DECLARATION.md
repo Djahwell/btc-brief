@@ -1,4 +1,4 @@
-# BTC Brief V2: Stage 4 declaration (v1.1, frozen 2026-11-05)
+# BTC Brief V2: Stage 4 declaration (v1.2, frozen 2026-11-05)
 
 *Charter rule 7. Everything the Stage 4 test may use is fixed here before anything runs. Sections A–G are STAGE4-PLAN v1.2 §2–§8 verbatim. Any change after the freeze is a new declaration, logged as a new trial. Nothing has been run on outcomes.*
 
@@ -11,7 +11,7 @@
 | File bytes sha256 | `824819ddf320b1b41b71a296af50d99f991789243ba55d0d50662cb181faebc1` |
 | Engine code hash (engine.js + view.js + live.js) | `ac6b50ffff8ac210cfebd7efde4b37e71076d2a0ecc507aeb14e95cbb143e022` |
 | Repository commit | engine and declaration: `efab720`; harness and §K: see §J |
-| Harness code (frozen, `stage4/frozen.json`) | stats.js `7345f926…`, harness.js `3b04f215…`, run.js `4aff5491…`; frozen.json `0f4a6d47…` |
+| Harness code (frozen, `stage4/frozen.json`) | stats.js `7345f926…`, harness.js `b0e4e4a0…`, run.js `4aff5491…`; frozen.json `ccff511d…` |
 | History set | `v2-data` manifest generated 2026-11-05T13:08:55Z (sha256 per file in §I) |
 
 ## Trial ledger (charter rule 7)
@@ -329,6 +329,7 @@ Consequences, declared now:
    - **withheld days are flat** (no score, no position);
    - every strategy starts flat at the segment start and pays 10 bp (0.001 log) per switch, so "always long" pays one entry;
    - ratio = total log return over the segment ÷ maximum drawdown of the equity curve exp(cumulative log return) (fraction); a zero drawdown gives ±∞ by the sign of the return;
+   - **a segment passes only if** the rule's ratio beats both benchmarks **and** is above 0 **and** the rule is long on at least 10% of the segment's days (a never-long or mostly withheld rule cannot pass by staying flat through a falling market);
    - 200-day rule: long at D 00:00 when close(D−1) > SMA200(D−1) **and** SMA200(D−1) > SMA200(D−21) (20 bars, as T3), Coinbase closes.
 4. **Episodes.** For H1, H2 and C3 the two groups are Bull+ (score ≥ +3, Bull and Strong bull merged) and non-Bull+; an episode is a maximal run of consecutive evaluated days in the same group, and a withheld day ends a run. **Both groups need ≥ 30 episodes**, else the candidate fails. For C5 the five bands are counted separately; **C5 needs at least two bands with ≥ 30 episodes** (fewer = C5 fails), and the means must be non-decreasing across those bands in order.
 5. **Statistics.**
@@ -343,7 +344,7 @@ Consequences, declared now:
    - **Entry preference order, declared:** V-E1/E6a, then V-E1/E6b, then V-E2/E6a, then V-E2/E6b. If several pass, the first in this order is the one shown; Djahwell is told about all of them.
    - **T2 look-ahead exposure:** a tendency PASS that turns into FAIL in the lag +1 run is labelled "lag-sensitive" and shown as descriptive only.
    - The only partial outcome is C5 failing alone (band label shown without the number).
-9. **Availability.** The table in §I uses every 10th day; the full count over all days is attached before the run (§L), still without any outcome. Withheld shares above 10% in a window are reported and not acted on.
+9. **Availability.** The table in §I uses every 10th day; the full count over all days is attached before the run (§L), still without any outcome. Withheld shares above 10% in a window or segment are reported (`withheldShare`, `withheldFlag`) and not acted on.
 10. **Naming.** `scorecards.tendency.families` in the declaration file lists "T2"; the engine runs the two declared trials as T2+ and T2− (the `V-T1/T2+` and `V-T1/T2-` cards). The file is left unchanged so its hash stays valid.
 
 ## J. Freeze record
