@@ -8,6 +8,9 @@
 // reported separately). Tendency outcomes start after 180 days of records.
 import { readFileSync } from 'fs';
 import { getJSON, writeJSON, coinbaseCandles, isoDay } from './lib.mjs';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const S = require('../../stage4/stats.js');
 
 const OUT = process.env.OUT || 'out/v2';
 const WORKER = process.env.WORKER_URL || 'https://btc-brief.joel-toe.workers.dev';
@@ -62,14 +65,37 @@ export function outcomes(frozenIn, bars, { lastDay = null } = {}) {
   };
 }
 
+// Forward test of the event flag (FORWARD-EVENTS.md). Flag recorded point-in-time at the 00:10 run of day D
+// (any high-impact event in [D 00:00, D+2 00:00)); outcome = (max high − min low of bars D and D+1) ÷ close D−1.
+// Runs only when ≥ 40 flagged and ≥ 40 unflagged days with all sources OK exist. Never touches any score.
+export function eventFlagTest(log, bars, minEach = 40) {
+  const byD = new Map(bars.map(b => [b.d, b]));
+  const add = (d, n) => isoDay(Date.parse(d + 'T00:00:00Z') + n * DAY * 1000);
+  const rows = log.filter(r => r.sourcesOk).map(r => {
+    const p = byD.get(add(r.date, -1)), a = byD.get(r.date), b = byD.get(add(r.date, 1));
+    return { date: r.date, flag: r.within48h, range48: p && a && b ? (Math.max(a.h, b.h) - Math.min(a.l, b.l)) / p.c : null };
+  }).filter(r => r.range48 != null);
+  const nF = rows.filter(r => r.flag).length, nU = rows.length - nF;
+  const out = { definition: 'FORWARD-EVENTS.md', days: rows.length, flagged: nF, unflagged: nU, minEach, status: nF >= minEach && nU >= minEach ? 'tested' : 'collecting' };
+  if (out.status === 'tested') {
+    const fl = rows.map(r => r.flag), y = rows.map(r => r.range48);
+    const t = S.circularShiftP(rows.length, k => S.diffMeans(S.rotate(fl, k), y), 60);
+    Object.assign(out, { diff: t.observed, p: t.p, pass: t.observed > 0 && t.p < 0.05 });
+  }
+  return out;
+}
+
 async function main() {
-  const fr = await getJSON(`${WORKER}/v2/frozen?since=2026-01-01`);
+  let fr = { rows: [] }; try { fr = await getJSON(`${WORKER}/v2/frozen?since=2026-01-01`); } catch (e) { console.warn('[v2-track] frozen records unavailable:', e.message); }
   // Coinbase daily bars from the first frozen day − 2 to now (completed days only).
-  const first = fr.rows.length ? Date.parse(fr.rows[0].date + 'T00:00:00Z') / 1000 - 3 * DAY : Math.floor(Date.now() / 1000 / DAY) * DAY - 10 * DAY;
+  let evlog = []; try { evlog = JSON.parse(readFileSync(`${OUT}/events-log.json`, 'utf8')).rows || []; } catch { /* none yet */ }
+  const starts = [fr.rows[0]?.date, evlog[0]?.date].filter(Boolean).sort();
+  const first = starts.length ? Date.parse(starts[0] + 'T00:00:00Z') / 1000 - 3 * DAY : Math.floor(Date.now() / 1000 / DAY) * DAY - 10 * DAY;
   const end = Math.floor(Date.now() / 1000 / DAY) * DAY;
   const bars = (await coinbaseCandles('BTC-USD', DAY, first, end)).map(r => ({ d: isoDay(r.t * 1000), o: r.o, h: r.h, l: r.l, c: r.c }));
   const o = outcomes(fr.rows, bars, { lastDay: isoDay(Date.now()) });
-  writeJSON(`${OUT}/track.json`, { schema: 'brief-v2-track/1', generatedAt: new Date().toISOString(), label: 'live (frozen daily snapshots)', definitions: 'STAGE4-PLAN §4', ...o, tendency: { note: 'tendency outcomes start after 180 days of records' } });
+  const events = eventFlagTest(evlog, bars);
+  writeJSON(`${OUT}/track.json`, { schema: 'brief-v2-track/1', generatedAt: new Date().toISOString(), label: 'live (frozen daily snapshots)', definitions: 'STAGE4-PLAN §4', ...o, tendency: { note: 'tendency outcomes start after 180 days of records' }, eventFlag: events });
   console.log(`[v2-track] ${fr.rows.length} frozen days, ${o.rows.filter(r => r.closed).length} closed`);
 }
 if (import.meta.url === `file://${process.argv[1]}`) main().catch(e => { console.error('[v2-track] failed:', e.message); process.exitCode = 1; });

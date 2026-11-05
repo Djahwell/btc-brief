@@ -4,6 +4,7 @@
 // engine's own scorecards(), and REMOVES numbers (never greys them) when anything fails.
 (function () {
   const WORKER = 'https://btc-brief.joel-toe.workers.dev';
+  const EVENTS_URL = 'https://raw.githubusercontent.com/Djahwell/btc-brief/v2-data/v2/events.json';
   const TRACK_URL = 'https://raw.githubusercontent.com/Djahwell/btc-brief/v2-data/v2/track.json';
   const REFRESH_MS = 30 * 60 * 1000;
   const AMBER_SEC = 45 * 60, WITHHOLD_SEC = 90 * 60;
@@ -170,6 +171,23 @@
     $('#detail').innerHTML = rows.join('');
   }
 
+  // Scheduled events (context only, never part of a score). Times shown in the device's time zone.
+  async function renderEvents() {
+    const box = $('#events');
+    try {
+      const j = await getJSON(EVENTS_URL + '?t=' + Math.floor(Date.now() / 6e5));
+      const now = Date.now(), h48 = now + 48 * 3600e3, d7 = now + 7 * 86400e3;
+      const up = (j.events || []).filter(e => Date.parse(e.t) >= now - 3600e3 && Date.parse(e.t) <= d7);
+      const soon = up.filter(e => e.impact === 'high' && Date.parse(e.t) <= h48);
+      const fmt = t => new Date(t).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      const src = j.sources || {}; const notes = [];
+      for (const [k, v] of Object.entries(src)) { if (!v.ok) notes.push(`${k}: unavailable`); else if (v.mode) notes.push(`${k}: official schedule read ${v.readAt}${v.stale ? ', needs extending' : ''}`); }
+      box.innerHTML = `<div class="evflag ${soon.length ? 'on' : ''}">${soon.length ? `High-impact event within 48 h (${soon.length})` : 'No high-impact event in the next 48 h'}</div>` +
+        (up.length ? `<ul class="evlist">${up.map(e => `<li><span class="when">${esc(fmt(e.t))}</span><span class="${e.impact === 'high' ? 'hi' : ''}">${esc(e.label)}</span></li>`).join('')}</ul>` : '<p class="muted">Nothing scheduled in the next 7 days.</p>') +
+        `<p class="fine">FOMC from federalreserve.gov, CPI and payrolls from bls.gov, BTC options expiries by Deribit's last-Friday rule. Context only: never part of a score. ${esc(notes.join(' · '))}</p>`;
+    } catch (_) { box.innerHTML = '<p class="muted">Event calendar unavailable.</p>'; }
+  }
+
   async function renderTrack() {
     try {
       const t = await getJSON(TRACK_URL + '?t=' + Math.floor(Date.now() / 6e5));
@@ -261,6 +279,7 @@
     render();
     if (state.snap) renderCommentary(state.snap);
     renderTrack();
+    renderEvents();
   }
 
   async function start() {

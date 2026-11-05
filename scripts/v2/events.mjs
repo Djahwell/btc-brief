@@ -9,6 +9,8 @@
 //   BTC options Deribit monthly expiry = last Friday of the month 08:00 UTC (quarterly in Mar/Jun/Sep/Dec);
 //               rule published by Deribit, computed here.
 import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import { writeJSON } from './lib.mjs';
 
 const OUT = process.env.OUT || 'out/v2';
@@ -99,6 +101,15 @@ async function main() {
   await src('fomc', 'https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm', parseFOMC);
   await src('cpi', 'https://www.bls.gov/schedule/news_release/cpi.htm', h => parseBLS(h, 'CPI', 'US CPI'));
   await src('payrolls', 'https://www.bls.gov/schedule/news_release/empsit.htm', h => parseBLS(h, 'NFP', 'US payrolls (Employment Situation)'));
+  // bls.gov blocks GitHub runners: fall back to the official schedule read by hand (dated), never to a guess.
+  const bls = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'bls-schedule.json'), 'utf8'));
+  for (const [name, kind, label] of [['cpi', 'CPI', 'US CPI'], ['payrolls', 'NFP', 'US payrolls (Employment Situation)']]) {
+    if (sources[name].ok) continue;
+    const ev = bls[name].dates.map(d => { const [y, m, dd] = d.split('-').map(Number); return { t: nyToUtc(y, m, dd, 8, 30), kind, label, impact: 'high' }; });
+    const last = bls[name].dates[bls[name].dates.length - 1];
+    events.push(...ev);
+    sources[name] = { ok: true, mode: 'official schedule read by hand', url: bls[name].source, readAt: bls.readAt, coversTo: last, liveError: sources[name].error, stale: last < new Date(now + 45 * 86400000).toISOString().slice(0, 10) };
+  }
   events.push(...deribitExpiries(now)); sources.options = { ok: true, rule: 'last Friday 08:00 UTC (Deribit)', computedAt: new Date().toISOString() };
   events = events.filter(e => Date.parse(e.t) >= now - 7 * 86400000).sort((a, b) => (a.t < b.t ? -1 : 1));
   const seen = new Set(); events = events.filter(e => { const k = e.kind + e.t; if (seen.has(k)) return false; seen.add(k); return true; });
