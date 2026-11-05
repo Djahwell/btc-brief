@@ -17,25 +17,30 @@ function parseTs(s) {
   const t = Date.parse(s); return Number.isFinite(t) ? t : null;
 }
 
-// Columns are located by the header row (not assumed by position). Required: ts, venue, inst, liq, btc.
+// Columns: from the header row when there is one; otherwise the recorder's documented order
+// ts,venue,inst,liq,price,btc,usd,raw (the live files have NO header — confirmed on the VPS 2026-11-05).
+// Every row is still validated (timestamp parses, side is L/S, size is a number).
 const REQUIRED = ['ts', 'venue', 'inst', 'liq', 'btc'];
+const DOCUMENTED = ['ts', 'venue', 'inst', 'liq', 'price', 'btc', 'usd', 'raw'];
 function readRows(file) {
   let txt;
   try { txt = fs.readFileSync(file, 'utf8'); } catch { return { rows: [], exists: false }; }
   const complete = txt.endsWith('\n') ? txt : txt.slice(0, txt.lastIndexOf('\n') + 1);
   const lines = complete.split('\n').filter(Boolean);
   if (!lines.length) return { rows: [], exists: true, bad: 0, header: null };       // freshly created empty file is normal
-  const header = lines[0].split(',').map(x => x.trim());
+  const first = lines[0].split(',').map(x => x.trim());
+  const hasHeader = parseTs(first[0]) == null;      // first field not a timestamp → it is a header row
+  const header = hasHeader ? first : DOCUMENTED;
   const col = Object.fromEntries(REQUIRED.map(k => [k, header.indexOf(k)]));
   if (REQUIRED.some(k => col[k] < 0)) return { rows: [], exists: true, bad: lines.length, header: header.join(','), headerError: `missing column(s): ${REQUIRED.filter(k => col[k] < 0).join(', ')}` };
   const rows = []; let bad = 0;
-  for (const line of lines.slice(1)) {
+  for (const line of (hasHeader ? lines.slice(1) : lines)) {
     const f = line.split(',');
     const t = parseTs(f[col.ts]); const side = f[col.liq]; const btc = Number(f[col.btc]);
     if (t == null || (side !== 'L' && side !== 'S') || !Number.isFinite(btc)) { bad++; continue; }
     rows.push({ t, venue: f[col.venue], inst: f[col.inst], side, btc });
   }
-  return { rows, exists: true, bad, header: header.join(',') };
+  return { rows, exists: true, bad, header: hasHeader ? header.join(',') : '(none: documented order)' };
 }
 
 function dayNames(nowMs) {
@@ -67,7 +72,7 @@ async function computeE4({ dir, statusFile, unit = 'maisontoe-liq' }, nowMs, tot
     }
   }
   let statusAgeSec = null;
-  try { statusAgeSec = Math.round((nowMs - fs.statSync(statusFile).mtimeMs) / 1000); } catch { /* missing */ }
+  try { statusAgeSec = Math.max(0, Math.round((nowMs - fs.statSync(statusFile).mtimeMs) / 1000)); } catch { /* missing */ }   // written during the cycle → can be a few s 'in the future'
   const active = await isActiveImpl(unit);
   const alive = active === 'active' && statusAgeSec != null && statusAgeSec <= 300;
   // A parse problem must never read as "no liquidations": bad rows with no good rows → MISSING.

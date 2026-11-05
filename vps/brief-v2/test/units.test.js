@@ -124,3 +124,14 @@ test('funding check: time-weighted and plain-mean rebuilds both reported', async
   const m = mk({ now: NOW }); const r = await computeE3a(new Http({ fetchImpl: m.fetch, log: quiet }), {}, NOW);
   const p = r.check.prints.find(x => x.err_bp != null); assert.ok(p && 'err_bp_plain_mean' in p && 'rebuilt_weighted' in p);
 });
+
+test('liquidations: headerless live format (as on the VPS) is read in the documented order', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'liq3-')); const status = path.join(dir, 's.json'); fs.writeFileSync(status, '{}');
+  const T = 1793876800000;   // just after the VPS sample
+  fs.writeFileSync(path.join(dir, `${new Date(T).toISOString().slice(0, 10)}.csv`),
+    '1793836898098,binance,BTCUSDT,L,80504,0.055,4428,SELL\n1793837560358,bybit,BTCUSDT,S,80914.8,0.004,324,Sell\n1793876743089,binance-coinm,BTCUSD_PERP,L,80172.1,0.03991,3200,SELL\n1793876744097,binance,BTCUSDT,L,80226.1,0.246,19736,SELL\n');
+  const r = await computeE4({ dir, statusFile: status }, T, 1e5, async () => 'active');
+  assert.equal(r.quality, 'OK'); assert.equal(r.heartbeat.badRows, 0);
+  assert.equal(r.value.count, 4); assert.ok(Math.abs(r.value.long_btc - (0.055 + 0.03991 + 0.246)) < 1e-9); assert.ok(Math.abs(r.value.short_btc - 0.004) < 1e-9);
+  assert.deepEqual(Object.keys(r.byVenue).sort(), ['binance', 'binance-coinm', 'bybit']);
+});
