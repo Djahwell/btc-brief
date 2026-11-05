@@ -38,6 +38,9 @@
 
   let decl = null, declHash = null, lastFetchError = null;
   const KNOWN_SCHEMAS = ['brief-v2/1', 'brief-v2/2'];
+  // Stage 4 (5 Nov 2026, STAGE4.md): no entry or tendency candidate passed → descriptive mode (§F).
+  // The page shows family readings, states and levels only; never a scorecard number or band.
+  const DESCRIPTIVE = { since: '2026-11-05', reason: 'No score: neither read passed its test on 2019–2026 history (5 Nov 2026). The family readings below are shown as context.' };
   let lastView = null;
 
   async function sha256Hex(text) {
@@ -82,6 +85,10 @@
   // ---- rendering ---------------------------------------------------------------------------
   function renderCard(el, c, fallbackReason) {
     const box = el.querySelector('.score'), num = el.querySelector('.num'), band = el.querySelector('.band'), sub = el.querySelector('.sub'), mark = el.querySelector('.mark');
+    if (DESCRIPTIVE) {
+      box.classList.add('withheld'); num.className = 'num'; num.textContent = 'Descriptive'; band.textContent = ''; mark.style.display = 'none';
+      el.querySelector('.gauge').style.display = 'none'; sub.textContent = DESCRIPTIVE.reason; return;
+    }
     if (!c || c.withheld || c.score == null) {
       box.classList.add('withheld'); num.className = 'num'; num.textContent = 'Withheld'; band.textContent = ''; mark.style.display = 'none';
       sub.textContent = (c && c.reason) || fallbackReason || ''; return;
@@ -151,7 +158,7 @@
   function renderSummary(v) {
     if (v.withheld) { $('#summary').innerHTML = `<p class="muted">No summary while scores are withheld.</p>`; $('#why').innerHTML = ''; $('#notes').textContent = ''; return; }
     const s = S.summarize({ families: v.families, scores: v.scores, primary: v.primary }, decl);
-    $('#summary').innerHTML = `<p>${esc(s.entry)}</p><p>${esc(s.tendency)}</p>`;
+    $('#summary').innerHTML = DESCRIPTIVE ? `<p class="muted">Readings, not a verdict: the strongest families are listed under "Why". No entry or tendency score is given (descriptive mode).</p>` : `<p>${esc(s.entry)}</p><p>${esc(s.tendency)}</p>`;
     $('#why').innerHTML = s.why.length ? s.why.map(w => `<li>${esc(w)}</li>`).join('') : '<li class="muted">No family is away from neutral.</li>';
     $('#notes').textContent = s.notes.join(' ');
   }
@@ -189,6 +196,7 @@
   }
 
   async function renderTrack() {
+    if (DESCRIPTIVE) { $('#track').innerHTML = '<p class="muted">The frozen candidate scores failed Stage 4. They keep being recorded every day in the background (not shown), so a future design can be compared with them on new data.</p>'; return; }
     try {
       const t = await getJSON(TRACK_URL + '?t=' + Math.floor(Date.now() / 6e5));
       const b = t.entry && t.entry.byBand;
@@ -208,6 +216,7 @@
   async function renderCommentary(snap) {
     const box = $('#claude-text'), btn = $('#claude-btn');
     const v = lastView;
+    if (DESCRIPTIVE) { box.innerHTML = '<span class="muted">The Claude paragraph is off while the page is descriptive (it was built to describe scores).</span>'; btn.hidden = true; return; }
     if (!v || v.withheld) { box.innerHTML = '<span class="muted">No commentary while scores are withheld.</span>'; btn.hidden = true; return; }
     try {
       const c = await getJSON(`${WORKER}/v2/commentary`);
@@ -254,8 +263,9 @@
     renderCard($('#card-entry'), v.withheld ? null : v.scores[v.primary.entry], v.reason);
     renderCard($('#card-tendency'), v.withheld ? null : v.scores[v.primary.tendency], v.reason);
     const banner = [];
-    if (!v.withheld && v.status) banner.push(`<strong>Candidate scores.</strong> Untested until the Stage 4 test passes; shown so the live record can start.`);
-    if (v.withheld) banner.push(`<strong>Scores withheld:</strong> ${esc(v.reason)}.`);
+    if (DESCRIPTIVE) banner.push(`<strong>Descriptive mode.</strong> Neither score passed its 2019–2026 test, so the page shows the market's readings (families, value area, levels, events) without a buy/hold verdict.${v.withheld ? ` Family readings: ${esc(v.reason)}.` : ''}`);
+    else if (!v.withheld && v.status) banner.push(`<strong>Candidate scores.</strong> Untested until the Stage 4 test passes; shown so the live record can start.`);
+    else if (v.withheld) banner.push(`<strong>Scores withheld:</strong> ${esc(v.reason)}.`);
     if (!v.withheld && v.dropped.length) banner.push(`Stale at view time and left out: ${esc(v.dropped.map(k => (FAM[k] || [k])[0]).join(', '))}.`);
     if (state.fromCache) banner.push(`Offline: showing the copy fetched ${ago((now - state.fetchedAt) / 1000)} ago${lastFetchError ? ` (last error: ${esc(lastFetchError)})` : ''}.`);
     else if (lastFetchError) banner.push(`Last refresh failed: ${esc(lastFetchError)}.`);
