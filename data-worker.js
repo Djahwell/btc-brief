@@ -782,11 +782,24 @@ async function fetchMarketSnapshot() {
       const t = d.result?.XXBTZUSD;
       const price = parseFloat(t?.c?.[0]);
       if (!price) throw new Error('no price');
-      const open24h    = parseFloat(t?.o);
+      // t.o is today's 00:00 UTC open, NOT 24h ago (fix 2026-11-05: brief showed
+      // -0.09% "24h" when BTC was +3.6%). Use the hourly bar from 24h ago instead.
+      let change24h = null;
+      try {
+        const hr = await fetch(`https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=60&since=${Math.floor(Date.now()/1000) - 26*3600}`, { signal: AbortSignal.timeout(8000) });
+        const hd = await hr.json();
+        const rows = hd.result?.XXBTZUSD || hd.result?.XBTZUSD || [];
+        const target = Date.now()/1000 - 24*3600;
+        const bar = rows.find(r => parseInt(r[0], 10) >= target);
+        const ref = bar ? parseFloat(bar[1]) : null;
+        if (ref > 0) change24h = parseFloat(((price - ref) / ref * 100).toFixed(2));
+      } catch { /* fall back below */ }
+      const open24h = parseFloat(t?.o);
+      if (change24h == null && open24h > 0) change24h = parseFloat(((price - open24h) / open24h * 100).toFixed(2));
+      // Kraken volume is single-venue (~1% of market) — replaced by an aggregate below.
       const vol24hBTC  = parseFloat(t?.v?.[1]);
-      const change24h  = (open24h > 0) ? parseFloat(((price - open24h) / open24h * 100).toFixed(2)) : null;
       const volume24hUSD = (vol24hBTC > 0) ? vol24hBTC * price : null;
-      return { price, change24h, volume24hUSD, marketCap: price * 20000000, priceSource: 'Kraken' };
+      return { price, change24h, volume24hUSD, volumeScope: 'Kraken only', marketCap: price * 20000000, priceSource: 'Kraken' };
     },
     async () => {
       const r = await fetch('https://api.coincap.io/v2/assets/bitcoin', { signal: AbortSignal.timeout(8000) });
@@ -818,6 +831,24 @@ async function fetchMarketSnapshot() {
     } catch (e) { console.warn(`[Market] ${e.message} — trying next source`); }
   }
   if (!out.price) console.warn('[Market] All price sources failed');
+
+  // Aggregate volume + market cap (fix 2026-11-05). Binance is HTTP 451 on GitHub
+  // runners, so the price usually comes from Kraken, whose volume is one venue
+  // (~2.8k BTC/day). The prompt normalizes flows against "daily volume", so a
+  // single-venue figure made 1,000 BTC look like ~35% of volume.
+  if (out.price && out.priceSource !== 'CoinGecko' && out.priceSource !== 'CoinCap') {
+    try {
+      const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_vol=true&include_market_cap=true', { signal: AbortSignal.timeout(10000) });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const d = await r.json();
+      const vol = d.bitcoin?.usd_24h_vol, mcap = d.bitcoin?.usd_market_cap;
+      if (vol > 0) { out.volume24hUSD = vol; out.volumeScope = 'CoinGecko aggregate'; }
+      if (mcap > 0) out.marketCap = mcap;
+      console.log(`[Market] Aggregate volume (CoinGecko): $${(vol/1e9).toFixed(1)}B | mcap $${(mcap/1e12).toFixed(2)}T`);
+    } catch (e) {
+      console.warn(`[Market] Aggregate volume failed (${e.message}) — keeping ${out.volumeScope || out.priceSource} volume`);
+    }
+  }
 
   // Fear & Greed
   try {
