@@ -117,10 +117,10 @@ function usable(series, D, lagDays) {
   const cutoff = addDays(D, -lagDays);
   return (series || []).filter(r => r.d <= cutoff && finite(r.v)).sort((a, b) => (a.d < b.d ? -1 : 1));
 }
-// The latest usable value must be dated at the expected day (D − lag) or at most 1 day older.
-function freshEnough(rows, D, lagDays) {
+// The latest usable value must be dated at the expected day (D − lag) or at most staleGraceDays older.
+function freshEnough(rows, D, lagDays, grace) {
   if (!rows.length) return false;
-  return rows[rows.length - 1].d >= addDays(D, -lagDays - 1);
+  return rows[rows.length - 1].d >= addDays(D, -lagDays - grace);
 }
 
 function scorecards(fam, warn, decl) {
@@ -152,7 +152,7 @@ function scorecards(fam, warn, decl) {
 function evaluate(view, decl) {
   const D = view.date; const M = decl.percentileMap; const fam = {}; const warn = {};
   const bars = (view.bars || []).filter(b => b.d <= addDays(D, -1)).sort((a, b) => (a.d < b.d ? -1 : 1));
-  const barsFresh = bars.length && bars[bars.length - 1].d >= addDays(D, -2);
+  const barsFresh = bars.length > 0 && bars[bars.length - 1].d >= addDays(D, -decl.lagsDays.daily_bars - decl.staleGraceDays);
   const dates = bars.map(b => b.d), closes = bars.map(b => b.c);
 
   // E1 trend & structure
@@ -195,7 +195,7 @@ function evaluate(view, decl) {
   // E7 Fear & Greed extremes
   {
     const rows = usable(view.fng, D, decl.lagsDays.fear_greed); const c = decl.e7;
-    if (!freshEnough(rows, D, decl.lagsDays.fear_greed)) fam.E7 = { score: null, reason: 'fear & greed stale' };
+    if (!freshEnough(rows, D, decl.lagsDays.fear_greed, decl.staleGraceDays)) fam.E7 = { score: null, reason: 'fear & greed stale' };
     else {
       const v = rows[rows.length - 1].v; let s = 0;
       if (v <= c.fearAt) s = Math.min(10, 10 * (c.fearAt - v) / (c.fearAt - c.fearFull));
@@ -215,7 +215,7 @@ function evaluate(view, decl) {
   // Tendency families
   const dailyFam = (key, series, lagKey, opts = {}) => {
     const rows = usable(series, D, decl.lagsDays[lagKey]);
-    if (!freshEnough(rows, D, decl.lagsDays[lagKey])) return { score: null, reason: `${key} stale` };
+    if (!freshEnough(rows, D, decl.lagsDays[lagKey], decl.staleGraceDays)) return { score: null, reason: `${key} stale` };
     const vals = rows.map(r => r.v), ds = rows.map(r => r.d);
     const r = scoreSeries(opts.transform ? opts.transform(vals) : vals, ds, decl, { contrarian: !!opts.contrarian });
     return r.score == null ? r : { ...r, score: roundHalfAway(opts.sign === -1 ? -r.score : r.score), asOf: ds[ds.length - 1] };

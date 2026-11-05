@@ -17,6 +17,8 @@
     "lth": 2,
     "stablecoins": 2
   },
+  "staleGraceDays": 1,
+  "staleGraceNote": "A daily input is active when its latest usable value is dated at most staleGraceDays before D \u2212 lag (one missed publication tolerated). Daily bars: last bar \u2265 D \u2212 1 \u2212 staleGraceDays.",
   "e1": {
     "sma": [
       20,

@@ -4,11 +4,24 @@
 const fs = require('fs'); const path = require('path');
 const fx = n => JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', n), 'utf8'));
 const MIN = 60000;
+// Synthetic v2-data history ending yesterday (deterministic), served as gz files + manifest with sha256.
+let _hist = null;
+function synthHistoryFiles(now) {
+  const end = Math.floor(now / 864e5) * 864e5; if (_hist && _hist.end === end) return _hist;
+  const { engineDir } = require('../lib/score');
+  const { synthHistory } = require(path.join(engineDir(), 'test', 'synth.js'));
+  const days = 2200; const start = new Date(end - days * 864e5).toISOString().slice(0, 10);
+  const h = synthHistory(days, 7, start); const gz = {}; const files = {};
+  const zlib = require('zlib'); const crypto = require('crypto');
+  for (const [k, v] of Object.entries(h)) { gz[k] = zlib.gzipSync(JSON.stringify(v)); files[k] = { rows: v.rows.length, last: new Date(v.rows[v.rows.length - 1].t * 1000).toISOString(), sha256: crypto.createHash('sha256').update(gz[k]).digest('hex') }; }
+  _hist = { end, gz, manifest: { schema: 'brief-v2-history/1', generatedAt: new Date(end).toISOString(), files, errors: [] } };
+  return _hist;
+}
 function mk(opts = {}) {
   const now = opts.now || Date.now();
   const prem = t => opts.premium ? opts.premium(t) : -0.0004 + 0.0001 * Math.sin(t / 3.6e6);
   const calls = [];
-  const res = (body, status = 200, headers = {}) => ({ ok: status >= 200 && status < 300, status, headers: { get: k => headers[k.toLowerCase()] ?? null }, json: async () => body });
+  const res = (body, status = 200, headers = {}) => ({ ok: status >= 200 && status < 300, status, headers: { get: k => headers[k.toLowerCase()] ?? null }, json: async () => body, arrayBuffer: async () => { const b = Buffer.isBuffer(body) ? body : Buffer.from(JSON.stringify(body)); return b.buffer.slice(b.byteOffset, b.byteOffset + b.length); } });
   const fetch = async (url) => {
     calls.push(url);
     const u = new URL(url); const q = u.searchParams;
@@ -57,7 +70,16 @@ function mk(opts = {}) {
       for (let t = st; t < st + 1000 * 3.6e6 && t <= now; t += 3.6e6) { const ts = t / 1000; const btc = 80000 + 500 * Math.sin(ts / 86400); const usdt = 0.9995 + 0.0002 * Math.sin(ts / 50000); rows.push([t, '0', '0', '0', String(btc / usdt), '0']); }
       return res(rows);
     }
-    if (u.host === 'raw.githubusercontent.com') return res({ schema: 'brief-v2-daily/1', generatedAt: new Date(now).toISOString(), inputs: { fear_greed: { value: 50, unit: 'index 0-100', asOf: '2026-11-05', quality: 'OK' } }, errors: [] });
+    if (u.host === 'raw.githubusercontent.com' && u.pathname.includes('/v2/history/')) {
+      if (opts.history === false) return res({ error: 'no history' }, 404);
+      const H = synthHistoryFiles(now);
+      const name = u.pathname.split('/').pop();
+      if (name === 'manifest.json') return res(H.manifest);
+      const k = name.replace('.json.gz', '');
+      if (!H.gz[k]) return res({ error: 'nf' }, 404);
+      return res(opts.corrupt === k ? Buffer.concat([H.gz[k], Buffer.from('x')]) : H.gz[k]);
+    }
+    if (u.host === 'raw.githubusercontent.com') return res(opts.daily ? opts.daily(now) : { schema: 'brief-v2-daily/1', generatedAt: new Date(now).toISOString(), inputs: { fear_greed: { value: 50, unit: 'index 0-100', asOf: '2026-11-05', quality: 'OK' } }, errors: [] });
     if (u.host === 'btc-brief.joel-toe.workers.dev') return res({ ok: true, seq: 1, receivedAt: new Date(now).toISOString() });
     return res({ error: `unmocked ${url}` }, 404);
   };

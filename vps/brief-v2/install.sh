@@ -16,6 +16,8 @@ red(){ printf '\033[31m%s\033[0m\n' "$*"; }; grn(){ printf '\033[32m%s\033[0m\n'
 fail(){ red "FAIL: $*"; red "The current install (if any) was not changed."; exit 1; }
 
 [ "$(id -u)" -ne 0 ] || fail "run as your normal user, not root (sudo is asked only for the unit files)"
+# STAGE3-PLAN §8: v1.1 is installed only after the Stage 2 tolerance gate, so the gate measures unchanged input code.
+[ "$(date -u +%Y%m%d)" -ge 20261119 ] || [ "${BRIEF_V2_BEFORE_GATE:-}" = "yes" ] || fail "v1.1 installs on or after 2026-11-19 (Stage 2 gate)"
 
 echo "== 1/10 package checksums"
 ( cd "$PKG" && sha256sum -c --quiet SHA256SUMS ) || fail "checksum mismatch — re-copy the package"
@@ -42,7 +44,7 @@ echo "bot: $BOT_BEFORE | $OTH_BEFORE"
 echo "== 4/10 staging new code in $NEW"
 rm -rf "$NEW"; mkdir -p "$NEW"
 for f in cycle.js config.json package.json README.md .env.example; do cp "$PKG/$f" "$NEW/"; done
-cp -r "$PKG/lib" "$PKG/test" "$PKG/systemd" "$NEW/"
+cp -r "$PKG/lib" "$PKG/test" "$PKG/systemd" "$PKG/engine" "$NEW/"
 cp "$DIR/.env" "$NEW/.env"; chmod 600 "$NEW/.env"
 
 echo "== 5/10 offline tests (staged copy)"
@@ -64,6 +66,8 @@ echo "liquidations: quality=$LQ files=$LFILES badRows=$LBAD service=$LSVC ${LHDR
 echo "Binance max used weight seen (whole IP, includes the bot): $LWEIGHT of 2400 (job stops its own calls above 1200)"
 [ "${LBAD:-0}" = "0" ] || fail "liquidation CSV rows could not be parsed ($LBAD bad rows) — format differs from ts,venue,inst,liq,price,btc,usd,raw; send me the log"
 [ -z "$LHDR" ] || fail "liquidation CSV header problem: $LHDR"
+grep -q "\[cycle\] engine" /tmp/brief-v2-dry.log || fail "engine line missing from the dry cycle"
+grep -q "engine (CANDIDATE" /tmp/brief-v2-dry.log || red "note: the engine withheld its scores in the dry cycle (see the engine line above); inputs are unaffected"
 grn "dry cycle OK"
 
 echo "== 7/10 live services unchanged during checks?"
@@ -74,8 +78,13 @@ echo "== 8/10 swapping code into $DIR (timer paused if present; data kept)"
 WAS_ACTIVE=0; if systemctl is-active --quiet brief-v2-cycle.timer; then WAS_ACTIVE=1; sudo systemctl stop brief-v2-cycle.timer; fi
 while systemctl is-active --quiet brief-v2-cycle.service; do sleep 2; done          # let a running cycle finish
 mkdir -p "$DIR"
-rm -rf "$DIR/lib" "$DIR/test" "$DIR/systemd"
-cp -r "$NEW/lib" "$NEW/test" "$NEW/systemd" "$DIR/"
+# Keep the code being replaced so `bash rollback.sh --previous` can restore it (data is never touched).
+if [ -f "$DIR/cycle.js" ]; then
+  rm -rf "$DIR/.prev-code"; mkdir -p "$DIR/.prev-code"
+  for x in cycle.js config.json package.json README.md .env.example lib test systemd engine; do if [ -e "$DIR/$x" ]; then cp -r "$DIR/$x" "$DIR/.prev-code/"; fi; done
+fi
+rm -rf "$DIR/lib" "$DIR/test" "$DIR/systemd" "$DIR/engine"
+cp -r "$NEW/lib" "$NEW/test" "$NEW/systemd" "$NEW/engine" "$DIR/"
 for f in cycle.js config.json package.json README.md .env.example; do cp "$NEW/$f" "$DIR/"; done
 rm -rf "$NEW"
 

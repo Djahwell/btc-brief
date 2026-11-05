@@ -46,4 +46,19 @@ function archiveSnapshot(dir, snap, extra, now = Date.now()) {
   if (!fs.existsSync(f)) fs.writeFileSync(f, JSON.stringify({ ...extra, snapshot: snap }));
 }
 
-module.exports = { Vintage, State, archiveSnapshot, day };
+// Frozen daily snapshot (STAGE3-PLAN §6, Board fix 2): the first cycle of UTC day D that reads a
+// daily.json generated on D (the 00:10 run), before 02:07 UTC. At or after 02:07 with none frozen,
+// the day is recorded as missing. Same moment as the Stage 4 evaluation time. Never overwritten.
+const FREEZE_DEADLINE_MIN = 2 * 60 + 7;
+function freezeDaily(dir, snap, { dailyGeneratedAt }, now = Date.now()) {
+  const dd = path.join(dir, 'frozen'); fs.mkdirSync(dd, { recursive: true });
+  const D = day(now); const f = path.join(dd, `${D}.json`);
+  if (fs.existsSync(f)) return null;
+  const minutes = new Date(now).getUTCHours() * 60 + new Date(now).getUTCMinutes();
+  if (minutes >= FREEZE_DEADLINE_MIN) { fs.writeFileSync(f, JSON.stringify({ date: D, missing: true, reason: 'no cycle read that day\'s daily.json before 02:07 UTC' })); return 'missing'; }
+  if (!dailyGeneratedAt || dailyGeneratedAt.slice(0, 10) !== D) return null;   // wait for the 00:10 daily run
+  fs.writeFileSync(f, JSON.stringify({ date: D, missing: false, frozenAt: new Date(now).toISOString(), snapshot: snap }));
+  return 'frozen';
+}
+
+module.exports = { Vintage, State, archiveSnapshot, freezeDaily, day, FREEZE_DEADLINE_MIN };

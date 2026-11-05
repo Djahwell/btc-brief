@@ -6,5 +6,6 @@
   "liqUnit": "maisontoe-liq",
   "diskFloorGB": 5,
   "diskFloorPct": 20,
-  "cycleDeadlineSec": 140
+  "cycleDeadlineSec": 140,
+  "historyBaseUrl": "https://raw.githubusercontent.com/Djahwell/btc-brief/v2-data/v2/history"
 }

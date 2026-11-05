@@ -2,8 +2,8 @@
 // Deterministic synthetic history (seeded) for golden and fail-closed tests. No network, no files.
 function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
 const DAY = 86400;
-function synthHistory(days = 1700, seed = 7) {
-  const r = rng(seed); const start = Date.parse('2017-01-01T00:00:00Z') / 1000;
+function synthHistory(days = 1700, seed = 7, startIso = '2017-01-01') {
+  const r = rng(seed); const start = Date.parse(startIso + 'T00:00:00Z') / 1000;
   const cb = [], bs = [], prem = [], legs = [], fng = [], mvrv = [], st = [];
   let p = 1000, m = 1.5, s = 1e9;
   for (let i = 0; i < days; i++) {

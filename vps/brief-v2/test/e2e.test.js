@@ -14,7 +14,7 @@ test('dry cycle writes only under dry/, builds a complete snapshot, pushes nothi
   assert.equal(st.push.skipped, 'dry-run');
   const day = fs.readdirSync(path.join(tmp, 'dry', 'snapshots')).find(f => f.endsWith('.jsonl'));
   const snap = JSON.parse(fs.readFileSync(path.join(tmp, 'dry', 'snapshots', day), 'utf8').trim().split('\n').pop()).snapshot;
-  assert.equal(snap.schema, 'brief-v2/1'); assert.ok(snap.seq >= Math.floor(Date.now() / 1000) - 300, 'seq is time-based');
+  assert.equal(snap.schema, 'brief-v2/2'); assert.ok(snap.seq >= Math.floor(Date.now() / 1000) - 300, 'seq is time-based');
   for (const [k, v] of Object.entries(snap.inputs)) for (const f of ['value', 'unit', 'window', 'asOf', 'fetchedAt', 'source', 'scope', 'quality', 'staleAfterSec']) assert.ok(f in v, `${k}.${f}`);
   assert.equal(snap.inputs.perp_premium_binance_8h.quality, 'OK');
   assert.equal(snap.inputs.oi_btc_total.quality, 'OK');

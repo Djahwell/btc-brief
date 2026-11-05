@@ -1,9 +1,13 @@
 {
   "name": "brief-v2-vps",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "commonjs",
   "description": "BTC Brief V2 VPS data cycle. Zero dependencies (Node built-ins only).",
-  "engines": { "node": ">=20" },
-  "scripts": { "test": "node --test test/units.test.js test/e2e.test.js" }
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test test/units.test.js test/e2e.test.js test/v11.test.js"
+  }
 }

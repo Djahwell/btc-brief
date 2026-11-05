@@ -1,14 +1,17 @@
 #!/usr/bin/env node
 'use strict';
 // BTC Brief V2 — VPS cycle (one short run, started by brief-v2-cycle.timer at :07/:22/:37/:52).
-// STAGE2-PLAN v1.1. Collects the live inputs, reads the GitHub daily inputs, builds a snapshot
-// (raw values only — no scores in Stage 2), archives it, and pushes it signed to the Worker.
+// STAGE2-PLAN v1.1 + STAGE3-PLAN v1.1. Collects the live inputs, reads the GitHub daily inputs and the
+// accepted history files, runs the shared engine (scores labelled CANDIDATE until Stage 4 passes),
+// archives the snapshot (plus the frozen daily snapshot), and pushes it signed to the Worker.
 //   node cycle.js            normal run
 //   node cycle.js --dry-run  writes only under ./dry/, pushes nothing (used by install.sh)
 const fs = require('fs');
 const path = require('path');
 const { Http } = require('./lib/http');
-const { Vintage, State, archiveSnapshot } = require('./lib/store');
+const { Vintage, State, archiveSnapshot, freezeDaily } = require('./lib/store');
+const { refreshHistory, loadHistory } = require('./lib/history');
+const { scoreSnapshot } = require('./lib/score');
 const { computeE3a } = require('./lib/premium');
 const { computeDerivs } = require('./lib/derivs');
 const { computeE5a } = require('./lib/cbpremium');
@@ -16,7 +19,7 @@ const { computeE4 } = require('./lib/liq');
 const { diskOk, clockSynced, dirBytes } = require('./lib/sys');
 const { pushSnapshot } = require('./lib/push');
 
-const CODE_VERSION = 'brief-v2-vps/1.0.0';
+const CODE_VERSION = 'brief-v2-vps/1.1.0';
 const ROOT = __dirname;
 const DRY = process.argv.includes('--dry-run');
 const BASE = DRY ? path.join(ROOT, 'dry') : ROOT;
@@ -75,11 +78,25 @@ async function main() {
     inputs.coinbase_premium_adj.repro_check = { days: common.length, max_diff_bp: maxBp, alarm_bp: 0.2, status: maxBp == null ? 'MISSING' : maxBp <= 0.2 ? 'OK' : 'ALARM' };
     if (maxBp != null && maxBp > 0.2) errors.push(`E5a reproducibility ALARM: VPS vs GitHub daily medians differ by ${maxBp.toFixed(3)} bp`);
   }
+  // History files (once per UTC day, acceptance-checked) and the engine. Any failure withholds the
+  // scores block; it never stops the inputs snapshot.
+  let hist = { status: 'not run' }, engine = null;
+  try {
+    hist = await refreshHistory({ dir: path.join(BASE, 'history'), baseUrl: cfg.historyBaseUrl, state: state.data, now, deadline: t0 + (cfg.cycleDeadlineSec ?? 140) * 1000 - 20000 });
+    if (hist.issues?.length) errors.push(`history ${hist.status}: ${hist.issues.join('; ')}`);
+  } catch (e) { errors.push(`history: ${e.message}`); }
+  try {
+    const history = loadHistory(path.join(BASE, 'history'));
+    engine = scoreSnapshot({ inputs, history, daily, nowMs: now });
+    engine.historyPull = { status: hist.status, issues: hist.issues || [] };
+    if (engine.joinIssues?.length) errors.push(`join: ${engine.joinIssues.length} overlap issue(s), first: ${engine.joinIssues[0].series} ${engine.joinIssues[0].issue}`);
+  } catch (e) { errors.push(`engine: ${e.message}`); engine = { status: 'ERROR', withheld: true, reason: `engine error: ${e.message}`.slice(0, 200), families: null, scores: null }; }
+
   // seq: time-based floor so a lost/corrupt state.json can never lock pushes out (Worker needs increasing seq)
   state.data.seq = Math.max((state.data.seq || 0) + 1, Math.floor(Date.now() / 1000));
   const snap = {
-    schema: 'brief-v2/1', codeVersion: CODE_VERSION, seq: state.data.seq, generatedAt: new Date().toISOString(), host: 'vps',
-    inputs, daily: { url: cfg.dailyUrl, generatedAt: daily?.generatedAt ?? null, inputs: dailyInputs, errors: daily?.errors ?? null },
+    schema: 'brief-v2/2', codeVersion: CODE_VERSION, seq: state.data.seq, generatedAt: new Date().toISOString(), host: 'vps',
+    inputs, engine, daily: { url: cfg.dailyUrl, generatedAt: daily?.generatedAt ?? null, inputs: dailyInputs, errors: daily?.errors ?? null },
     runs: {
       durationMs: Date.now() - t0, deadlineHit: http.deadlineHit, httpCalls: http.calls, binanceMaxUsedWeight1m: http.maxWeightSeen, binanceBudgetStopped: http.binanceStopped,
       clock, disk: { freeGB: +(disk.freeBytes / 1e9).toFixed(1), freePct: +disk.freePct.toFixed(1), storeMB: +(dirBytes(BASE) / 1e6).toFixed(1) }, gzippedFiles: gzipped,
@@ -101,12 +118,16 @@ async function main() {
       } catch (e) { push = { ok: false, error: e.message }; }
     }
   }
+  const frozen = freezeDaily(path.join(BASE, 'snapshots'), snap, { dailyGeneratedAt: daily?.generatedAt ?? null }, now);
+  if (frozen) console.log(`[cycle] frozen daily snapshot: ${frozen}`);
   archiveSnapshot(path.join(BASE, 'snapshots'), snap, { pushed: !!push.ok, receivedAt: push.body?.receivedAt ?? null, pushStatus: push.status ?? push.skipped ?? push.error ?? null });
   state.save();
   fs.writeFileSync(path.join(BASE, 'status.json'), JSON.stringify({ lastRun: snap.generatedAt, seq: snap.seq, push, runs: snap.runs, quality: Object.fromEntries(Object.entries(inputs).map(([k, v]) => [k, v.quality])) }, null, 1));
 
   // One readable summary line per input (journalctl -u brief-v2-cycle)
   for (const [k, v] of Object.entries(inputs)) console.log(`[cycle] ${k}: ${typeof v.value === 'object' && v.value ? JSON.stringify(v.value) : v.value} ${v.unit || ''} [${v.quality}]`);
+  if (engine?.scores) { const e = engine.scores[engine.primary?.entry], t = engine.scores[engine.primary?.tendency]; console.log(`[cycle] engine (${engine.status}): entry ${e?.withheld ? 'withheld' : e?.score + ' ' + e?.band} | tendency ${t?.withheld ? 'withheld' : t?.score + ' ' + t?.band} | history ${hist.status}`); }
+  else console.log(`[cycle] engine: withheld — ${engine?.reason || 'unknown'} | history ${hist.status}`);
   console.log(`[cycle] daily inputs: ${Object.keys(dailyInputs).join(', ') || 'none'} | push: ${push.ok ? 'OK seq ' + snap.seq : JSON.stringify(push)} | binance weight max ${http.maxWeightSeen} | ${Date.now() - t0} ms | errors ${snap.runs.errors.length}`);
   if (snap.runs.errors.length) for (const e of snap.runs.errors) console.log(`[cycle]   ! ${e}`);
 }
