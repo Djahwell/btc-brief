@@ -1,0 +1,9 @@
+{
+ "files": {
+  "stage4/mt.js": "8b3ac1dadbe24fe6cf1c904eecdfc23c8af0c6334fbf47a564a1927f7986cf50",
+  "stage4/mt-run.js": "9baa3ec4848a73ff01c1ec1dbf42b3c329e786af3be15f388916a6981dc3fe37"
+ },
+ "trades": "ca22c81b959142df906d0bc2facaf38f29ddad05b30a7c3b0e1da7f61317520a",
+ "tradesSource": "Mac: CryptoBrain/maisontoe/v4/engine/runs/c0-v1.1.cmp.json (V4 Stage 3 compare output; twin_R used)",
+ "frozenAt": "2026-11-05T16:01:16.677Z"
+}

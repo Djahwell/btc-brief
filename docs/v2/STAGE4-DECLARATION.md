@@ -370,3 +370,20 @@ Withheld shares (reported, not acted on):
 - **Robustness window:** the robustness card is withheld on 0.1% of days.
 
 No share relevant to a pass criterion exceeds 10%.
+
+## M. Maison Toé relevance report: code and inputs frozen before the join (Djahwell's yes, 2026-11-05 16:58 Paris)
+
+- **Trades:** the V4 Stage 3 compare output `c0-v1.1.cmp.json` (Mac, `CryptoBrain/maisontoe/v4/engine/runs/`), sha256 `ca22c81b…7520a`. The file stays on the Mac and in the private workspace; it is not committed to the public repo.
+  - Each twin trade with a finite `twin_R` is used: 128 box and 433 trend rows over the whole file, restricted to signal days 2021-06-01 → 2026-10-29.
+  - `sig` is read as UTC, which matches the replay's own millisecond timestamps.
+- **Point-in-time at the signal time t:**
+  - daily families use bars closed before t, with the §A lags relative to t's date;
+  - E3a uses the 8 completed hourly premium closes ending at floor_hour(t);
+  - E5a uses the 24 completed hours ending at floor_hour(t).
+- **Report:** separately for box and for trend.
+  - Scores: the primary entry score, E1-alone, and the primary tendency score.
+  - Three bands (≤ −3, −2…+2, ≥ +3), each with count, mean R, win rate (R > 0), and a 95% interval for mean R from a bootstrap clustered by trade day (10,000 resamples, seed 20261105).
+  - Spearman correlation of score with R, with the same clustered interval.
+  - Withheld trades are counted.
+- **Status:** descriptive, run once. Whatever the result, nothing changes in the score or in the bot from this report. A bot filter would be a separate V4 candidate.
+- **Frozen files:** `stage4/mt.js` `8b3ac1da…`, `stage4/mt-run.js` `9baa3ec4…`, recorded in `stage4/frozen-mt.json` (`ee0aad10…`). The runner refuses any other trades file, history set, code or declaration.
