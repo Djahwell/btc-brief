@@ -3,6 +3,9 @@
 // STAGE2-PLAN v1.1 §7. Free sources only. Writes OUT/history/*.json.gz + manifest.json
 // (sha256, rows, first/last, gaps). Gaps are recorded, never interpolated.
 import { inflateRawSync } from 'zlib';
+import { readFileSync, existsSync } from 'fs';
+import { fetchBMPLTHData } from './lth.mjs';
+import { buildLTHRows } from './lthalign.mjs';
 import { getJSON, getBuffer, writeGz, writeJSON, isoDay, coinbaseCandles, bitstampDaily, sleep, CODE_VERSION } from './lib.mjs';
 
 const OUT = process.env.OUT || 'out/v2';
@@ -11,6 +14,9 @@ const DAY = 86400, HOUR = 3600;
 const now = Date.now();
 const endDay = Math.floor(now / 1000 / DAY) * DAY;
 const endHour = Math.floor(now / 1000 / HOUR) * HOUR;
+let bitstampRows = null;
+let prevManifest = null;
+try { prevManifest = JSON.parse(readFileSync(`${H}/manifest.json`, 'utf8')); } catch (_) { /* first build */ }
 const manifest = { schema: 'brief-v2-history/1', codeVersion: CODE_VERSION, generatedAt: new Date(now).toISOString(), files: {}, errors: [] };
 
 function gapsOf(ts, step) {
@@ -72,6 +78,7 @@ await step('coinbase_daily', async () => {
 });
 await step('bitstamp_daily', async () => {
   const rows = await bitstampDaily(Date.UTC(2014, 0, 1) / 1000, endDay);
+  bitstampRows = rows;
   save('bitstamp_daily', { source: 'Bitstamp BTC-USD daily', unit: 'USD; v BTC' }, rows, r => r.t, DAY);
 });
 
@@ -129,6 +136,22 @@ await step('stablecoins_usdt_usdc', async () => {
   for (const [arr, k] of [[a, 'usdt'], [b, 'usdc']]) for (const x of arr) { const t = Number(x.date); const v = x.totalCirculatingUSD?.peggedUSD; if (v != null) m.set(t, { ...(m.get(t) || { t }), [k]: v }); }
   const rows = [...m.values()].sort((x, y) => x.t - y.t);
   save('stablecoins_usdt_usdc', { source: 'DefiLlama', unit: 'USD' }, rows, r => r.t, DAY);
+});
+
+// A scraped source must not block the audited files: on failure the previous bmp_lth file is kept
+// (the worktree is not cleaned) and the failure is listed under manifest.warnings.
+async function softStep(name, fn) { try { await fn(); } catch (e) { const prev = prevManifest?.files?.[name] && existsSync(`${H}/${name}.json.gz`) ? prevManifest.files[name] : null;
+  if (prev) manifest.files[name] = { ...prev, keptFrom: prevManifest.generatedAt };
+  (manifest.warnings ||= []).push({ file: name, error: String(e?.message || e).slice(0, 200), keptPrevious: !!prev }); console.warn(`[v2-history] ${name} FAILED (kept previous): ${e?.message || e}`); } }
+
+// BMP LTH supply, full trace (T2). Dated by monotonic alignment of BMP's BTC price line to Bitstamp
+// closes (lthalign.mjs). Fail closed: median price error > 0.5% or last date > 3 days old → no file.
+await softStep('bmp_lth', async () => {
+  if (!bitstampRows) throw new Error('needs bitstamp_daily');
+  const raw = await fetchBMPLTHData({ full: true });
+  const closes = bitstampRows.map(r => ({ d: isoDay(r.t * 1000), c: r.c }));
+  const { rows, medianAlignErrPct: med } = buildLTHRows(raw, closes, endDay);
+  save('bmp_lth', { source: 'Bitcoin Magazine Pro LTH supply (full chart trace; dated by price alignment to Bitstamp closes)', unit: 'BTC', medianAlignErrPct: med, revisionNote: 'values as published at build time; earlier vintages may differ' }, rows, r => r.t, DAY);
 });
 
 writeJSON(`${H}/manifest.json`, manifest);

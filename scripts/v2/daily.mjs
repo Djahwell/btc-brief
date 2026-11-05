@@ -5,6 +5,7 @@
 // each input has its own asOf. Missing = null, never 0. Nothing here scores anything.
 import { getJSON, writeJSON, writeGz, input, isoDay, coinbaseCandles, bitstampDaily, CODE_VERSION } from './lib.mjs';
 import { fetchBMPLTHData } from './lth.mjs';
+import { buildLTHRows, lthNet30 } from './lthalign.mjs';
 import { readFileSync } from 'fs';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
@@ -98,11 +99,16 @@ try {
   result.series.stablecoin_supply = { rows };
 } catch (e) { fail('stablecoin_supply', e); }
 
-// 5. LTH supply — T2 (BMP, A1 method)
+// 5. LTH supply — T2. Full BMP trace dated by price alignment to Bitstamp closes; the SAME code as
+//    the history file (lthalign.mjs buildLTHRows), so live and backtest share one definition.
 try {
-  const lth = await fetchBMPLTHData(); vint('bmp_lth', lth);
-  if (!lth) throw new Error('BMP extraction failed or price alignment rejected');
-  result.inputs.lth_net_30d = input({ value: lth.lth_net_30d_avg, unit: 'BTC/day', window: '30d average', asOf: lth.date, source: 'Bitcoin Magazine Pro LTH supply (scraped; dated by price alignment)', scope: 'network-wide, single provider', quality: lth.date ? 'OK' : 'STALE', staleAfterSec: 3 * DAY, extra: { lth_net_7d_avg: lth.lth_net_7d_avg, lth_supply_btc: lth.lth_supply_btc, daily_noise_sd: lth.lth_daily_noise_sd, align_err_pct: lth.align_err_pct } });
+  const raw = await fetchBMPLTHData({ full: true }); vint('bmp_lth_full', raw);
+  if (!bs.length) throw new Error('needs Bitstamp daily closes for dating');
+  const closes = bs.map(r => ({ d: isoDay(r.t * 1000), c: r.c }));
+  const { rows, medianAlignErrPct, last } = buildLTHRows(raw, closes, endSec);
+  const net = lthNet30(rows); const cur = net[net.length - 1];
+  result.series.lth_supply = { rows: rows.map(r => ({ d: isoDay(r.t * 1000), v: r.v })) };
+  result.inputs.lth_net_30d = input({ value: cur ? Math.round(cur.v) : null, unit: 'BTC/day', window: '30-day calendar change ÷ days', asOf: cur ? isoDay(cur.t * 1000) : null, source: 'Bitcoin Magazine Pro LTH supply (full trace; dated by price alignment to Bitstamp)', scope: 'network-wide, single provider', quality: cur && cur.t * 1000 >= Date.parse(last + 'T00:00:00Z') ? 'OK' : 'STALE', staleAfterSec: 3 * DAY, extra: { lth_supply_btc: rows[rows.length - 1].v, align_err_pct: medianAlignErrPct } });
 } catch (e) { fail('lth_net_30d', e); }
 
 // 6. E5a reproducibility copy (§8.8): same products, same completed hours, same code as the VPS.

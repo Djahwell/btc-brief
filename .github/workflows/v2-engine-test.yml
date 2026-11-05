@@ -1,0 +1,23 @@
+name: V2 engine tests
+# Unit, fail-closed, parity and golden-file tests for the shared scoring engine (Stage 3 §2).
+on:
+  push:
+    paths: ['engine-v2/**', 'scripts/v2/**', 'vps/brief-v2/lib/**', 'scripts/amt.js', '.github/workflows/v2-engine-test.yml']
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: History files (v2-data branch)
+        run: |
+          git fetch --depth 1 origin v2-data
+          mkdir -p _data && git archive FETCH_HEAD v2/history | tar -x -C _data
+      - name: Engine tests
+        env: { V2_HISTORY_DIR: '${{ github.workspace }}/_data/v2/history' }
+        run: cd engine-v2 && node --test test/*.test.js
+      - name: V2 script tests
+        run: node --test scripts/v2/test/*.test.mjs

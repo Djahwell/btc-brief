@@ -1,0 +1,790 @@
+{
+ "inputs": {
+  "bgeometrics_realized": "0b448e2a581d848fc41d2fd12d3bf5229a7c9500e760cc5373ffbda7b7d89454",
+  "binance_funding": "6d0f4b9a73d8894262e78c1f491786a89ad813788216d7e172732923f6dc3686",
+  "binance_premium_index_1h": "3c63d57e4bcb5714c3c317e47a2cfd1bc50a57a514e2b510db87f6330d43c8d0",
+  "bitstamp_daily": "12eec185602b30ffc1707bb23711032871114245d5eb78c1d290e10940ef9fd4",
+  "coinbase_daily": "02cd9f62481d91fcb9072fff5fc04b037741516347c18063795f582c996165a4",
+  "coinbase_premium_legs_1h": "8659de4519f930bd697e51b2e27e3ff423b9f27ef547e8a1a24902fda9b224e9",
+  "coinmetrics_mvrv": "cc89c193a1708715316e30503a656bca3ccd717c3f9d58d726a72a43cbaee892",
+  "fear_greed": "d6cadb301415e581eda17153f66729e67f4be6c0ca44bc9f77fafcaaaec0f31c",
+  "stablecoins_usdt_usdc": "5b4af2368eef09f951a819bb88aacfe701c0eb57360600964544a0f691828e74"
+ },
+ "results": [
+  {
+   "date": "2021-11-10",
+   "families": {
+    "E1": {
+     "score": 2,
+     "parts": {
+      "dist20": {
+       "score": 2.2490530303030276,
+       "pct": 80.39772727272727,
+       "raw": 1.6995664020886896
+      },
+      "dist50": {
+       "score": 4.794034090909094,
+       "pct": 86.50568181818183,
+       "raw": 3.903936621226844
+      },
+      "slope20": {
+       "score": 0,
+       "pct": 50.78125,
+       "raw": 0.09780933409857663
+      }
+     }
+    },
+    "E2": {
+     "score": 6,
+     "state": "IMBALANCE_UP",
+     "poc": 61313,
+     "vah": 64711,
+     "val": 58833,
+     "price": 66944.66
+    },
+    "E3a": {
+     "score": -3,
+     "pct": 81.44499178981938,
+     "raw": 0.0009476075,
+     "trigger": null
+    },
+    "E5a": {
+     "score": 5,
+     "raw": 1.4786829167153748
+    },
+    "E7": {
+     "score": -5,
+     "raw": 84,
+     "asOf": "2021-11-09"
+    },
+    "E6": {
+     "score": null,
+     "pct": 35.01420454545455,
+     "raw": 0.5942330125736196,
+     "topDecile": false,
+     "reason": "regime only (not a vote)"
+    },
+    "T1": {
+     "score": -7,
+     "pct": 91.18692253020612,
+     "raw": 2.854649564891,
+     "asOf": "2021-11-08"
+    },
+    "T2+": {
+     "score": null,
+     "reason": "lth stale"
+    },
+    "T2-": {
+     "score": null,
+     "reason": "lth stale"
+    },
+    "T3": {
+     "score": 3,
+     "parts": {
+      "dist200": {
+       "score": 6.36245265151515,
+       "pct": 90.26988636363636,
+       "raw": 7.491787759216992
+      },
+      "slope200": {
+       "score": 0,
+       "pct": 42.89772727272727,
+       "raw": 0.1375698533307293
+      }
+     }
+    },
+    "T4": {
+     "score": 0,
+     "pct": 35.81395348837209,
+     "raw": -0.08112715155025096,
+     "asOf": "2021-11-08"
+    }
+   },
+   "scores": {
+    "V-E1/E6a": {
+     "score": 1,
+     "band": "Neutral",
+     "active": 5,
+     "of": 5,
+     "withheld": false
+    },
+    "V-E1/E6b": {
+     "score": 1,
+     "band": "Neutral",
+     "active": 5,
+     "of": 5,
+     "withheld": false
+    },
+    "V-E2/E6a": {
+     "score": 1,
+     "band": "Neutral",
+     "active": 5,
+     "of": 5,
+     "withheld": false
+    },
+    "V-E2/E6b": {
+     "score": 1,
+     "band": "Neutral",
+     "active": 5,
+     "of": 5,
+     "withheld": false
+    },
+    "V-T1/T2+": {
+     "score": -1,
+     "band": "Neutral",
+     "active": 3,
+     "of": 4,
+     "withheld": false
+    },
+    "V-T1/T2-": {
+     "score": -1,
+     "band": "Neutral",
+     "active": 3,
+     "of": 4,
+     "withheld": false
+    },
+    "T-noT2 (sensitivity)": {
+     "score": -1,
+     "band": "Neutral",
+     "active": 3,
+     "of": 3,
+     "withheld": false
+    },
+    "E1-alone (baseline)": {
+     "score": 2,
+     "band": "Neutral",
+     "active": 1,
+     "of": 1,
+     "withheld": false
+    }
+   },
+   "primary": {
+    "entry": "V-E1/E6a",
+    "tendency": "V-T1/T2+"
+   },
+   "warnings": {
+    "e6TopDecile": false
+   }
+  },
+  {
+   "date": "2022-06-20",
+   "families": {
+    "E1": {
+     "score": -9,
+     "parts": {
+      "dist20": {
+       "score": -9.368609406952965,
+       "pct": 2.5153374233128836,
+       "raw": -3.0011978939252373
+      },
+      "dist50": {
+       "score": -8.934049079754601,
+       "pct": 3.5582822085889574,
+       "raw": -4.4153545223236055
+      },
+      "slope20": {
+       "score": -8.576175869120656,
+       "pct": 4.41717791411043,
+       "raw": -1.0854805108642462
+      }
+     }
+    },
+    "E2": {
+     "score": -7,
+     "state": "IMBALANCE_DOWN",
+     "poc": 29884,
+     "vah": 32384,
+     "val": 22012,
+     "price": 20552.44
+    },
+    "E3a": {
+     "score": 0,
+     "pct": 15.260545905707195,
+     "raw": -0.00048743874999999996,
+     "trigger": false
+    },
+    "E5a": {
+     "score": 1,
+     "raw": 0.39101708940972196
+    },
+    "E7": {
+     "score": 10,
+     "raw": 6,
+     "asOf": "2022-06-19"
+    },
+    "E6": {
+     "score": null,
+     "pct": 82.57668711656441,
+     "raw": 0.9482189823937237,
+     "topDecile": false,
+     "reason": "regime only (not a vote)"
+    },
+    "T1": {
+     "score": 9,
+     "pct": 4.23572744014733,
+     "raw": 0.839761069586,
+     "asOf": "2022-06-18"
+    },
+    "T2+": {
+     "score": null,
+     "reason": "lth stale"
+    },
+    "T2-": {
+     "score": null,
+     "reason": "lth stale"
+    },
+    "T3": {
+     "score": -7,
+     "parts": {
+      "dist200": {
+       "score": -7.758179959100205,
+       "pct": 6.38036809815951,
+       "raw": -9.169366579702965
+      },
+      "slope200": {
+       "score": -6.428936605316974,
+       "pct": 9.570552147239264,
+       "raw": -1.551468617987997
+      }
+     }
+    },
+    "T4": {
+     "score": 0,
+     "pct": 38.319198149575946,
+     "raw": -0.06361817044617812,
+     "asOf": "2022-06-18"
+    }
+   },
+   "scores": {
+    "V-E1/E6a": {
+     "score": -1,
+     "band": "Neutral",
+     "active": 5,
+     "of": 5,
+     "withheld": false
+    },
+    "V-E1/E6b": {
+     "score": -1,
+     "band": "Neutral",
+     "active": 5,
+     "of": 5,
+     "withheld": false
+    },
+    "V-E2/E6a": {
+     "score": -1,
+     "band": "Neutral",
+     "active": 5,
+     "of": 5,
+     "withheld": false
+    },
+    "V-E2/E6b": {
+     "score": -1,
+     "band": "Neutral",
+     "active": 5,
+     "of": 5,
+     "withheld": false
+    },
+    "V-T1/T2+": {
+     "score": 1,
+     "band": "Neutral",
+     "active": 3,
+     "of": 4,
+     "withheld": false
+    },
+    "V-T1/T2-": {
+     "score": 1,
+     "band": "Neutral",
+     "active": 3,
+     "of": 4,
+     "withheld": false
+    },
+    "T-noT2 (sensitivity)": {
+     "score": 1,
+     "band": "Neutral",
+     "active": 3,
+     "of": 3,
+     "withheld": false
+    },
+    "E1-alone (baseline)": {
+     "score": -9,
+     "band": "Strong bear",
+     "active": 1,
+     "of": 1,
+     "withheld": false
+    }
+   },
+   "primary": {
+    "entry": "V-E1/E6a",
+    "tendency": "V-T1/T2+"
+   },
+   "warnings": {
+    "e6TopDecile": false
+   }
+  },
+  {
+   "date": "2022-11-25",
+   "families": {
+    "E1": {
+     "score": -5,
+     "parts": {
+      "dist20": {
+       "score": 0,
+       "pct": 25.615212527964204,
+       "raw": -0.9470165841782118
+      },
+      "dist50": {
+       "score": -4.6373974645786715,
+       "pct": 13.870246085011187,
+       "raw": -2.827934922232549
+      },
+      "slope20": {
+       "score": -9.717561521252797,
+       "pct": 1.6778523489932886,
+       "raw": -1.3592557206646316
+      }
+     }
+    },
+    "E2": {
+     "score": 0,
+     "state": "BALANCE",
+     "poc": 16626,
+     "vah": 20125,
+     "val": 15460,
+     "price": 16587.61
+    },
+    "E3a": {
+     "score": 1,
+     "pct": 22.916666666666664,
+     "raw": -0.00046738249999999997,
+     "trigger": true
+    },
+    "E5a": {
+     "score": 2,
+     "raw": 0.6102415936289928
+    },
+    "E7": {
+     "score": 3,
+     "raw": 20,
+     "asOf": "2022-11-24"
+    },
+    "E6": {
+     "score": null,
+     "pct": 73.99328859060402,
+     "raw": 0.8272683063901872,
+     "topDecile": false,
+     "reason": "regime only (not a vote)"
+    },
+    "T1": {
+     "score": 9,
+     "pct": 3.6373810856183546,
+     "raw": 0.817451445016,
+     "asOf": "2022-11-23"
+    },
+    "T2+": {
+     "score": null,
+     "reason": "lth stale"
+    },
+    "T2-": {
+     "score": null,
+     "reason": "lth stale"
+    },
+    "T3": {
+     "score": -5,
+     "parts": {
+      "dist200": {
+       "score": -2.0973154362416104,
+       "pct": 19.966442953020135,
+       "raw": -7.030625548825653
+      },
+      "slope200": {
+       "score": -8.622296793437734,
+       "pct": 4.306487695749441,
+       "raw": -2.7445626618517025
+      }
+     }
+    },
+    "T4": {
+     "score": 0,
+     "pct": 58.62542955326461,
+     "raw": -0.014490575817267648,
+     "asOf": "2022-11-23"
+    }
+   },
+   "scores": {
+    "V-E1/E6a": {
+     "score": 0,
+     "band": "Neutral",
+     "active": 5,
+     "of": 5,
+     "withheld": false
+    },
+    "V-E1/E6b": {
+     "score": 0,
+     "band": "Neutral",
+     "active": 5,
+     "of": 5,
+     "withheld": false
+    },
+    "V-E2/E6a": {
+     "score": 0,
+     "band": "Neutral",
+     "active": 5,
+     "of": 5,
+     "withheld": false
+    },
+    "V-E2/E6b": {
+     "score": 0,
+     "band": "Neutral",
+     "active": 5,
+     "of": 5,
+     "withheld": false
+    },
+    "V-T1/T2+": {
+     "score": 1,
+     "band": "Neutral",
+     "active": 3,
+     "of": 4,
+     "withheld": false
+    },
+    "V-T1/T2-": {
+     "score": 1,
+     "band": "Neutral",
+     "active": 3,
+     "of": 4,
+     "withheld": false
+    },
+    "T-noT2 (sensitivity)": {
+     "score": 1,
+     "band": "Neutral",
+     "active": 3,
+     "of": 3,
+     "withheld": false
+    },
+    "E1-alone (baseline)": {
+     "score": -5,
+     "band": "Bear",
+     "active": 1,
+     "of": 1,
+     "withheld": false
+    }
+   },
+   "primary": {
+    "entry": "V-E1/E6a",
+    "tendency": "V-T1/T2+"
+   },
+   "warnings": {
+    "e6TopDecile": false
+   }
+  },
+  {
+   "date": "2024-03-14",
+   "families": {
+    "E1": {
+     "score": 9,
+     "parts": {
+      "dist20": {
+       "score": 7.98626454558845,
+       "pct": 94.16703490941228,
+       "raw": 3.1720740503090177
+      },
+      "dist50": {
+       "score": 9.91953896008249,
+       "pct": 98.80689350419797,
+       "raw": 6.410214323132195
+      },
+      "slope20": {
+       "score": 9.496059802621884,
+       "pct": 97.79054352629252,
+       "raw": 1.520732711272517
+      }
+     }
+    },
+    "E2": {
+     "score": 7,
+     "state": "IMBALANCE_UP",
+     "poc": 51659,
+     "vah": 66730,
+     "val": 48328,
+     "price": 73135.04
+    },
+    "E3a": {
+     "score": -4,
+     "pct": 85.47368421052632,
+     "raw": 0.0007563912499999999,
+     "trigger": null
+    },
+    "E5a": {
+     "score": 2,
+     "raw": 0.7371557951039786
+    },
+    "E7": {
+     "score": -3,
+     "raw": 81,
+     "asOf": "2024-03-13"
+    },
+    "E6": {
+     "score": null,
+     "pct": 46.88466637207247,
+     "raw": 0.5902292958671985,
+     "topDecile": false,
+     "reason": "regime only (not a vote)"
+    },
+    "T1": {
+     "score": -7,
+     "pct": 92.9708222811671,
+     "raw": 2.732831670246,
+     "asOf": "2024-03-12"
+    },
+    "T2+": {
+     "score": null,
+     "reason": "lth stale"
+    },
+    "T2-": {
+     "score": null,
+     "reason": "lth stale"
+    },
+    "T3": {
+     "score": 8,
+     "parts": {
+      "dist200": {
+       "score": 10,
+       "pct": 99.02783915156871,
+       "raw": 10.756525360008421
+      },
+      "slope200": {
+       "score": 6.863124171453823,
+       "pct": 91.47149801148917,
+       "raw": 1.137124830345351
+      }
+     }
+    },
+    "T4": {
+     "score": 2,
+     "pct": 80.88082901554404,
+     "raw": 0.06500596640655099,
+     "asOf": "2024-03-12"
+    }
+   },
+   "scores": {
+    "V-E1/E6a": {
+     "score": 2,
+     "band": "Neutral",
+     "active": 5,
+     "of": 5,
+     "withheld": false
+    },
+    "V-E1/E6b": {
+     "score": 2,
+     "band": "Neutral",
+     "active": 5,
+     "of": 5,
+     "withheld": false
+    },
+    "V-E2/E6a": {
+     "score": 2,
+     "band": "Neutral",
+     "active": 5,
+     "of": 5,
+     "withheld": false
+    },
+    "V-E2/E6b": {
+     "score": 2,
+     "band": "Neutral",
+     "active": 5,
+     "of": 5,
+     "withheld": false
+    },
+    "V-T1/T2+": {
+     "score": 1,
+     "band": "Neutral",
+     "active": 3,
+     "of": 4,
+     "withheld": false
+    },
+    "V-T1/T2-": {
+     "score": 1,
+     "band": "Neutral",
+     "active": 3,
+     "of": 4,
+     "withheld": false
+    },
+    "T-noT2 (sensitivity)": {
+     "score": 1,
+     "band": "Neutral",
+     "active": 3,
+     "of": 3,
+     "withheld": false
+    },
+    "E1-alone (baseline)": {
+     "score": 9,
+     "band": "Strong bull",
+     "active": 1,
+     "of": 1,
+     "withheld": false
+    }
+   },
+   "primary": {
+    "entry": "V-E1/E6a",
+    "tendency": "V-T1/T2+"
+   },
+   "warnings": {
+    "e6TopDecile": false
+   }
+  },
+  {
+   "date": "2025-04-08",
+   "families": {
+    "E1": {
+     "score": -2,
+     "parts": {
+      "dist20": {
+       "score": -3.8674770699836656,
+       "pct": 15.718055032039203,
+       "raw": -1.3075231765258863
+      },
+      "dist50": {
+       "score": -2.014229174519412,
+       "pct": 20.16584998115341,
+       "raw": -1.9284609066356782
+      },
+      "slope20": {
+       "score": 0,
+       "pct": 40.067847719562764,
+       "raw": -0.1263029599009416
+      }
+     }
+    },
+    "E2": {
+     "score": -6,
+     "state": "IMBALANCE_DOWN",
+     "poc": 83680,
+     "vah": 86827,
+     "val": 80534,
+     "price": 79140.01
+    },
+    "E3a": {
+     "score": 0,
+     "pct": 15.949227373068434,
+     "raw": -0.0004978112500000001,
+     "trigger": false
+    },
+    "E5a": {
+     "score": -4,
+     "raw": -1.088519743835012
+    },
+    "E7": {
+     "score": 1,
+     "raw": 23,
+     "asOf": "2025-04-07"
+    },
+    "E6": {
+     "score": null,
+     "pct": 39.76630229928383,
+     "raw": 0.5425459443944259,
+     "topDecile": false,
+     "reason": "regime only (not a vote)"
+    },
+    "T1": {
+     "score": 0,
+     "pct": 57.35294117647059,
+     "raw": 1.7801240635878879,
+     "asOf": "2025-04-06"
+    },
+    "T2+": {
+     "score": null,
+     "reason": "lth stale"
+    },
+    "T2-": {
+     "score": null,
+     "reason": "lth stale"
+    },
+    "T3": {
+     "score": 0,
+     "parts": {
+      "dist200": {
+       "score": 0,
+       "pct": 33.35846211835658,
+       "raw": -2.0285675326849146
+      },
+      "slope200": {
+       "score": 0,
+       "pct": 63.51300414624953,
+       "raw": 0.6851622960540158
+      }
+     }
+    },
+    "T4": {
+     "score": 0,
+     "pct": 50.775862068965516,
+     "raw": -0.0007219805011122737,
+     "asOf": "2025-04-06"
+    }
+   },
+   "scores": {
+    "V-E1/E6a": {
+     "score": -2,
+     "band": "Neutral",
+     "active": 5,
+     "of": 5,
+     "withheld": false
+    },
+    "V-E1/E6b": {
+     "score": -2,
+     "band": "Neutral",
+     "active": 5,
+     "of": 5,
+     "withheld": false
+    },
+    "V-E2/E6a": {
+     "score": -2,
+     "band": "Neutral",
+     "active": 5,
+     "of": 5,
+     "withheld": false
+    },
+    "V-E2/E6b": {
+     "score": -2,
+     "band": "Neutral",
+     "active": 5,
+     "of": 5,
+     "withheld": false
+    },
+    "V-T1/T2+": {
+     "score": 0,
+     "band": "Neutral",
+     "active": 3,
+     "of": 4,
+     "withheld": false
+    },
+    "V-T1/T2-": {
+     "score": 0,
+     "band": "Neutral",
+     "active": 3,
+     "of": 4,
+     "withheld": false
+    },
+    "T-noT2 (sensitivity)": {
+     "score": 0,
+     "band": "Neutral",
+     "active": 3,
+     "of": 3,
+     "withheld": false
+    },
+    "E1-alone (baseline)": {
+     "score": -2,
+     "band": "Neutral",
+     "active": 1,
+     "of": 1,
+     "withheld": false
+    }
+   },
+   "primary": {
+    "entry": "V-E1/E6a",
+    "tendency": "V-T1/T2+"
+   },
+   "warnings": {
+    "e6TopDecile": false
+   }
+  }
+ ]
+}

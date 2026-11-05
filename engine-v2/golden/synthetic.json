@@ -1,0 +1,768 @@
+[
+ {
+  "date": "2018-03-01",
+  "families": {
+   "E1": {
+    "score": -9,
+    "parts": {
+     "dist20": {
+      "score": -10,
+      "pct": 0.49504950495049505,
+      "raw": -2.623575549857318
+     },
+     "dist50": {
+      "score": -7.185828877005348,
+      "pct": 7.754010695187167,
+      "raw": -2.6929642948855594
+     },
+     "slope20": {
+      "score": -9.059106098579784,
+      "pct": 3.258145363408521,
+      "raw": -1.0671226487616148
+     }
+    }
+   },
+   "E2": {
+    "score": -7,
+    "state": "IMBALANCE_DOWN",
+    "poc": 1217,
+    "vah": 1249,
+    "val": 1112,
+    "price": 1021.6733290475759
+   },
+   "E3a": {
+    "score": 0,
+    "pct": 61.46572104018912,
+    "raw": 0.000025125290965661417,
+    "trigger": null
+   },
+   "E5a": {
+    "score": 3,
+    "raw": 0.7692926753834108
+   },
+   "E7": {
+    "score": -2,
+    "raw": 78,
+    "asOf": "2018-02-28"
+   },
+   "E6": {
+    "score": null,
+    "pct": 0,
+    "raw": 0.3939972688539892,
+    "topDecile": false,
+    "reason": "regime only (not a vote)"
+   },
+   "T1": {
+    "score": 0,
+    "pct": 53.317535545023695,
+    "raw": 1.567076933306832,
+    "asOf": "2018-02-27"
+   },
+   "T2+": {
+    "score": null,
+    "reason": "lth stale"
+   },
+   "T2-": {
+    "score": null,
+    "reason": "lth stale"
+   },
+   "T3": {
+    "score": null,
+    "reason": "warm-up (224/365 reference days)"
+   },
+   "T4": {
+    "score": null,
+    "reason": "warm-up (57/365 reference days)"
+   }
+  },
+  "scores": {
+   "V-E1/E6a": {
+    "score": -3,
+    "band": "Bear",
+    "active": 5,
+    "of": 5,
+    "withheld": false
+   },
+   "V-E1/E6b": {
+    "score": -3,
+    "band": "Bear",
+    "active": 5,
+    "of": 5,
+    "withheld": false
+   },
+   "V-E2/E6a": {
+    "score": -3,
+    "band": "Bear",
+    "active": 5,
+    "of": 5,
+    "withheld": false
+   },
+   "V-E2/E6b": {
+    "score": -3,
+    "band": "Bear",
+    "active": 5,
+    "of": 5,
+    "withheld": false
+   },
+   "V-T1/T2+": {
+    "score": null,
+    "band": null,
+    "active": 1,
+    "of": 4,
+    "withheld": true,
+    "reason": "quorum 1/4"
+   },
+   "V-T1/T2-": {
+    "score": null,
+    "band": null,
+    "active": 1,
+    "of": 4,
+    "withheld": true,
+    "reason": "quorum 1/4"
+   },
+   "T-noT2 (sensitivity)": {
+    "score": null,
+    "band": null,
+    "active": 1,
+    "of": 3,
+    "withheld": true,
+    "reason": "quorum 1/3"
+   },
+   "E1-alone (baseline)": {
+    "score": -9,
+    "band": "Strong bear",
+    "active": 1,
+    "of": 1,
+    "withheld": false
+   }
+  },
+  "primary": {
+   "entry": "V-E1/E6a",
+   "tendency": "V-T1/T2+"
+  },
+  "warnings": {
+   "e6TopDecile": false
+  }
+ },
+ {
+  "date": "2018-09-15",
+  "families": {
+   "E1": {
+    "score": 2,
+    "parts": {
+     "dist20": {
+      "score": 7.302048726467329,
+      "pct": 92.52491694352159,
+      "raw": 2.1525844775584404
+     },
+     "dist50": {
+      "score": 0,
+      "pct": 60.66433566433567,
+      "raw": 0.9209199283821731
+     },
+     "slope20": {
+      "score": 0,
+      "pct": 59.12897822445561,
+      "raw": 0.19377777652668207
+     }
+    }
+   },
+   "E2": {
+    "score": 6,
+    "state": "IMBALANCE_UP",
+    "poc": 1045,
+    "vah": 1119,
+    "val": 1010,
+    "price": 1154.4166265592978
+   },
+   "E3a": {
+    "score": -3,
+    "pct": 83.09178743961353,
+    "raw": 0.0000963811727706343,
+    "trigger": null
+   },
+   "E5a": {
+    "score": -2,
+    "raw": -0.660907036450418
+   },
+   "E7": {
+    "score": 0,
+    "raw": 67,
+    "asOf": "2018-09-14"
+   },
+   "E6": {
+    "score": null,
+    "pct": 10.321489001692047,
+    "raw": 0.40693667778416465,
+    "topDecile": false,
+    "reason": "regime only (not a vote)"
+   },
+   "T1": {
+    "score": -1,
+    "pct": 76.93548387096774,
+    "raw": 1.7202363451460752,
+    "asOf": "2018-09-13"
+   },
+   "T2+": {
+    "score": null,
+    "reason": "lth stale"
+   },
+   "T2-": {
+    "score": null,
+    "reason": "lth stale"
+   },
+   "T3": {
+    "score": 0,
+    "parts": {
+     "dist200": {
+      "score": 0,
+      "pct": 67.77251184834124,
+      "raw": 1.7955983941510953
+     },
+     "slope200": {
+      "score": 0,
+      "pct": 25.12437810945274,
+      "raw": -0.20553265787830363
+     }
+    }
+   },
+   "T4": {
+    "score": null,
+    "reason": "warm-up (255/365 reference days)"
+   }
+  },
+  "scores": {
+   "V-E1/E6a": {
+    "score": 1,
+    "band": "Neutral",
+    "active": 5,
+    "of": 5,
+    "withheld": false
+   },
+   "V-E1/E6b": {
+    "score": 1,
+    "band": "Neutral",
+    "active": 5,
+    "of": 5,
+    "withheld": false
+   },
+   "V-E2/E6a": {
+    "score": 1,
+    "band": "Neutral",
+    "active": 5,
+    "of": 5,
+    "withheld": false
+   },
+   "V-E2/E6b": {
+    "score": 1,
+    "band": "Neutral",
+    "active": 5,
+    "of": 5,
+    "withheld": false
+   },
+   "V-T1/T2+": {
+    "score": null,
+    "band": null,
+    "active": 2,
+    "of": 4,
+    "withheld": true,
+    "reason": "quorum 2/4"
+   },
+   "V-T1/T2-": {
+    "score": null,
+    "band": null,
+    "active": 2,
+    "of": 4,
+    "withheld": true,
+    "reason": "quorum 2/4"
+   },
+   "T-noT2 (sensitivity)": {
+    "score": null,
+    "band": null,
+    "active": 2,
+    "of": 3,
+    "withheld": true,
+    "reason": "quorum 2/3"
+   },
+   "E1-alone (baseline)": {
+    "score": 2,
+    "band": "Neutral",
+    "active": 1,
+    "of": 1,
+    "withheld": false
+   }
+  },
+  "primary": {
+   "entry": "V-E1/E6a",
+   "tendency": "V-T1/T2+"
+  },
+  "warnings": {
+   "e6TopDecile": false
+  }
+ },
+ {
+  "date": "2019-02-01",
+  "families": {
+   "E1": {
+    "score": 1,
+    "parts": {
+     "dist20": {
+      "score": 4.118870895186688,
+      "pct": 84.88529014844805,
+      "raw": 1.5499943051346647
+     },
+     "dist50": {
+      "score": 0,
+      "pct": 63.29113924050633,
+      "raw": 1.13140283064696
+     },
+     "slope20": {
+      "score": 0,
+      "pct": 40.35326086956522,
+      "raw": -0.10330343818707267
+     }
+    }
+   },
+   "E2": {
+    "score": 4,
+    "state": "FAILED_AUCTION_LOW",
+    "poc": 1364,
+    "vah": 1429,
+    "val": 1304,
+    "price": 1398.2790758014041
+   },
+   "E3a": {
+    "score": 0,
+    "pct": 37.5,
+    "raw": -0.00003296060301363469,
+    "trigger": null
+   },
+   "E5a": {
+    "score": -1,
+    "raw": -0.3245383129720058
+   },
+   "E7": {
+    "score": 0,
+    "raw": 61,
+    "asOf": "2019-01-31"
+   },
+   "E6": {
+    "score": null,
+    "pct": 41.50684931506849,
+    "raw": 0.4355944042842002,
+    "topDecile": false,
+    "reason": "regime only (not a vote)"
+   },
+   "T1": {
+    "score": -9,
+    "pct": 96.44268774703558,
+    "raw": 1.9977090624884934,
+    "asOf": "2019-01-30"
+   },
+   "T2+": {
+    "score": null,
+    "reason": "lth stale"
+   },
+   "T2-": {
+    "score": null,
+    "reason": "lth stale"
+   },
+   "T3": {
+    "score": 0,
+    "parts": {
+     "dist200": {
+      "score": 0.5384729649435549,
+      "pct": 76.29233511586453,
+      "raw": 3.4157184676671166
+     },
+     "slope200": {
+      "score": 0,
+      "pct": 71.90388170055454,
+      "raw": 0.4922112528692234
+     }
+    }
+   },
+   "T4": {
+    "score": 0,
+    "pct": 47.46192893401015,
+    "raw": 0.0015397492830886428,
+    "asOf": "2019-01-30"
+   }
+  },
+  "scores": {
+   "V-E1/E6a": {
+    "score": 1,
+    "band": "Neutral",
+    "active": 5,
+    "of": 5,
+    "withheld": false
+   },
+   "V-E1/E6b": {
+    "score": 1,
+    "band": "Neutral",
+    "active": 5,
+    "of": 5,
+    "withheld": false
+   },
+   "V-E2/E6a": {
+    "score": 1,
+    "band": "Neutral",
+    "active": 5,
+    "of": 5,
+    "withheld": false
+   },
+   "V-E2/E6b": {
+    "score": 1,
+    "band": "Neutral",
+    "active": 5,
+    "of": 5,
+    "withheld": false
+   },
+   "V-T1/T2+": {
+    "score": -3,
+    "band": "Bear",
+    "active": 3,
+    "of": 4,
+    "withheld": false
+   },
+   "V-T1/T2-": {
+    "score": -3,
+    "band": "Bear",
+    "active": 3,
+    "of": 4,
+    "withheld": false
+   },
+   "T-noT2 (sensitivity)": {
+    "score": -3,
+    "band": "Bear",
+    "active": 3,
+    "of": 3,
+    "withheld": false
+   },
+   "E1-alone (baseline)": {
+    "score": 1,
+    "band": "Neutral",
+    "active": 1,
+    "of": 1,
+    "withheld": false
+   }
+  },
+  "primary": {
+   "entry": "V-E1/E6a",
+   "tendency": "V-T1/T2+"
+  },
+  "warnings": {
+   "e6TopDecile": false
+  }
+ },
+ {
+  "date": "2019-08-20",
+  "families": {
+   "E1": {
+    "score": 8,
+    "parts": {
+     "dist20": {
+      "score": 7.051452355650021,
+      "pct": 91.92348565356005,
+      "raw": 2.350393981257826
+     },
+     "dist50": {
+      "score": 9.273234540797658,
+      "pct": 97.25576289791438,
+      "raw": 4.7792340360585515
+     },
+     "slope20": {
+      "score": 7.345085470085475,
+      "pct": 92.62820512820514,
+      "raw": 0.9491144084146852
+     }
+    }
+   },
+   "E2": {
+    "score": 7,
+    "state": "IMBALANCE_UP",
+    "poc": 3199,
+    "vah": 3319,
+    "val": 2973,
+    "price": 3596.730220525514
+   },
+   "E3a": {
+    "score": 0,
+    "pct": 39.479166666666664,
+    "raw": -0.0000280672200024128,
+    "trigger": null
+   },
+   "E5a": {
+    "score": -1,
+    "raw": -0.3174893289936524
+   },
+   "E7": {
+    "score": 9,
+    "raw": 7,
+    "asOf": "2019-08-19"
+   },
+   "E6": {
+    "score": null,
+    "pct": 21.29032258064516,
+    "raw": 0.4244521078298456,
+    "topDecile": false,
+    "reason": "regime only (not a vote)"
+   },
+   "T1": {
+    "score": -10,
+    "pct": 100,
+    "raw": 4.9047025071379675,
+    "asOf": "2019-08-18"
+   },
+   "T2+": {
+    "score": null,
+    "reason": "lth stale"
+   },
+   "T2-": {
+    "score": null,
+    "reason": "lth stale"
+   },
+   "T3": {
+    "score": 10,
+    "parts": {
+     "dist200": {
+      "score": 10,
+      "pct": 99.47437582128778,
+      "raw": 11.70488818623184
+     },
+     "slope200": {
+      "score": 10,
+      "pct": 99.73009446693656,
+      "raw": 1.6023630772116746
+     }
+    }
+   },
+   "T4": {
+    "score": 5,
+    "pct": 85.85858585858585,
+    "raw": 0.013299784855678176,
+    "asOf": "2019-08-18"
+   }
+  },
+  "scores": {
+   "V-E1/E6a": {
+    "score": 5,
+    "band": "Bull",
+    "active": 5,
+    "of": 5,
+    "withheld": false
+   },
+   "V-E1/E6b": {
+    "score": 5,
+    "band": "Bull",
+    "active": 5,
+    "of": 5,
+    "withheld": false
+   },
+   "V-E2/E6a": {
+    "score": 5,
+    "band": "Bull",
+    "active": 5,
+    "of": 5,
+    "withheld": false
+   },
+   "V-E2/E6b": {
+    "score": 5,
+    "band": "Bull",
+    "active": 5,
+    "of": 5,
+    "withheld": false
+   },
+   "V-T1/T2+": {
+    "score": 2,
+    "band": "Neutral",
+    "active": 3,
+    "of": 4,
+    "withheld": false
+   },
+   "V-T1/T2-": {
+    "score": 2,
+    "band": "Neutral",
+    "active": 3,
+    "of": 4,
+    "withheld": false
+   },
+   "T-noT2 (sensitivity)": {
+    "score": 2,
+    "band": "Neutral",
+    "active": 3,
+    "of": 3,
+    "withheld": false
+   },
+   "E1-alone (baseline)": {
+    "score": 8,
+    "band": "Strong bull",
+    "active": 1,
+    "of": 1,
+    "withheld": false
+   }
+  },
+  "primary": {
+   "entry": "V-E1/E6a",
+   "tendency": "V-T1/T2+"
+  },
+  "warnings": {
+   "e6TopDecile": false
+  }
+ },
+ {
+  "date": "2021-08-01",
+  "families": {
+   "E1": {
+    "score": 3,
+    "parts": {
+     "dist20": {
+      "score": 0,
+      "pct": 60.49606775559588,
+      "raw": 0.7309759063249197
+     },
+     "dist50": {
+      "score": 2.2014273978229624,
+      "pct": 80.28342575477511,
+      "raw": 2.6672072999032084
+     },
+     "slope20": {
+      "score": 6.700040453074436,
+      "pct": 91.08009708737865,
+      "raw": 0.959819385508561
+     }
+    }
+   },
+   "E2": {
+    "score": 7,
+    "state": "IMBALANCE_UP",
+    "poc": 7727,
+    "vah": 8843,
+    "val": 7332,
+    "price": 8865.049843262168
+   },
+   "E3a": {
+    "score": 0,
+    "pct": 76.19617224880383,
+    "raw": 0.00007364288158714771,
+    "trigger": null
+   },
+   "E5a": {
+    "score": -3,
+    "raw": -0.8650325391448634
+   },
+   "E7": {
+    "score": 0,
+    "raw": 26,
+    "asOf": "2021-07-31"
+   },
+   "E6": {
+    "score": null,
+    "pct": 80.75517661388551,
+    "raw": 0.474958574152658,
+    "topDecile": false,
+    "reason": "regime only (not a vote)"
+   },
+   "T1": {
+    "score": -9,
+    "pct": 97.66606822262118,
+    "raw": 11.395144611480985,
+    "asOf": "2021-07-30"
+   },
+   "T2+": {
+    "score": null,
+    "reason": "lth stale"
+   },
+   "T2-": {
+    "score": null,
+    "reason": "lth stale"
+   },
+   "T3": {
+    "score": 0,
+    "parts": {
+     "dist200": {
+      "score": 0,
+      "pct": 42.29463679565513,
+      "raw": 2.526745786888568
+     },
+     "slope200": {
+      "score": 0,
+      "pct": 58.63730213351687,
+      "raw": 0.7252481874949546
+     }
+    }
+   },
+   "T4": {
+    "score": -4,
+    "pct": 14.701378254211333,
+    "raw": -0.014217116733290402,
+    "asOf": "2021-07-30"
+   }
+  },
+  "scores": {
+   "V-E1/E6a": {
+    "score": 1,
+    "band": "Neutral",
+    "active": 5,
+    "of": 5,
+    "withheld": false
+   },
+   "V-E1/E6b": {
+    "score": 1,
+    "band": "Neutral",
+    "active": 5,
+    "of": 5,
+    "withheld": false
+   },
+   "V-E2/E6a": {
+    "score": 1,
+    "band": "Neutral",
+    "active": 5,
+    "of": 5,
+    "withheld": false
+   },
+   "V-E2/E6b": {
+    "score": 1,
+    "band": "Neutral",
+    "active": 5,
+    "of": 5,
+    "withheld": false
+   },
+   "V-T1/T2+": {
+    "score": -4,
+    "band": "Bear",
+    "active": 3,
+    "of": 4,
+    "withheld": false
+   },
+   "V-T1/T2-": {
+    "score": -4,
+    "band": "Bear",
+    "active": 3,
+    "of": 4,
+    "withheld": false
+   },
+   "T-noT2 (sensitivity)": {
+    "score": -4,
+    "band": "Bear",
+    "active": 3,
+    "of": 3,
+    "withheld": false
+   },
+   "E1-alone (baseline)": {
+    "score": 3,
+    "band": "Bull",
+    "active": 1,
+    "of": 1,
+    "withheld": false
+   }
+  },
+  "primary": {
+   "entry": "V-E1/E6a",
+   "tendency": "V-T1/T2+"
+  },
+  "warnings": {
+   "e6TopDecile": false
+  }
+ }
+]

@@ -52,7 +52,7 @@ export async function deriveLTH({ lthY, btcY }) {
 }
 
 
-export async function fetchBMPLTHData() {
+export async function fetchBMPLTHData({ full = false } = {}) {
   let chromium;
   try { ({ chromium } = await import('playwright')); }
   catch (_) { throw new Error('playwright not installed — run: npm install && npx playwright install chromium'); }
@@ -85,7 +85,7 @@ export async function fetchBMPLTHData() {
     // the score 4 points). BMP's date labels are also unreliable (one pull showed
     // 2027-08-10 for 4 Nov). Now: pull the full trace, date it by matching the
     // chart's BTC price trace to Kraken daily closes, and report 7d/30d averages.
-    const raw = await page.evaluate(() => {
+    const raw = await page.evaluate((keepAll) => {
       const gd = document.querySelector('.js-plotly-plot');
       if (!gd) return { _err: 'no .js-plotly-plot found' };
       const traces = gd._fullData || gd._data || gd.data;
@@ -93,10 +93,11 @@ export async function fetchBMPLTHData() {
       const lthTrace = traces.find(t => t.name && t.name.toLowerCase().includes('long term holder'));
       const btcTrace = traces.find(t => t.name && /^btc|price/i.test(t.name) && t !== lthTrace);
       if (!lthTrace) return { _err: 'LTH trace not found', traceNames: traces.map(t => t.name) };
-      const tail = (a) => Array.from(a || []).slice(-200);
+      const tail = (a) => (keepAll ? Array.from(a || []) : Array.from(a || []).slice(-200));
       return { lthY: tail(lthTrace.y), btcY: btcTrace ? tail(btcTrace.y) : null };
-    });
+    }, full);
     if (raw._err) { console.warn('[BMP] Extraction failed:', raw._err, raw); return null; }
+    if (full) return raw;                 // full trace for the history file (dated by scripts/v2/lthalign.mjs)
     const result = await deriveLTH(raw);
     if (result._err) { console.warn('[BMP] Extraction failed:', result._err, result); return null; }
     return result;
