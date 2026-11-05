@@ -26,6 +26,8 @@
 //   GET /brief  → returns all_data.json (adds { regenerating: true } if stale)
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { handleV2, scheduledV2 } from "./v2.js";
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -51,7 +53,17 @@ export default {
       return handleWhale();
     }
 
+    // V2 (additive, 2026-11-05): signed VPS snapshots under the "v2:" KV prefix.
+    if (url.pathname.startsWith("/v2/")) {
+      return handleV2(request, env);
+    }
+
     return json({ error: "not found" }, 404);
+  },
+
+  // V2 stale-snapshot alert (cron in wrangler.toml). V1 has no scheduled work.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(scheduledV2(env));
   },
 };
 

@@ -26,9 +26,14 @@ compatibility_date = "2024-12-01"
 binding = "BRIEF_KV"
 id      = "8543a6691b2e47a4b1a2eca45c6a789c"
 
+# V2 (2026-11-05): stale-snapshot alert every 15 minutes (see v2.js).
+[triggers]
+crons = ["*/15 * * * *"]
+
 # Observability — enables logs in the Cloudflare dashboard.
 [observability]
 enabled = true
 
+# V2 secrets: V2_PUSH_SECRET (required for VPS pushes), NTFY_TOPIC (optional phone alerts).
 # Note: secrets (GITHUB_PAT, GITHUB_REPO, WORKFLOW_FILE, PAGES_URL) are set via
 # `wrangler secret put <NAME>` and are NOT committed to this file.

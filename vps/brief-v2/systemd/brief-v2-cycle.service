@@ -1,0 +1,23 @@
+# BTC Brief V2 — one short data cycle (STAGE2-PLAN v1.1 §8.1). Installed by install.sh.
+# Hard limits so this job can never starve the live trading bot on this VPS.
+[Unit]
+Description=BTC Brief V2 data cycle (read-only on maisontoe files)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=__USER__
+WorkingDirectory=__DIR__
+EnvironmentFile=__DIR__/.env
+ExecStart=__NODE__ __DIR__/cycle.js
+TimeoutStartSec=180
+MemoryMax=256M
+CPUQuota=25%
+Nice=15
+IOSchedulingClass=idle
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=__DIR__

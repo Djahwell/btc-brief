@@ -1,0 +1,50 @@
+name: V2 daily inputs (no Claude call)
+# BTC Brief V2 — STAGE2-PLAN v1.1 §7, §8.10. Writes to the orphan branch `v2-data`
+# (daily.json + raw vintages). Never touches gh-pages, all_data.json or V1 workflows.
+# Two runs: 00:10 UTC (after the daily close) and 06:10 UTC (late publishers, e.g. CoinMetrics).
+on:
+  schedule:
+    - cron: '10 0 * * *'
+    - cron: '10 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: v2-data-branch
+  cancel-in-progress: false
+
+jobs:
+  daily:
+    runs-on: ubuntu-24.04          # pinned: ubuntu-latest (26.04) breaks Playwright 1.59 (F1)
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: 'npm' }
+      - run: npm ci
+      - name: Install Playwright Chromium (for BMP LTH; non-fatal)
+        continue-on-error: true
+        run: npx playwright install chromium --with-deps
+      - name: Check out v2-data branch (create orphan if missing)
+        run: |
+          git fetch origin v2-data:v2-data 2>/dev/null || true
+          if git show-ref --verify --quiet refs/heads/v2-data; then
+            git worktree add _data v2-data
+          else
+            git worktree add --detach _data
+            cd _data && git checkout --orphan v2-data && git rm -rf . >/dev/null 2>&1 || true
+            echo "# BTC Brief V2 data branch (generated; do not edit)" > README.md
+          fi
+      - name: Run daily job
+        env: { OUT: _data/v2 }
+        run: node scripts/v2/daily.mjs
+      - name: Commit and push
+        run: |
+          cd _data
+          git config user.name  "btc-brief-v2-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -q -m "v2 daily $(date -u +%Y-%m-%dT%H:%MZ) [skip ci]" || { echo "nothing to commit"; exit 0; }
+          git push origin v2-data

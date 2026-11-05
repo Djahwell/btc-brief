@@ -1,0 +1,95 @@
+#!/usr/bin/env node
+'use strict';
+// BTC Brief V2 — VPS cycle (one short run, started by brief-v2-cycle.timer at :07/:22/:37/:52).
+// STAGE2-PLAN v1.1. Collects the live inputs, reads the GitHub daily inputs, builds a snapshot
+// (raw values only — no scores in Stage 2), archives it, and pushes it signed to the Worker.
+//   node cycle.js            normal run
+//   node cycle.js --dry-run  writes only under ./dry/, pushes nothing (used by install.sh)
+const fs = require('fs');
+const path = require('path');
+const { Http } = require('./lib/http');
+const { Vintage, State, archiveSnapshot } = require('./lib/store');
+const { computeE3a } = require('./lib/premium');
+const { computeDerivs } = require('./lib/derivs');
+const { computeE5a } = require('./lib/cbpremium');
+const { computeE4 } = require('./lib/liq');
+const { diskOk, clockSynced, dirBytes } = require('./lib/sys');
+const { pushSnapshot } = require('./lib/push');
+
+const CODE_VERSION = 'brief-v2-vps/1.0.0';
+const ROOT = __dirname;
+const DRY = process.argv.includes('--dry-run');
+const BASE = DRY ? path.join(ROOT, 'dry') : ROOT;
+const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'config.json'), 'utf8'));
+const home = require('os').homedir();
+const expand = p => p.replace(/^~(?=$|\/)/, home);
+
+function rec(fields) {
+  const r = { value: null, unit: null, window: null, asOf: null, fetchedAt: new Date().toISOString(), source: null, scope: null, quality: 'MISSING', staleAfterSec: null, ...fields };
+  if (r.value === undefined || (typeof r.value === 'number' && !Number.isFinite(r.value))) r.value = null;
+  if (r.value == null && r.quality === 'OK') r.quality = 'MISSING';
+  return r;
+}
+
+async function main() {
+  const t0 = Date.now();
+  fs.mkdirSync(BASE, { recursive: true });
+  const disk = diskOk(ROOT, { gb: cfg.diskFloorGB ?? 5, pct: cfg.diskFloorPct ?? 20 });
+  if (!disk.ok) { console.error(`[cycle] disk floor: ${(disk.freeBytes / 1e9).toFixed(1)} GB free < ${(disk.floorBytes / 1e9).toFixed(1)} GB — stopping`); process.exit(2); }
+  const clock = await clockSynced();
+  const vintage = new Vintage(path.join(BASE, 'vintages'));
+  const gzipped = vintage.compressFinishedDays();
+  const state = new State(path.join(BASE, 'state.json'));
+  const http = new Http({ vintage });
+  const now = Date.now();
+  const errors = [];
+
+  // Live families (each isolated: one failing source never stops the others)
+  let e3a = null, der = null, e5a = null, e4 = null;
+  try { e3a = await computeE3a(http, state.data, now); errors.push(...e3a.errors.map(e => `E3a ${e}`)); } catch (e) { errors.push(`E3a: ${e.message}`); }
+  try { der = await computeDerivs(http, state.data, now); errors.push(...der.errors.map(e => `derivs ${e}`)); } catch (e) { errors.push(`derivs: ${e.message}`); }
+  try { e5a = await computeE5a(http, state.data, vintage, now); } catch (e) { errors.push(`E5a: ${e.message}`); }
+  try { e4 = await computeE4({ dir: expand(cfg.liqDir), statusFile: expand(cfg.liqStatusFile), unit: cfg.liqUnit }, now, der?.total_btc ?? null); } catch (e) { errors.push(`E4: ${e.message}`); }
+
+  // Daily inputs from GitHub (v2-data branch)
+  let daily = null;
+  try { daily = await http.json('github_daily', cfg.dailyUrl + `?t=${Math.floor(now / 60000)}`, { store: false }); } catch (e) { errors.push(`daily.json: ${e.message}`); }
+  const dailyInputs = {};
+  if (daily?.inputs) for (const [k, v] of Object.entries(daily.inputs)) dailyInputs[k] = { ...v, via: 'github v2-daily' };
+
+  const inputs = {
+    perp_premium_binance_8h: rec({ ...(e3a?.scored || {}), source: 'Binance fapi premiumIndexKlines 1m (BTCUSDT)', scope: 'Binance BTCUSDT perp (scored series; OKX/Bybit cross-checks only)', staleAfterSec: 1800, crosscheck: e3a?.crosscheck ?? null, check_series: e3a?.check ?? null }),
+    funding_context: rec({ value: der?.funding ?? null, unit: 'fraction per funding interval', window: 'last/current interval', asOf: new Date(now).toISOString(), source: 'Binance premiumIndex, Bybit tickers, OKX funding-rate', scope: 'context only (dead band at 0.01%; not scored)', quality: der && Object.values(der.funding).some(v => v != null) ? 'OK' : 'MISSING', staleAfterSec: 1800 }),
+    oi_btc_total: rec({ value: der?.total_btc ?? null, unit: 'BTC', window: 'spot', asOf: new Date(now).toISOString(), source: 'Binance fapi/dapi, Bybit v5, OKX v5 open interest (contract specs checked live)', scope: 'USDT-linear + USD-inverse perps on Binance, Bybit, OKX (USDC perps excluded)', quality: der?.total_btc != null ? 'OK' : (der?.partial_total_btc != null ? 'STALE' : 'MISSING'), staleAfterSec: 1800, chg24h_pct: der?.chg24h_pct ?? null, chg7d_pct: der?.chg7d_pct ?? null, partial_total_btc: der?.partial_total_btc ?? null, byVenue: der?.venues ?? null }),
+    coinbase_premium_adj: rec({ ...(e5a || {}), source: 'Coinbase BTC-USD, Coinbase USDT-USD, Binance BTCUSDT (vision mirror), hourly closes', scope: 'US spot (Coinbase) vs offshore spot (Binance), USDT corrected', staleAfterSec: 7200 }),
+    liquidations_24h: rec({ ...(e4 || {}), source: 'maisontoe-liq recorder files (read-only)', staleAfterSec: 1800 }),
+  };
+
+  state.data.seq = (state.data.seq || 0) + 1;
+  const snap = {
+    schema: 'brief-v2/1', codeVersion: CODE_VERSION, seq: state.data.seq, generatedAt: new Date().toISOString(), host: 'vps',
+    inputs, daily: { url: cfg.dailyUrl, generatedAt: daily?.generatedAt ?? null, inputs: dailyInputs, errors: daily?.errors ?? null },
+    runs: {
+      durationMs: Date.now() - t0, httpCalls: http.calls, binanceMaxUsedWeight1m: http.maxWeightSeen, binanceBudgetStopped: http.binanceStopped,
+      clock, disk: { freeGB: +(disk.freeBytes / 1e9).toFixed(1), freePct: +disk.freePct.toFixed(1), storeMB: +(dirBytes(BASE) / 1e6).toFixed(1) }, gzippedFiles: gzipped,
+      errors: [...errors, ...http.errors.map(e => `${e.name}: ${e.error}`)].slice(0, 40), dryRun: DRY,
+    },
+  };
+
+  let push = { ok: false, status: null, skipped: DRY ? 'dry-run' : null };
+  if (!DRY) {
+    if (!process.env.V2_PUSH_SECRET) push = { ok: false, skipped: 'V2_PUSH_SECRET not set' };
+    else if (!clock.synced) push = { ok: false, skipped: 'clock not NTP-synchronised (Worker would reject or misorder)' };
+    else { try { push = await pushSnapshot({ workerUrl: cfg.workerUrl, secret: process.env.V2_PUSH_SECRET }, snap); } catch (e) { push = { ok: false, error: e.message }; } }
+  }
+  archiveSnapshot(path.join(BASE, 'snapshots'), snap, { pushed: !!push.ok, receivedAt: push.body?.receivedAt ?? null, pushStatus: push.status ?? push.skipped ?? push.error ?? null });
+  state.save();
+  fs.writeFileSync(path.join(BASE, 'status.json'), JSON.stringify({ lastRun: snap.generatedAt, seq: snap.seq, push, runs: snap.runs, quality: Object.fromEntries(Object.entries(inputs).map(([k, v]) => [k, v.quality])) }, null, 1));
+
+  // One readable summary line per input (journalctl -u brief-v2-cycle)
+  for (const [k, v] of Object.entries(inputs)) console.log(`[cycle] ${k}: ${typeof v.value === 'object' && v.value ? JSON.stringify(v.value) : v.value} ${v.unit || ''} [${v.quality}]`);
+  console.log(`[cycle] daily inputs: ${Object.keys(dailyInputs).join(', ') || 'none'} | push: ${push.ok ? 'OK seq ' + snap.seq : JSON.stringify(push)} | binance weight max ${http.maxWeightSeen} | ${Date.now() - t0} ms | errors ${snap.runs.errors.length}`);
+  if (snap.runs.errors.length) for (const e of snap.runs.errors) console.log(`[cycle]   ! ${e}`);
+}
+
+main().catch(e => { console.error('[cycle] fatal:', e); process.exit(1); });

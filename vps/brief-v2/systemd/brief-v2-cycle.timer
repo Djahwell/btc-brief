@@ -1,0 +1,12 @@
+# Every 15 minutes at :07/:22/:37/:52 — away from the bot's on-the-hour work (STAGE2-PLAN §8.2).
+[Unit]
+Description=BTC Brief V2 data cycle timer
+
+[Timer]
+OnCalendar=*-*-* *:07,22,37,52:00
+AccuracySec=20s
+Persistent=false
+Unit=brief-v2-cycle.service
+
+[Install]
+WantedBy=timers.target

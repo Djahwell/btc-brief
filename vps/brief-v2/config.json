@@ -1,0 +1,9 @@
+{
+  "workerUrl": "https://btc-brief.joel-toe.workers.dev",
+  "dailyUrl": "https://raw.githubusercontent.com/Djahwell/btc-brief/v2-data/v2/daily.json",
+  "liqDir": "~/maisontoe-whales/private/liq",
+  "liqStatusFile": "~/maisontoe-whales/private/liq-status.json",
+  "liqUnit": "maisontoe-liq",
+  "diskFloorGB": 5,
+  "diskFloorPct": 20
+}

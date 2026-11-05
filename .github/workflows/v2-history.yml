@@ -1,0 +1,46 @@
+name: V2 history files (Stage 4 inputs)
+# Rebuilds the full-history files on the `v2-data` branch (manifest with sha256 and gaps).
+# Monthly (3rd, after Binance publishes the previous month's archive) or on demand.
+on:
+  schedule:
+    - cron: '20 2 3 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: v2-data-branch
+  cancel-in-progress: false
+
+jobs:
+  history:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: 'npm' }
+      - run: npm ci
+      - name: Check out v2-data branch (create orphan if missing)
+        run: |
+          git fetch origin v2-data:v2-data 2>/dev/null || true
+          if git show-ref --verify --quiet refs/heads/v2-data; then
+            git worktree add _data v2-data
+          else
+            git worktree add --detach _data
+            cd _data && git checkout --orphan v2-data && git rm -rf . >/dev/null 2>&1 || true
+            echo "# BTC Brief V2 data branch (generated; do not edit)" > README.md
+          fi
+      - name: Build history files
+        env: { OUT: _data/v2 }
+        run: node scripts/v2/history.mjs
+      - name: Commit and push
+        if: always()
+        run: |
+          cd _data
+          git config user.name  "btc-brief-v2-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -q -m "v2 history $(date -u +%Y-%m-%d) [skip ci]" || { echo "nothing to commit"; exit 0; }
+          git push origin v2-data
