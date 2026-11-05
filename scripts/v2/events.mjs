@@ -25,9 +25,18 @@ export function nyToUtc(y, m, d, hh, mm) {
 }
 
 async function text(url) {
-  const r = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'text/html' }, signal: AbortSignal.timeout(20000) });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.text();
+  const r = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'text/html,application/xhtml+xml', 'Accept-Language': 'en-US,en;q=0.9' }, signal: AbortSignal.timeout(20000) });
+  if (r.ok) return r.text();
+  if (r.status !== 403) throw new Error(`HTTP ${r.status}`);
+  // bls.gov refuses scripted clients (403): read the same official page in headless Chromium instead.
+  let chromium; try { ({ chromium } = await import('playwright')); } catch { throw new Error('HTTP 403 (no browser available)'); }
+  const b = await chromium.launch({ headless: true });
+  try {
+    const pg = await (await b.newContext({ userAgent: UA, locale: 'en-US' })).newPage();
+    const resp = await pg.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    if (!resp || !resp.ok()) throw new Error(`HTTP ${resp ? resp.status() : 'none'} (browser)`);
+    return await pg.content();
+  } finally { await b.close(); }
 }
 
 // FOMC: "<h4>…2026 FOMC Meetings</h4>" panels; each meeting has fomc-meeting__month and fomc-meeting__date ("27-28", "28-29*").
