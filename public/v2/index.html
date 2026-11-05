@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1116">
+<title>BTC Brief V2</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">BTC Brief <span class="v">V2</span></div>
+  <div class="meta">
+    <span id="price" class="price">—</span>
+    <button id="refresh" class="age" type="button" title="Refresh now"><span id="age">loading…</span></button>
+  </div>
+</header>
+
+<main>
+  <div id="banner" class="banner" hidden></div>
+
+  <section class="cards" aria-label="Scorecards">
+    <article class="card" id="card-entry">
+      <h2>Entry <small>1–7 days</small></h2>
+      <div class="score"><span class="num">—</span><span class="band"></span></div>
+      <div class="gauge" aria-hidden="true"><div class="ticks"></div><div class="mark"></div></div>
+      <p class="sub"></p>
+    </article>
+    <article class="card" id="card-tendency">
+      <h2>Tendency <small>3–9 months</small></h2>
+      <div class="score"><span class="num">—</span><span class="band"></span></div>
+      <div class="gauge" aria-hidden="true"><div class="ticks"></div><div class="mark"></div></div>
+      <p class="sub"></p>
+    </article>
+  </section>
+
+  <section class="panel" aria-labelledby="h-health">
+    <h3 id="h-health">Data health</h3>
+    <ul id="health" class="health"></ul>
+  </section>
+
+  <section class="panel" aria-labelledby="h-why">
+    <h3 id="h-why">Why</h3>
+    <ol id="why" class="why"></ol>
+    <p id="notes" class="note"></p>
+  </section>
+
+  <section class="panel" aria-labelledby="h-fam">
+    <h3 id="h-fam">Families</h3>
+    <div id="families"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-levels">
+    <h3 id="h-levels">Levels <small>from daily data</small></h3>
+    <div id="levels" class="levels"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-comm">
+    <h3 id="h-comm">Commentary</h3>
+    <div id="summary" class="summary"></div>
+    <div class="claude">
+      <div id="claude-text" class="claude-text"></div>
+      <button id="claude-btn" type="button" class="btn">Write today's paragraph</button>
+      <p class="fine">Claude writes at most one paragraph a day, from the numbers above only.</p>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-track">
+    <h3 id="h-track">Track record <small>live, frozen daily</small></h3>
+    <div id="track" class="track"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-detail">
+    <h3 id="h-detail">Every value</h3>
+    <div id="detail"></div>
+  </section>
+
+  <footer class="foot">
+    <p id="foot"></p>
+    <p>Not financial advice. Free data sources; CoinMetrics data CC BY-NC 4.0.</p>
+  </footer>
+</main>
+
+<script src="engine/engine.js"></script>
+<script src="engine/summary.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

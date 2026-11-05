@@ -1,0 +1,142 @@
+{
+  "schema": "brief-v2-declaration/1",
+  "status": "DRAFT \u2014 not frozen. Frozen copy and sha256 go in STAGE4-DECLARATION.md before any Stage 4 run.",
+  "referenceStart": "2018-01-01",
+  "warmupDays": 365,
+  "percentileMap": {
+    "zeroLow": 25,
+    "zeroHigh": 75,
+    "fullLow": 1,
+    "fullHigh": 99,
+    "max": 10
+  },
+  "lagsDays": {
+    "daily_bars": 1,
+    "fear_greed": 1,
+    "mvrv": 2,
+    "lth": 2,
+    "stablecoins": 2
+  },
+  "staleGraceDays": 1,
+  "staleGraceNote": "A daily input is active when its latest usable value is dated at most staleGraceDays before D \u2212 lag (one missed publication tolerated). Daily bars: last bar \u2265 D \u2212 1 \u2212 staleGraceDays.",
+  "e1": {
+    "sma": [
+      20,
+      50
+    ],
+    "atr": 14,
+    "slopeLookback": 5
+  },
+  "e2": {
+    "profileDays": 30,
+    "shortProfileDays": 7,
+    "bins": 80,
+    "valueAreaPct": 0.7,
+    "acceptCloses": 2,
+    "acceptWindow": 3,
+    "probeWindow": 5,
+    "scores": {
+      "IMBALANCE_UP": 6,
+      "TESTING_VAH": 0,
+      "FAILED_AUCTION_LOW": 4,
+      "BALANCE": 0,
+      "FAILED_AUCTION_HIGH": -4,
+      "TESTING_VAL": 0,
+      "IMBALANCE_DOWN": -6
+    },
+    "extraClosePoint": 1,
+    "cap": 8,
+    "note": "V1 scripts/amt.js method verbatim: 80 equal bins over the 30-bar high-low range (STAGE4-PLAN \u00a73 text said 0.25% bins \u2014 corrected to V1's actual method), VAH/VAL rounded to whole dollars, price = close of bar D\u22121 (V1 used live spot). TESTING_VAH/VAL score 0 as in V1 ('no accepted directional edge yet'). Flagged for the Board check."
+  },
+  "e3a": {
+    "windowHours": 8,
+    "triggerRecentDays": 3,
+    "triggerPriorDays": 7,
+    "note": "History: mean of the 8 hourly closes of the premium index ending at D 00:00 (fraction). Live: 8 h mean of 1-minute closes, converted from % to fraction. Method difference flagged for the Board check."
+  },
+  "e5a": {
+    "zFull": 3
+  },
+  "e6": {
+    "rvDays": 30,
+    "topDecilePct": 90
+  },
+  "e7": {
+    "fearAt": 25,
+    "fearFull": 5,
+    "greedAt": 75,
+    "greedFull": 95
+  },
+  "t1": {
+    "contrarian": true
+  },
+  "t3": {
+    "sma": 200,
+    "atr": 14,
+    "slopeLookback": 20
+  },
+  "t4": {
+    "growthDays": 30,
+    "medianDays": 365
+  },
+  "scorecards": {
+    "entry": {
+      "families": [
+        "E1",
+        "E2",
+        "E3a",
+        "E5a",
+        "E7"
+      ],
+      "quorum": 4
+    },
+    "tendency": {
+      "families": [
+        "T1",
+        "T2",
+        "T3",
+        "T4"
+      ],
+      "quorum": 3
+    },
+    "bands": [
+      {
+        "min": 6,
+        "name": "Strong bull"
+      },
+      {
+        "min": 3,
+        "name": "Bull"
+      },
+      {
+        "min": -2,
+        "name": "Neutral"
+      },
+      {
+        "min": -5,
+        "name": "Bear"
+      },
+      {
+        "min": -10,
+        "name": "Strong bear"
+      }
+    ],
+    "e2CapWhenTrendNegative": 2
+  },
+  "candidates": {
+    "entry": [
+      "V-E1/E6a",
+      "V-E1/E6b",
+      "V-E2/E6a",
+      "V-E2/E6b"
+    ],
+    "tendency": [
+      "V-T1/T2+",
+      "V-T1/T2-"
+    ],
+    "primary": {
+      "entry": "V-E1/E6a",
+      "tendency": "V-T1/T2+"
+    }
+  }
+}

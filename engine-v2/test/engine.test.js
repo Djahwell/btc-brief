@@ -125,6 +125,19 @@ test('T2: view.js lthNet30 matches scripts/v2/lthalign.mjs (parity), gaps handle
   const r = V.lthNet30(rows); assert.ok(r.length > 150 && r.every(x => Number.isFinite(x.v)));
 });
 
+test('summary: fixed templates, withheld families never mentioned, withheld card has no number', () => {
+  const S = require('../summary.js');
+  const r = E.evaluate(V.viewAt(P, '2019-06-01'), decl);
+  const s = S.summarize(r, decl);
+  assert.match(s.entry, /^Entry \(1–7 days\) [+-]?\d+ \((Strong bull|Bull|Neutral|Bear|Strong bear)\): .*; \d\/5 fresh\.$/);
+  assert.ok(s.why.length <= 3);
+  const fam = JSON.parse(JSON.stringify(r.families)); fam.E7 = { score: null, reason: 'stale' }; fam.E5a = { score: null };
+  const sc = E.scorecards(fam, r.warnings, decl);
+  const s2 = S.summarize({ families: fam, scores: sc, primary: r.primary }, decl);
+  assert.match(s2.entry, /^Entry \(1–7 days\) withheld \(quorum 3\/5\)\.$/);
+  assert.ok(!/fear|greed|sentiment|Coinbase/.test(s2.why.join(' ')));
+});
+
 test('determinism: same view → identical output, hash embedded', () => {
   const v = V.viewAt(P, '2019-06-01');
   assert.equal(JSON.stringify(E.evaluate(v, decl)), JSON.stringify(E.evaluate(v, decl)));
@@ -157,4 +170,11 @@ test('golden file (real v2-data history)', { skip: !process.env.V2_HISTORY_DIR }
   const gold = JSON.parse(fs.readFileSync(file, 'utf8'));
   if (JSON.stringify(gold.inputs) !== JSON.stringify(inputs)) { t.skip('history files differ from the golden inputs — regenerate with UPDATE_GOLDEN=1 after review'); return; }
   assert.deepEqual(JSON.parse(JSON.stringify(out.results)), gold.results);
+});
+
+test('V2 page ships byte-identical engine files (public/v2/engine)', () => {
+  for (const f of ['engine.js', 'summary.js', 'declaration.json']) {
+    const a = fs.readFileSync(path.join(__dirname, '..', f)); const b = fs.readFileSync(path.join(__dirname, '..', '..', 'public', 'v2', 'engine', f));
+    assert.ok(a.equals(b), `public/v2/engine/${f} differs from engine-v2/${f} — run: cp engine-v2/{engine.js,summary.js,declaration.json} public/v2/engine/`);
+  }
 });

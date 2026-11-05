@@ -34,10 +34,11 @@ function scoreSnapshot({ inputs, history, daily, nowMs }) {
   };
   const { view, joinIssues } = L.liveView({ hist: history.hist, daily, live });
   const r = E.evaluate(view, decl);
+  let summary = null; try { summary = require(path.join(dir, 'summary.js')).summarize(r, decl); } catch (_) { /* optional */ }
   return {
     ...base, withheld: false,
     date: r.date, primary: r.primary, families: r.families, scores: r.scores, warnings: r.warnings,
-    joinIssues, history: { generatedAt: history.manifest.generatedAt },
+    summary, joinIssues, history: { generatedAt: history.manifest.generatedAt },
     daily: { generatedAt: daily?.generatedAt ?? null },
   };
 }

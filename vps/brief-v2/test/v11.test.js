@@ -11,7 +11,7 @@ function sandbox() {
   for (const f of ['cycle.js', 'config.json', 'package.json']) fs.copyFileSync(path.join(src, f), path.join(tmp, f));
   fs.cpSync(path.join(src, 'lib'), path.join(tmp, 'lib'), { recursive: true }); fs.cpSync(path.join(src, 'test'), path.join(tmp, 'test'), { recursive: true });
   const ed = engineDir(); fs.mkdirSync(path.join(tmp, 'engine', 'test'), { recursive: true });
-  for (const f of ['engine.js', 'view.js', 'live.js', 'declaration.json']) fs.copyFileSync(path.join(ed, f), path.join(tmp, 'engine', f));
+  for (const f of ['engine.js', 'view.js', 'live.js', 'summary.js', 'declaration.json']) fs.copyFileSync(path.join(ed, f), path.join(tmp, 'engine', f));
   fs.copyFileSync(path.join(ed, 'test', 'synth.js'), path.join(tmp, 'engine', 'test', 'synth.js'));
   const liq = path.join(tmp, 'liq'); fs.mkdirSync(liq); fs.writeFileSync(path.join(liq, 'status.json'), '{}');
   const cfg = JSON.parse(fs.readFileSync(path.join(tmp, 'config.json'))); Object.assign(cfg, { liqDir: liq, liqUnit: 'brief-v2-test-no-such-unit', diskFloorGB: 0.1, diskFloorPct: 1, liqStatusFile: path.join(liq, 'status.json') });
@@ -42,6 +42,7 @@ test('cycle runs the engine on accepted history: scores present, labelled CANDID
   assert.ok(e.families.E5a.score != null, 'E5a uses the live z');
   assert.ok(Buffer.byteLength(JSON.stringify(snap)) < 200 * 1024, 'snapshot well under the Worker 256 KB cap');
   assert.match(out, /engine \(CANDIDATE/);
+  assert.match(e.summary.entry, /^Entry \(1–7 days\) /);
   // second run the same day: history is not downloaded again
   const r2 = runDry(tmp); assert.equal(r2.snap.engine.historyPull.status, 'cached');
 });

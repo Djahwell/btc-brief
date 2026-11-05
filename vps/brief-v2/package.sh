@@ -4,9 +4,9 @@ set -euo pipefail
 cd "$(dirname "$0")"
 # Copy the shared engine (single source: ../../engine-v2) and record its hashes (parity test reads them).
 rm -rf engine; mkdir -p engine/test
-cp ../../engine-v2/engine.js ../../engine-v2/view.js ../../engine-v2/live.js ../../engine-v2/declaration.json engine/
+cp ../../engine-v2/engine.js ../../engine-v2/view.js ../../engine-v2/live.js ../../engine-v2/summary.js ../../engine-v2/declaration.json engine/
 cp ../../engine-v2/test/synth.js engine/test/
-( cd engine && sha256sum engine.js view.js live.js declaration.json test/synth.js > MANIFEST )
+( cd engine && sha256sum engine.js view.js live.js summary.js declaration.json test/synth.js > MANIFEST )
 trap 'rm -rf engine' EXIT
 OUT="${1:-../../dist}"; mkdir -p "$OUT"
 FILES=(cycle.js config.json package.json README.md .env.example install.sh rollback.sh lib/*.js systemd/* test/*.js test/fixtures/*.json engine/*.js engine/declaration.json engine/MANIFEST engine/test/synth.js)

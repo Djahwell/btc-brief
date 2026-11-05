@@ -10,7 +10,6 @@
 //   e5aZ: number|null             Coinbase-premium z (computed from completed hours, see vps/brief-v2/lib/cbpremium.js)
 //   fng, mvrv, lth30, stable: [{d,v}]   daily series; lags from the declaration are applied here
 // }
-const crypto = require('crypto');
 
 const DAY = 86400000;
 const addDays = (d, n) => new Date(Date.parse(d + 'T00:00:00Z') + n * DAY).toISOString().slice(0, 10);
@@ -19,8 +18,9 @@ const finite = x => typeof x === 'number' && Number.isFinite(x);
 const mean = a => a.reduce((s, x) => s + x, 0) / a.length;
 const median = a => { const s = [...a].sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
 
+// Node only (the page checks the hash with SubtleCrypto over the same JSON.stringify string).
 function declarationHash(decl) {
-  return crypto.createHash('sha256').update(JSON.stringify(decl)).digest('hex');
+  return require('crypto').createHash('sha256').update(JSON.stringify(decl)).digest('hex');
 }
 
 // Mid-rank percentile of x among refs (refs strictly before the current reading), 0..100.
@@ -166,6 +166,7 @@ function evaluate(view, decl) {
     const parts = [a, b, sl].map(x => scoreSeries(x, dates, decl));
     if (parts.some(p => p.score == null)) fam.E1 = { score: null, reason: parts.find(p => p.score == null).reason };
     else fam.E1 = { score: roundHalfAway(mean(parts.map(p => p.score))), parts: { dist20: parts[0], dist50: parts[1], slope20: parts[2] } };
+    fam.E1.levels = { sma20: s20[s20.length - 1], sma50: s50[s50.length - 1], atr14: atr[atr.length - 1], close: closes[closes.length - 1] };
   }
   // E2 auction location
   fam.E2 = barsFresh ? familyE2(bars, decl.e2) : { score: null, reason: 'daily bars stale' };
@@ -230,6 +231,7 @@ function evaluate(view, decl) {
     const sl = closes.map((x, i) => (i >= c.slopeLookback && s200[i] != null && s200[i - c.slopeLookback] != null && atr[i] ? (s200[i] - s200[i - c.slopeLookback]) / atr[i] : null));
     const parts = [a, sl].map(x => scoreSeries(x, dates, decl));
     fam.T3 = parts.some(p => p.score == null) ? { score: null, reason: parts.find(p => p.score == null).reason } : { score: roundHalfAway(mean(parts.map(p => p.score))), parts: { dist200: parts[0], slope200: parts[1] } };
+    fam.T3.levels = { sma200: s200[s200.length - 1] };
   }
   fam.T4 = dailyFam('stablecoins', view.stable, 'stablecoins', {
     transform: vals => {
@@ -240,7 +242,12 @@ function evaluate(view, decl) {
 
   const scores = scorecards(fam, warn, decl);
 
+  // Data-as-of for the daily-bar families, so the page can re-check freshness at view time.
+  const lastBar = bars.length ? bars[bars.length - 1].d : null;
+  for (const k of ['E1', 'E2', 'E6', 'T3']) fam[k].asOf = lastBar;
   return { date: D, declarationHash: declarationHash(decl), families: fam, scores, primary: decl.candidates.primary, warnings: warn };
 }
 
-module.exports = { evaluate, scorecards, declarationHash, pctRank, mapPct, roundHalfAway, profile, familyE2, atrWilder, smaArr, addDays };
+const api = { evaluate, scorecards, declarationHash, pctRank, mapPct, roundHalfAway, profile, familyE2, atrWilder, smaArr, addDays };
+// Also loadable in the browser (V2 page re-applies quorum at view time with the same scorecards()).
+if (typeof module !== 'undefined' && module.exports) module.exports = api; else globalThis.BriefEngine = api;
