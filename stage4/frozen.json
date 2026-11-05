@@ -1,0 +1,23 @@
+{
+ "declarationHash": "f241978d70ea0d7c6af12a96b8552d2cfa4a322798b5411fba014ff4f4207287",
+ "historyManifest": "2026-11-05T13:08:55.235Z",
+ "history": {
+  "coinbase_daily": "02cd9f62481d91fcb9072fff5fc04b037741516347c18063795f582c996165a4",
+  "bitstamp_daily": "12eec185602b30ffc1707bb23711032871114245d5eb78c1d290e10940ef9fd4",
+  "coinbase_premium_legs_1h": "6990af70101f1b3847853233977de538de4bdf3394ba9288cde21c67493ef821",
+  "binance_premium_index_1h": "3c63d57e4bcb5714c3c317e47a2cfd1bc50a57a514e2b510db87f6330d43c8d0",
+  "fear_greed": "d6cadb301415e581eda17153f66729e67f4be6c0ca44bc9f77fafcaaaec0f31c",
+  "coinmetrics_mvrv": "cc89c193a1708715316e30503a656bca3ccd717c3f9d58d726a72a43cbaee892",
+  "stablecoins_usdt_usdc": "5fdc7a5d998c3be5bdb7bdf6153cc92807c466d384091be4c825ae70c45f1b13",
+  "bmp_lth": "e061cc660a11ff70dab03176a8db43da2c6a5e6e816247d2b3946fac8e064c4c"
+ },
+ "codeFiles": {
+  "engine-v2/engine.js": "4e301b6e7c1727c2060cd7ad12c316d338cbffdc5fd437ae8d56a4f3a0756680",
+  "engine-v2/view.js": "ed86f4043b2995a084f32d9ff7852216e515c11c0eb46d1336fe770b6ca36529",
+  "engine-v2/live.js": "a5151aea74a7641963a78552fa5fe9a203128ec4bcc76137567913f1a851c448",
+  "engine-v2/declaration.json": "824819ddf320b1b41b71a296af50d99f991789243ba55d0d50662cb181faebc1",
+  "stage4/stats.js": "7345f9264df82fe3a19756c298abb1af1c890fc49330e926bfc06458a7c0b43e",
+  "stage4/harness.js": "3b04f2152920857716bb545f88bf9ad69bb4e14a46cd95ac5c4b380e01cd847f",
+  "stage4/run.js": "4aff54910203a15156999d07db2dc457072896bcb18945b8c6f506c5e63b6797"
+ }
+}

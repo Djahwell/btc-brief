@@ -2,7 +2,7 @@ name: V2 engine tests
 # Unit, fail-closed, parity and golden-file tests for the shared scoring engine (Stage 3 §2).
 on:
   push:
-    paths: ['engine-v2/**', 'scripts/v2/**', 'vps/brief-v2/**', 'public/v2/**', 'scripts/amt.js', '.github/workflows/v2-engine-test.yml']
+    paths: ['engine-v2/**', 'scripts/v2/**', 'vps/brief-v2/**', 'public/v2/**', 'scripts/amt.js', 'stage4/**', '.github/workflows/v2-engine-test.yml']
   workflow_dispatch:
 jobs:
   test:
@@ -23,3 +23,5 @@ jobs:
         run: node --test scripts/v2/test/*.test.mjs
       - name: VPS package tests
         run: cd vps/brief-v2 && node --test test/*.test.js
+      - name: Stage 4 harness tests (synthetic only)
+        run: cd stage4 && node --test test/*.test.js
