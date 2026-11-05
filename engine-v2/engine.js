@@ -91,6 +91,8 @@ function profile(bars, bins, vaPct) {
 function familyE2(bars, c) {
   if (bars.length < c.profileDays) return { score: null, reason: 'not enough bars' };
   const win = bars.slice(-c.profileDays);
+  // Both volume legs (Coinbase + Bitstamp) are required for every bar in the window: never a single-venue profile.
+  if (win.some(b => !(typeof b.v === 'number' && Number.isFinite(b.v)))) return { score: null, reason: 'volume leg missing in the 30-bar window' };
   const p = profile(win, c.bins, c.valueAreaPct);
   if (!p) return { score: null, reason: 'no profile' };
   const price = bars[bars.length - 1].c;
@@ -125,8 +127,10 @@ function freshEnough(rows, D, lagDays, grace) {
 
 function scorecards(fam, warn, decl) {
   const sc = decl.scorecards; const scores = {};
+  // A non-finite family score counts as withheld (Board build review #14: NaN never reaches a card).
+  const on = n => fam[n] && typeof fam[n].score === 'number' && Number.isFinite(fam[n].score);
   const card = (names, quorum, mod) => {
-    const act = names.filter(n => fam[n] && fam[n].score != null);
+    const act = names.filter(on);
     if (act.length < quorum) return { score: null, band: null, active: act.length, of: names.length, withheld: true, reason: `quorum ${act.length}/${names.length}` };
     let s = roundHalfAway(mean(act.map(n => fam[n].score)));   // §3: mean, rounded half away from zero
     if (mod) s = roundHalfAway(mod(s));                          // E6b: round(score / 2); V-E2: min(score, +2)
@@ -134,17 +138,21 @@ function scorecards(fam, warn, decl) {
     return { score: s, band: sc.bands.find(b => s >= b.min).name, active: act.length, of: names.length, withheld: false };
   };
   const e = sc.entry.families;
-  const gate = s => (fam.E1.score != null && fam.E1.score < 0 ? Math.min(s, sc.e2CapWhenTrendNegative) : s);
+  // Declared order (declaration.scorecards.modifierOrder): mean → round → V-E2 cap → round → E6b halve → round.
+  // V-E2 needs E1 active (the gate is unknowable without it) → withheld otherwise.
+  const gate = s => (fam.E1.score < 0 ? Math.min(s, sc.e2CapWhenTrendNegative) : s);
   const halve = s => (warn.e6TopDecile ? s / 2 : s);
+  const needE1 = c => (on('E1') ? c : { score: null, band: null, active: c.active, of: c.of, withheld: true, reason: 'trend gate needs E1' });
   scores['V-E1/E6a'] = card(e, sc.entry.quorum);
   scores['V-E1/E6b'] = card(e, sc.entry.quorum, halve);
-  scores['V-E2/E6a'] = card(e, sc.entry.quorum, gate);
-  scores['V-E2/E6b'] = card(e, sc.entry.quorum, s => halve(gate(s)));
+  scores['V-E2/E6a'] = needE1(card(e, sc.entry.quorum, gate));
+  scores['V-E2/E6b'] = needE1((() => { const c = card(e, sc.entry.quorum, gate); return c.withheld ? c : { ...c, score: Math.max(-10, Math.min(10, roundHalfAway(halve(c.score)))), band: sc.bands.find(b => roundHalfAway(halve(c.score)) >= b.min).name }; })());
   const t = sc.tendency;
   scores['V-T1/T2+'] = card(['T1', 'T2+', 'T3', 'T4'], t.quorum);
   scores['V-T1/T2-'] = card(['T1', 'T2-', 'T3', 'T4'], t.quorum);
   scores['T-noT2 (sensitivity)'] = card(['T1', 'T3', 'T4'], 3);
   scores['E1-alone (baseline)'] = card(['E1'], 1);
+  scores['R-E1E2E7 (robustness 2019–2021)'] = card(sc.robustness.families, sc.robustness.quorum);
 
   return scores;
 }
@@ -152,11 +160,14 @@ function scorecards(fam, warn, decl) {
 function evaluate(view, decl) {
   const D = view.date; const M = decl.percentileMap; const fam = {}; const warn = {};
   const bars = (view.bars || []).filter(b => b.d <= addDays(D, -1)).sort((a, b) => (a.d < b.d ? -1 : 1));
-  const barsFresh = bars.length > 0 && bars[bars.length - 1].d >= addDays(D, -decl.lagsDays.daily_bars - decl.staleGraceDays);
+  // Bar families use row windows, so the last barsContiguousDays bars must be consecutive calendar days.
+  let gap = null;
+  for (let i = Math.max(1, bars.length - decl.barsContiguousDays); i < bars.length; i++) if (addDays(bars[i - 1].d, 1) !== bars[i].d) { gap = bars[i - 1].d; break; }
+  const barsFresh = gap == null && bars.length > 0 && bars[bars.length - 1].d >= addDays(D, -decl.lagsDays.daily_bars - decl.staleGraceDays);
   const dates = bars.map(b => b.d), closes = bars.map(b => b.c);
 
   // E1 trend & structure
-  if (!barsFresh) fam.E1 = { score: null, reason: 'daily bars stale' };
+  if (!barsFresh) fam.E1 = { score: null, reason: gap ? `daily bar gap after ${gap}` : 'daily bars stale' };
   else {
     const atr = atrWilder(bars, decl.e1.atr), s20 = smaArr(closes, decl.e1.sma[0]), s50 = smaArr(closes, decl.e1.sma[1]);
     const a = closes.map((c, i) => (s20[i] != null && atr[i] ? (c - s20[i]) / atr[i] : null));
@@ -169,7 +180,7 @@ function evaluate(view, decl) {
     fam.E1.levels = { sma20: s20[s20.length - 1], sma50: s50[s50.length - 1], atr14: atr[atr.length - 1], close: closes[closes.length - 1] };
   }
   // E2 auction location
-  fam.E2 = barsFresh ? familyE2(bars, decl.e2) : { score: null, reason: 'daily bars stale' };
+  fam.E2 = barsFresh ? familyE2(bars, decl.e2) : { score: null, reason: gap ? `daily bar gap after ${gap}` : 'daily bars stale' };
   if (fam.E2.score != null) fam.E2.score = roundHalfAway(fam.E2.score);
   // E3a perp premium (contrarian at the top; bottom needs the trigger)
   {
@@ -182,13 +193,14 @@ function evaluate(view, decl) {
       if (p > M.zeroHigh) s = -mapPct(p, M);
       else if (p < M.zeroLow) {
         const n1 = decl.e3a.triggerRecentDays, n2 = decl.e3a.triggerPriorDays;
-        if (bars.length >= n1 + n2) {
+        if (!barsFresh || bars.length < n1 + n2) { fam.E3a = { score: null, reason: 'trigger needs fresh daily bars', pct: p, raw: x }; s = null; }
+        else {
           const recent = Math.min(...closes.slice(-n1)), prior = Math.min(...closes.slice(-(n1 + n2), -n1));
           trigger = recent > prior;
           s = trigger ? -mapPct(p, M) : 0;          // mapPct is negative below zeroLow → score positive
         }
       }
-      fam.E3a = { score: roundHalfAway(s), pct: p, raw: x, trigger };
+      if (s !== null) fam.E3a = { score: roundHalfAway(s), pct: p, raw: x, trigger };
     }
   }
   // E5a Coinbase premium z
@@ -211,20 +223,20 @@ function evaluate(view, decl) {
     const r = scoreSeries(rv, dates, decl);
     fam.E6 = { score: null, pct: r.pct ?? null, raw: r.raw ?? null, topDecile: r.pct != null ? r.pct >= decl.e6.topDecilePct : null, reason: r.reason || 'regime only (not a vote)' };
     warn.e6TopDecile = fam.E6.topDecile;
-  } else fam.E6 = { score: null, reason: 'daily bars stale', topDecile: null };
+  } else fam.E6 = { score: null, reason: gap ? `daily bar gap after ${gap}` : 'daily bars stale', topDecile: null };
 
   // Tendency families
   const dailyFam = (key, series, lagKey, opts = {}) => {
     const rows = usable(series, D, decl.lagsDays[lagKey]);
     if (!freshEnough(rows, D, decl.lagsDays[lagKey], decl.staleGraceDays)) return { score: null, reason: `${key} stale` };
     const vals = rows.map(r => r.v), ds = rows.map(r => r.d);
-    const r = scoreSeries(opts.transform ? opts.transform(vals) : vals, ds, decl, { contrarian: !!opts.contrarian });
+    const r = scoreSeries(opts.transform ? opts.transform(vals, ds) : vals, ds, decl, { contrarian: !!opts.contrarian });
     return r.score == null ? r : { ...r, score: roundHalfAway(opts.sign === -1 ? -r.score : r.score), asOf: ds[ds.length - 1] };
   };
   fam.T1 = dailyFam('mvrv', view.mvrv, 'mvrv', { contrarian: decl.t1.contrarian });
   fam['T2+'] = dailyFam('lth', view.lth30, 'lth', { sign: 1 });
   fam['T2-'] = dailyFam('lth', view.lth30, 'lth', { sign: -1 });
-  if (!barsFresh) fam.T3 = { score: null, reason: 'daily bars stale' };
+  if (!barsFresh) fam.T3 = { score: null, reason: gap ? `daily bar gap after ${gap}` : 'daily bars stale' };
   else {
     const c = decl.t3; const atr = atrWilder(bars, c.atr), s200 = smaArr(closes, c.sma);
     const a = closes.map((x, i) => (s200[i] != null && atr[i] ? (x - s200[i]) / atr[i] : null));
@@ -233,10 +245,18 @@ function evaluate(view, decl) {
     fam.T3 = parts.some(p => p.score == null) ? { score: null, reason: parts.find(p => p.score == null).reason } : { score: roundHalfAway(mean(parts.map(p => p.score))), parts: { dist200: parts[0], slope200: parts[1] } };
     fam.T3.levels = { sma200: s200[s200.length - 1] };
   }
+  // T4 on the calendar (not row counts): g(d) = v(d)/v(d − 30) − 1; x(d) = g(d) − median of g over
+  // (d − 365, d − 1], needing at least t4.minMedianDays values. A missing day simply has no value.
   fam.T4 = dailyFam('stablecoins', view.stable, 'stablecoins', {
-    transform: vals => {
-      const g = vals.map((v, i) => (i >= decl.t4.growthDays ? v / vals[i - decl.t4.growthDays] - 1 : null));
-      return g.map((x, i) => { if (x == null || i < decl.t4.medianDays) return null; const w = g.slice(i - decl.t4.medianDays, i).filter(finite); return w.length ? x - median(w) : null; });
+    transform: (vals, ds) => {
+      const byD = new Map(ds.map((d, i) => [d, vals[i]]));
+      const g = ds.map(d => { const b = byD.get(addDays(d, -decl.t4.growthDays)); return finite(b) && b > 0 ? byD.get(d) / b - 1 : null; });
+      const gByD = new Map(ds.map((d, i) => [d, g[i]]));
+      return ds.map((d, i) => {
+        if (g[i] == null) return null;
+        const w = []; for (let k = 1; k <= decl.t4.medianDays; k++) { const v = gByD.get(addDays(d, -k)); if (finite(v)) w.push(v); }
+        return w.length >= decl.t4.minMedianDays ? g[i] - median(w) : null;
+      });
     },
   });
 

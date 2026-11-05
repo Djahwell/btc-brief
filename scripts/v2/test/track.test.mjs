@@ -9,6 +9,14 @@ test('Stage 4 outcome definitions; withheld and missing recorded', () => {
   assert.equal(r.entry, 101);                        // close of bar D−1 (11-19)
   assert.equal(r.ret7d, 108 / 101 - 1);              // close of bar D+6 (11-26)
   assert.equal(r.mae7d, (99 + 5 - 10) / 101 - 1);    // lowest low of D…D+6 (11-23 dip)
-  assert.equal(o.rows[1].status, 'missing'); assert.equal(o.rows[2].status, 'withheld'); assert.equal(o.rows[3].closed, false);
-  assert.equal(o.entry.byBand.Bull.done, 1); assert.equal(o.entry.withheldDays, 1); assert.equal(o.entry.missingDays, 1);
+  assert.equal(o.rows[1].status, 'missing'); assert.equal(o.rows[2].status, 'withheld');
+  assert.equal(o.rows.length, 15);                                   // 11-20 … 12-04, gaps listed as missing
+  assert.equal(o.rows[3].status, 'missing'); assert.equal(o.rows[14].closed, false);
+  assert.equal(o.entry.byHash.h.byBand.Bull.done, 1); assert.equal(o.entry.withheldDays, 1); assert.equal(o.entry.missingDays, 12);
+});
+
+test('rows under different declarations are never pooled', () => {
+  const a = fz('2026-11-20', 4, 'Bull'); const b = { ...fz('2026-11-21', 4, 'Bull') }; b.engine = { ...b.engine, declarationHash: 'h2' };
+  const o = outcomes([a, b], bars);
+  assert.equal(o.entry.declarationHash, 'h2'); assert.equal(o.entry.byBand.Bull.days, 1); assert.equal(o.entry.otherDeclarations, 1);
 });

@@ -14,9 +14,17 @@ const WORKER = process.env.WORKER_URL || 'https://btc-brief.joel-toe.workers.dev
 const DAY = 86400;
 const BANDS = ['Strong bull', 'Bull', 'Neutral', 'Bear', 'Strong bear'];
 
-export function outcomes(frozen, bars) {
+export function outcomes(frozenIn, bars, { lastDay = null } = {}) {
   const byD = new Map(bars.map(b => [b.d, b]));
   const add = (d, n) => isoDay(Date.parse(d + 'T00:00:00Z') + n * DAY * 1000);
+  // Every calendar day from the first record to lastDay is listed: a day with no record at all
+  // (VPS down all night) is 'missing', never silently absent (Board build review #11).
+  const have = new Map(frozenIn.map(f => [f.date, f]));
+  const frozen = [];
+  if (frozenIn.length) {
+    const first = [...have.keys()].sort()[0]; const last = lastDay || [...have.keys()].sort().pop();
+    for (let d = first; d <= last; d = add(d, 1)) frozen.push(have.get(d) || { date: d, missing: true, reason: 'no frozen record (no VPS cycle reached the Worker)' });
+  }
   const rows = frozen.map(f => {
     const base = { date: f.date };
     if (f.missing) return { ...base, status: 'missing', reason: f.reason || null };
@@ -31,17 +39,26 @@ export function outcomes(frozen, bars) {
     row.tendency = t && !t.withheld ? { score: t.score, band: t.band } : { withheld: true };
     return row;
   });
+  // Rows scored under different declarations are never pooled: stats per declaration hash; the
+  // headline block is the latest hash.
+  const stats = rs => {
   const byBand = {};
   for (const b of BANDS) {
-    const r = rows.filter(x => x.status === 'scored' && x.band === b); if (!r.length) continue;
+    const r = rs.filter(x => x.status === 'scored' && x.band === b); if (!r.length) continue;
     const done = r.filter(x => x.closed);
     const mean = a => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : null);
     byBand[b] = { days: r.length, done: done.length, meanRet7d: mean(done.map(x => x.ret7d)), meanMae7d: mean(done.map(x => x.mae7d)) };
   }
-  const split = flag => { const d = rows.filter(x => x.status === 'scored' && x.closed && x.bullPlus === flag); return { n: d.length, meanRet7d: d.length ? d.reduce((s, x) => s + x.ret7d, 0) / d.length : null }; };
+  const split = flag => { const d = rs.filter(x => x.status === 'scored' && x.closed && x.bullPlus === flag); return { n: d.length, meanRet7d: d.length ? d.reduce((s, x) => s + x.ret7d, 0) / d.length : null }; };
+  return { byBand, bullPlus: split(true), nonBullPlus: split(false) };
+  };
+  const hashes = [...new Set(rows.filter(r => r.status === 'scored').map(r => r.declarationHash))];
+  const latest = rows.filter(r => r.status === 'scored').map(r => r.declarationHash).pop() || null;
+  const byHash = Object.fromEntries(hashes.map(h => [h, stats(rows.filter(r => r.declarationHash === h))]));
   return {
     rows,
-    entry: { byBand, bullPlus: split(true), nonBullPlus: split(false), withheldDays: rows.filter(x => x.status === 'withheld').length, missingDays: rows.filter(x => x.status === 'missing').length },
+    entry: { declarationHash: latest, ...(latest ? byHash[latest] : stats([])), otherDeclarations: hashes.filter(h => h !== latest).length, byHash,
+      withheldDays: rows.filter(x => x.status === 'withheld').length, missingDays: rows.filter(x => x.status === 'missing').length },
   };
 }
 
@@ -51,7 +68,7 @@ async function main() {
   const first = fr.rows.length ? Date.parse(fr.rows[0].date + 'T00:00:00Z') / 1000 - 3 * DAY : Math.floor(Date.now() / 1000 / DAY) * DAY - 10 * DAY;
   const end = Math.floor(Date.now() / 1000 / DAY) * DAY;
   const bars = (await coinbaseCandles('BTC-USD', DAY, first, end)).map(r => ({ d: isoDay(r.t * 1000), o: r.o, h: r.h, l: r.l, c: r.c }));
-  const o = outcomes(fr.rows, bars);
+  const o = outcomes(fr.rows, bars, { lastDay: isoDay(Date.now()) });
   writeJSON(`${OUT}/track.json`, { schema: 'brief-v2-track/1', generatedAt: new Date().toISOString(), label: 'live (frozen daily snapshots)', definitions: 'STAGE4-PLAN §4', ...o, tendency: { note: 'tendency outcomes start after 180 days of records' } });
   console.log(`[v2-track] ${fr.rows.length} frozen days, ${o.rows.filter(r => r.closed).length} closed`);
 }

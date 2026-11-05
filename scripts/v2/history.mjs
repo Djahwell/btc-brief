@@ -128,8 +128,8 @@ await softStep('bmp_lth', async () => {
   if (!bitstampRows) throw new Error('needs bitstamp_daily');
   const raw = await fetchBMPLTHData({ full: true });
   const closes = bitstampRows.map(r => ({ d: isoDay(r.t * 1000), c: r.c }));
-  const { rows, medianAlignErrPct: med } = buildLTHRows(raw, closes, endDay);
-  save('bmp_lth', { source: 'Bitcoin Magazine Pro LTH supply (full chart trace; dated by price alignment to Bitstamp closes)', unit: 'BTC', medianAlignErrPct: med, revisionNote: 'values as published at build time; earlier vintages may differ' }, rows, r => r.t, DAY);
+  const { rows, medianAlignErrPct: med, ambiguousDatePct } = buildLTHRows(raw, closes, endDay);
+  save('bmp_lth', { source: 'Bitcoin Magazine Pro LTH supply (full chart trace; dated by price alignment to Bitstamp closes)', unit: 'BTC', medianAlignErrPct: med, ambiguousDatePct, revisionNote: 'values as published at build time; earlier vintages may differ' }, rows, r => r.t, DAY);
 });
 
 writeJSON(`${H}/manifest.json`, manifest);

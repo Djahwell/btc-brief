@@ -113,7 +113,7 @@
     },
     "T4": {
      "score": 0,
-     "pct": 35.81395348837209,
+     "pct": 34.68468468468468,
      "raw": -0.08112715155025096,
      "asOf": "2021-11-08"
     }
@@ -173,6 +173,13 @@
      "band": "Neutral",
      "active": 1,
      "of": 1,
+     "withheld": false
+    },
+    "R-E1E2E7 (robustness 2019–2021)": {
+     "score": 1,
+     "band": "Neutral",
+     "active": 3,
+     "of": 3,
      "withheld": false
     }
    },
@@ -285,7 +292,7 @@
     },
     "T4": {
      "score": 0,
-     "pct": 38.319198149575946,
+     "pct": 37.312312312312315,
      "raw": -0.06361817044617812,
      "asOf": "2022-06-18"
     }
@@ -345,6 +352,13 @@
      "band": "Strong bear",
      "active": 1,
      "of": 1,
+     "withheld": false
+    },
+    "R-E1E2E7 (robustness 2019–2021)": {
+     "score": -2,
+     "band": "Neutral",
+     "active": 3,
+     "of": 3,
      "withheld": false
     }
    },
@@ -457,7 +471,7 @@
     },
     "T4": {
      "score": 0,
-     "pct": 58.62542955326461,
+     "pct": 57.24832214765101,
      "raw": -0.014490575817267648,
      "asOf": "2022-11-23"
     }
@@ -517,6 +531,13 @@
      "band": "Bear",
      "active": 1,
      "of": 1,
+     "withheld": false
+    },
+    "R-E1E2E7 (robustness 2019–2021)": {
+     "score": -1,
+     "band": "Neutral",
+     "active": 3,
+     "of": 3,
      "withheld": false
     }
    },
@@ -629,7 +650,7 @@
     },
     "T4": {
      "score": 2,
-     "pct": 80.88082901554404,
+     "pct": 79.44020356234097,
      "raw": 0.06500596640655099,
      "asOf": "2024-03-12"
     }
@@ -689,6 +710,13 @@
      "band": "Strong bull",
      "active": 1,
      "of": 1,
+     "withheld": false
+    },
+    "R-E1E2E7 (robustness 2019–2021)": {
+     "score": 4,
+     "band": "Bull",
+     "active": 3,
+     "of": 3,
      "withheld": false
     }
    },
@@ -801,7 +829,7 @@
     },
     "T4": {
      "score": 0,
-     "pct": 50.775862068965516,
+     "pct": 50.02123142250531,
      "raw": -0.0007219805011122737,
      "asOf": "2025-04-06"
     }
@@ -861,6 +889,13 @@
      "band": "Neutral",
      "active": 1,
      "of": 1,
+     "withheld": false
+    },
+    "R-E1E2E7 (robustness 2019–2021)": {
+     "score": -2,
+     "band": "Neutral",
+     "active": 3,
+     "of": 3,
      "withheld": false
     }
    },

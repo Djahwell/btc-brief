@@ -62,10 +62,15 @@ async function computeE5a(http, state, vintage, nowMs) {
     state.e5aLastStoredHour = fresh[fresh.length - 1];
   }
   const complete = r.hours24 >= 20 && r.days >= 25;
+  // Same legs, window ending at today's 00:00 UTC: the frozen daily record and the Stage 4 backtest
+  // use this one (Board build review #2), never an hour after midnight.
+  const d00 = Math.floor(nowMs / 1000 / 86400) * 86400;
+  const r0 = computeFromLegs(cb, usdt, bn, d00);
+  const atD00 = { endSec: d00, value: r0.value, z30: r0.z, hours24: r0.hours24, days: r0.days, complete: r0.hours24 >= 20 && r0.days >= 25 };
   return {
     value: r.value, z30: r.z, unit: '%', window: '24h median of hourly USDT-adjusted premium; z vs 30 prior daily medians',
     asOf: r.lastHour ? new Date((r.lastHour + H) * 1000).toISOString() : null,
-    hours24: r.hours24, days: r.days, dayMedians: r.dayMedians, quality: r.value == null ? 'MISSING' : complete ? 'OK' : 'STALE',
+    hours24: r.hours24, days: r.days, dayMedians: r.dayMedians, atD00, quality: r.value == null ? 'MISSING' : complete ? 'OK' : 'STALE',
   };
 }
 

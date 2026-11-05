@@ -5,8 +5,11 @@
 // Acceptance checks (fail closed, all must pass):
 //   1. manifest schema brief-v2-history/1 and no build errors
 //   2. every file listed with a sha256 is downloaded and matches it
-//   3. versus the previously accepted copy: no file disappears, row counts do not shrink by > 1 %,
-//      and the last date never moves backwards
+//   3. versus the previously accepted copy: no file disappears, row counts never decrease, the last
+//      date never moves backwards, and (c) the overlapping rows agree within each input's tolerance
+//      (OVERLAP below). A revision beyond tolerance (e.g. BMP or DefiLlama rewriting history) refuses
+//      the set and keeps the previous one, flagged, until Djahwell accepts it by writing that
+//      manifest's generatedAt into history/ACCEPT (one line).
 // The GitHub build already refuses to commit a partial build; these checks guard the transfer
 // and a bad rebuild.
 const fs = require('fs');
@@ -24,11 +27,32 @@ function acceptance(next, prev) {
     for (const [k, p] of Object.entries(prev.files || {})) {
       const n = next.files?.[k];
       if (!n) { bad.push(`${k} disappeared`); continue; }
-      if (n.rows < p.rows * 0.99) bad.push(`${k} rows ${p.rows} → ${n.rows}`);
+      if (n.rows < p.rows) bad.push(`${k} rows ${p.rows} → ${n.rows}`);
       if (p.last && n.last && n.last < p.last) bad.push(`${k} last ${p.last} → ${n.last} (backwards)`);
     }
   }
+  for (const [k, n] of Object.entries(next.files || {})) if (!n.sha256) bad.push(`${k} has no sha256 in the manifest`);
   return bad;
+}
+
+// Overlap tolerance per file: [value field, relative tolerance]. Same tolerances as the cross-checks.
+const OVERLAP = {
+  coinbase_daily: ['c', 0.002], bitstamp_daily: ['c', 0.002], coinbase_premium_legs_1h: ['cb', 0.001],
+  binance_premium_index_1h: ['close', 1e-9], binance_funding: ['rate', 1e-9], fear_greed: ['v', 0],
+  coinmetrics_mvrv: ['v', 0.01], bgeometrics_realized: ['v', 0.01], stablecoins_usdt_usdc: ['usdt', 0.01], bmp_lth: ['v', 0.002],
+};
+function overlapIssues(name, prevRows, nextRows) {
+  const spec = OVERLAP[name]; if (!spec) return [`${name}: no overlap rule declared`];
+  const [f, tol] = spec; const prev = new Map(prevRows.map(r => [r.t, r[f]]));
+  let n = 0, worst = 0, first = null;
+  for (const r of nextRows) {
+    if (!prev.has(r.t)) continue;
+    const a = prev.get(r.t), b = r[f];
+    if (a == null && b == null) continue;
+    const rel = a == null || b == null ? Infinity : Math.abs(a - b) / Math.max(Math.abs(a), 1e-12);
+    if (tol === 0 ? a !== b : rel > tol) { n++; if (rel > worst) worst = rel; if (!first) first = new Date(r.t * 1000).toISOString().slice(0, 10); }
+  }
+  return n ? [`${name}: ${n} overlapping rows revised beyond tolerance (first ${first}, max ${(worst * 100).toFixed(3)}%)`] : [];
 }
 
 async function getBuf(fetchImpl, url, deadline) {
@@ -55,13 +79,18 @@ async function refreshHistory({ dir, baseUrl, fetchImpl = globalThis.fetch, stat
     if (!issues.length) {
       fs.rmSync(next, { recursive: true, force: true }); fs.mkdirSync(next, { recursive: true });
       for (const [k, f] of Object.entries(man.files || {})) {
-        if (!f.sha256) continue;
         const buf = await getBuf(fetchImpl, `${baseUrl}/${k}.json.gz?sha=${f.sha256.slice(0, 12)}`, deadline);
         if (sha256(buf) !== f.sha256) { issues.push(`${k} sha256 mismatch`); break; }
-        zlib.gunzipSync(buf);                                     // must be a readable gzip
+        const parsed = JSON.parse(zlib.gunzipSync(buf));            // must be a readable gzip of JSON
+        if (!Array.isArray(parsed.rows) || parsed.rows.length !== f.rows) { issues.push(`${k} row count ${parsed.rows?.length} ≠ manifest ${f.rows}`); break; }
+        const prevFile = path.join(cur, `${k}.json.gz`);
+        if (prev && fs.existsSync(prevFile)) issues.push(...overlapIssues(k, JSON.parse(zlib.gunzipSync(fs.readFileSync(prevFile))).rows, parsed.rows));
         fs.writeFileSync(path.join(next, `${k}.json.gz`), buf);
       }
     }
+    let accepted = null; try { accepted = fs.readFileSync(path.join(dir, 'ACCEPT'), 'utf8').trim(); } catch { /* none */ }
+    const onlyRevisions = issues.length && issues.every(i => /revised beyond tolerance/.test(i));
+    if (onlyRevisions && accepted === man.generatedAt) issues = [];                 // Djahwell accepted these revisions
     if (issues.length) { state.historyCheckedDay = today; state.historyIssues = issues; fs.rmSync(next, { recursive: true, force: true }); return { status: prev ? 'refused-kept-previous' : 'refused-no-history', generatedAt: prev?.generatedAt ?? null, issues }; }
     fs.writeFileSync(path.join(next, 'manifest.json'), manBuf);
     const old = path.join(dir, 'previous');
@@ -82,4 +111,4 @@ function loadHistory(dir) {
   return { hist, manifest };
 }
 
-module.exports = { refreshHistory, loadHistory, acceptance };
+module.exports = { refreshHistory, loadHistory, acceptance, overlapIssues, OVERLAP };

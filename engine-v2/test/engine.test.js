@@ -82,6 +82,20 @@ test('fail closed: stale inputs drop the family, below quorum withholds the scor
   assert.equal(nan.families.E5a.score, null); assert.equal(nan.families.E3a.score, null);
 });
 
+test('E2 withholds when a volume leg is missing; bar gap withholds bar families; V-E2 needs E1; NaN is withheld', () => {
+  const v = V.viewAt(P, '2019-06-01');
+  const nov = { ...v, bars: v.bars.map((b, i, a) => (i === a.length - 3 ? { ...b, v: null } : b)) };
+  const r = E.evaluate(nov, decl); assert.equal(r.families.E2.score, null); assert.match(r.families.E2.reason, /volume leg/);
+  const gap = { ...v, bars: v.bars.filter((b, i, a) => i !== a.length - 50) };
+  const g = E.evaluate(gap, decl); for (const f of ['E1', 'E2', 'T3']) assert.match(g.families[f].reason, /gap/, f);
+  const fam = { E1: { score: null }, E2: { score: 5 }, E3a: { score: 5 }, E5a: { score: NaN }, E7: { score: 5 } };
+  const sc = E.scorecards(fam, {}, decl);
+  assert.equal(sc['V-E1/E6a'].withheld, true);              // NaN counts as withheld → 3/5
+  const fam2 = { ...fam, E5a: { score: 5 } };
+  const sc2 = E.scorecards(fam2, {}, decl);
+  assert.equal(sc2['V-E1/E6a'].score, 5); assert.equal(sc2['V-E2/E6a'].withheld, true); assert.match(sc2['V-E2/E6a'].reason, /E1/);
+});
+
 test('warm-up: fewer than 365 reference days → no score', () => {
   const r = E.evaluate(V.viewAt(P, '2017-10-01'), decl);
   assert.equal(r.families.E1.score, null);

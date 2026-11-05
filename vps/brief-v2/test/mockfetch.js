@@ -6,6 +6,8 @@ const fx = n => JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', n), 
 const MIN = 60000;
 // Synthetic v2-data history ending yesterday (deterministic), served as gz files + manifest with sha256.
 let _hist = null;
+function synthLegMap(now) { const H = synthHistoryFiles(now); if (!H.legMap) H.legMap = new Map(H.raw.coinbase_premium_legs_1h.rows.map(r => [r.t, r])); return H.legMap; }
+function synthPremHourly(now) { const H = synthHistoryFiles(now); if (!H.premMap) H.premMap = new Map(H.raw.binance_premium_index_1h.rows.map(r => [r.t, r.close])); return t => H.premMap.get(t) ?? null; }
 function synthHistoryFiles(now) {
   const end = Math.floor(now / 864e5) * 864e5; if (_hist && _hist.end === end) return _hist;
   const { engineDir } = require('../lib/score');
@@ -14,7 +16,7 @@ function synthHistoryFiles(now) {
   const h = synthHistory(days, 7, start); const gz = {}; const files = {};
   const zlib = require('zlib'); const crypto = require('crypto');
   for (const [k, v] of Object.entries(h)) { gz[k] = zlib.gzipSync(JSON.stringify(v)); files[k] = { rows: v.rows.length, last: new Date(v.rows[v.rows.length - 1].t * 1000).toISOString(), sha256: crypto.createHash('sha256').update(gz[k]).digest('hex') }; }
-  _hist = { end, gz, manifest: { schema: 'brief-v2-history/1', generatedAt: new Date(end).toISOString(), files, errors: [] } };
+  _hist = { end, raw: h, gz, manifest: { schema: 'brief-v2-history/1', generatedAt: new Date(end).toISOString(), files, errors: [] } };
   return _hist;
 }
 function mk(opts = {}) {
@@ -27,7 +29,13 @@ function mk(opts = {}) {
     const u = new URL(url); const q = u.searchParams;
     if (opts.fail && opts.fail(url)) return res({ msg: 'fail' }, opts.failStatus || 500);
     const w = { 'x-mbx-used-weight-1m': String(opts.weight ?? 37) };
+    if (opts.synthLegs && !opts.hourly) opts.hourly = synthPremHourly(now);
     if (u.host === 'fapi.binance.com') {
+      if (u.pathname === '/fapi/v1/premiumIndexKlines' && q.get('interval') === '1h') {
+        const H = 3.6e6; const limit = Number(q.get('limit')); const last = Math.floor(now / H) * H; const rows = [];
+        for (let t = last - (limit - 1) * H; t <= last; t += H) { const v = opts.hourly ? opts.hourly(t / 1000) : prem(t); if (v != null) rows.push([t, '0', '0', '0', String(v), '0', t + H - 1, '0', 60, '0', '0', '0']); }
+        return res(rows, 200, w);
+      }
       if (u.pathname === '/fapi/v1/premiumIndexKlines') {
         const start = Number(q.get('startTime')); const limit = Number(q.get('limit'));
         const rows = []; for (let t = Math.ceil(start / MIN) * MIN, i = 0; i < limit && t <= now; t += MIN, i++) rows.push([t, '0', '0', '0', String(prem(t)), '0', t + MIN - 1, '0', 60, '0', '0', '0']);
@@ -60,9 +68,19 @@ function mk(opts = {}) {
       if (u.pathname === '/api/v5/public/funding-rate') return res(fx('okx_funding.json'));
       if (u.pathname === '/api/v5/public/mark-price') return res(fx('okx_mark_usd.json'));
     }
+    if (u.host === 'api.exchange.coinbase.com' && opts.synthLegs) {
+      const prod = u.pathname.split('/')[2]; const s0 = Date.parse(q.get('start')) / 1000, e0 = Date.parse(q.get('end')) / 1000; const L = synthLegMap(now); const rows = [];
+      for (const [t, r] of L) if (t >= s0 && t <= e0) { const c = prod === 'USDT-USD' ? r.usdt : r.cb; rows.push([t, c, c, c, c, 10]); }
+      return res(rows.reverse());
+    }
     if (u.host === 'api.exchange.coinbase.com') {
       const prod = u.pathname.split('/')[2]; const s = Date.parse(q.get('start')) / 1000, e = Date.parse(q.get('end')) / 1000; const rows = [];
       for (let t = e; t >= s; t -= 3600) { const btc = 80000 + 500 * Math.sin(t / 86400); const usdt = 0.9995 + 0.0002 * Math.sin(t / 50000); const c = prod === 'USDT-USD' ? usdt : btc * (1 + 0.0001 * Math.sin(t / 30000)); rows.push([t, c, c, c, c, 10]); }
+      return res(rows);
+    }
+    if (u.host === 'data-api.binance.vision' && opts.synthLegs) {
+      const st = Number(q.get('startTime')) / 1000; const L = synthLegMap(now); const rows = [];
+      for (const [t, r] of L) if (t >= st && rows.length < 1000) rows.push([t * 1000, '0', '0', '0', String(r.bn), '0']);
       return res(rows);
     }
     if (u.host === 'data-api.binance.vision') {
@@ -85,6 +103,6 @@ function mk(opts = {}) {
   };
   return { fetch, calls };
 }
-module.exports = { mk };
+module.exports = { mk, synthHistoryFiles, synthPremHourly };
 // When preloaded with `node -r ./test/mockfetch.js cycle.js --dry-run`, replace global fetch.
 if (process.env.BRIEF_V2_MOCK === '1') globalThis.fetch = mk().fetch;

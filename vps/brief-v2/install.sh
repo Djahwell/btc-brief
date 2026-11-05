@@ -48,7 +48,7 @@ cp -r "$PKG/lib" "$PKG/test" "$PKG/systemd" "$PKG/engine" "$NEW/"
 cp "$DIR/.env" "$NEW/.env"; chmod 600 "$NEW/.env"
 
 echo "== 5/10 offline tests (staged copy)"
-( cd "$NEW" && "$NODE" --test test/units.test.js test/e2e.test.js ) || fail "offline tests"
+( cd "$NEW" && "$NODE" --test test/*.test.js ) || fail "offline tests (units, e2e, engine golden file, parity, frozen snapshot, history acceptance, MANIFEST)"
 grn "offline tests passed"
 
 echo "== 6/10 live dry cycle (staged copy; real exchanges; writes only under $NEW/dry; pushes nothing)"
@@ -76,7 +76,7 @@ grn "bot unchanged ($BOT_BEFORE)"
 
 echo "== 8/10 swapping code into $DIR (timer paused if present; data kept)"
 WAS_ACTIVE=0; if systemctl is-active --quiet brief-v2-cycle.timer; then WAS_ACTIVE=1; sudo systemctl stop brief-v2-cycle.timer; fi
-while systemctl is-active --quiet brief-v2-cycle.service; do sleep 2; done          # let a running cycle finish
+while case "$(systemctl show -p ActiveState --value brief-v2-cycle.service 2>/dev/null)" in activating|active|deactivating|reloading) true;; *) false;; esac; do sleep 2; done   # a running oneshot is "activating"          # let a running cycle finish
 mkdir -p "$DIR"
 # Keep the code being replaced so `bash rollback.sh --previous` can restore it (data is never touched).
 if [ -f "$DIR/cycle.js" ]; then
@@ -88,18 +88,21 @@ cp -r "$NEW/lib" "$NEW/test" "$NEW/systemd" "$NEW/engine" "$DIR/"
 for f in cycle.js config.json package.json README.md .env.example; do cp "$NEW/$f" "$DIR/"; done
 rm -rf "$NEW"
 
+# After the swap a failure restores the code that was replaced (v1.0) instead of removing V2.
+undo(){ if [ -d "$DIR/.prev-code" ]; then bash "$PKG/rollback.sh" --previous; else bash "$PKG/rollback.sh"; fi; }
+
 echo "== 9/10 units: write, verify, ONE run inside the real systemd sandbox"
 for u in service timer; do
   sed -e "s#__USER__#$(id -un)#g" -e "s#__DIR__#$DIR#g" -e "s#__NODE__#$NODE#g" "$DIR/systemd/brief-v2-cycle.$u" | sudo tee /etc/systemd/system/brief-v2-cycle.$u >/dev/null
 done
 sudo systemctl daemon-reload
-systemd-analyze verify /etc/systemd/system/brief-v2-cycle.service /etc/systemd/system/brief-v2-cycle.timer || { red "unit verification failed"; bash "$PKG/rollback.sh"; exit 1; }
+systemd-analyze verify /etc/systemd/system/brief-v2-cycle.service /etc/systemd/system/brief-v2-cycle.timer || { red "unit verification failed"; undo; exit 1; }
 sudo systemctl start brief-v2-cycle.service || true
 journalctl -u brief-v2-cycle -n 12 --no-pager || true
 OK="$("$NODE" -e 'const s=require(process.argv[1]+"/status.json");console.log((s.push&&s.push.ok?"push-ok":"push-FAIL")+" "+(s.runs&&s.runs.clock&&s.runs.clock.synced?"clock-ok":"clock-FAIL")+" "+JSON.stringify(s.quality))' "$DIR" 2>/dev/null || echo "no-status")"
 echo "sandboxed run: $OK"
-case "$OK" in push-ok\ clock-ok*) grn "sandboxed run pushed to the Worker";; *) red "sandboxed run did not push (see above)"; bash "$PKG/rollback.sh"; exit 1;; esac
-[ "$(bot_state)" = "$BOT_BEFORE" ] || { red "WARNING: the bot changed state/PID — rolling back"; bash "$PKG/rollback.sh"; exit 1; }
+case "$OK" in push-ok\ clock-ok*) grn "sandboxed run pushed to the Worker";; *) red "sandboxed run did not push (see above)"; undo; exit 1;; esac
+[ "$(bot_state)" = "$BOT_BEFORE" ] || { red "WARNING: the bot changed state/PID — rolling back"; undo; exit 1; }
 
 echo "== 10/10 enabling the timer"
 sudo systemctl enable --now brief-v2-cycle.timer

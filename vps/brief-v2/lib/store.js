@@ -47,31 +47,45 @@ function archiveSnapshot(dir, snap, extra, now = Date.now()) {
 }
 
 // Frozen daily snapshot (STAGE3-PLAN §6, Board fix 2): the first cycle of UTC day D that reads a
-// daily.json generated on D (the 00:10 run), before 02:07 UTC. At or after 02:07 with none frozen,
-// the day is recorded as missing. Same moment as the Stage 4 evaluation time. Never overwritten.
-const FREEZE_DEADLINE_MIN = 2 * 60 + 7;
-function freezeDaily(dir, snap, { dailyGeneratedAt }, now = Date.now()) {
+// daily.json generated on D (the 00:10 run), up to and including the 02:07 cycle. After that with none
+// frozen, the day is recorded as missing. The frozen evaluation uses windows ending at D 00:00 (the
+// Stage 4 evaluation time), so it can be rebuilt from history exactly. Never overwritten.
+const FREEZE_DEADLINE_MIN = 2 * 60 + 8;          // the cycle that starts at 02:07 still counts
+function freezeDue(dir, { dailyGeneratedAt }, now = Date.now()) {
+  const D = day(now); const f = path.join(dir, 'frozen', `${D}.json`);
+  if (fs.existsSync(f)) return null;
+  const minutes = new Date(now).getUTCHours() * 60 + new Date(now).getUTCMinutes();
+  if (minutes >= FREEZE_DEADLINE_MIN) return 'missing';
+  if (!dailyGeneratedAt || dailyGeneratedAt.slice(0, 10) !== D) return null;   // wait for the 00:10 daily run
+  return 'due';
+}
+function writeFrozen(dir, kind, { snap, frozenEngine }, now = Date.now()) {
   const dd = path.join(dir, 'frozen'); fs.mkdirSync(dd, { recursive: true });
   const D = day(now); const f = path.join(dd, `${D}.json`);
   if (fs.existsSync(f)) return null;
-  const minutes = new Date(now).getUTCHours() * 60 + new Date(now).getUTCMinutes();
-  if (minutes >= FREEZE_DEADLINE_MIN) { fs.writeFileSync(f, JSON.stringify({ date: D, missing: true, reason: 'no cycle read that day\'s daily.json before 02:07 UTC' })); return 'missing'; }
-  if (!dailyGeneratedAt || dailyGeneratedAt.slice(0, 10) !== D) return null;   // wait for the 00:10 daily run
-  fs.writeFileSync(f, JSON.stringify({ date: D, missing: false, frozenAt: new Date(now).toISOString(), snapshot: snap }));
-  return 'frozen';
+  if (kind === 'missing') fs.writeFileSync(f, JSON.stringify({ date: D, missing: true, reason: "no cycle read that day's daily.json by the 02:07 UTC cycle" }));
+  else fs.writeFileSync(f, JSON.stringify({ date: D, missing: false, frozenAt: new Date(now).toISOString(), frozenEngine, snapshot: snap }));
+  return kind === 'missing' ? 'missing' : 'frozen';
+}
+// Back-compatible single call (tests): decide and write.
+function freezeDaily(dir, snap, { dailyGeneratedAt, frozenEngine = null }, now = Date.now()) {
+  const k = freezeDue(dir, { dailyGeneratedAt }, now);
+  return k ? writeFrozen(dir, k, { snap, frozenEngine: frozenEngine || snap.engine || null }, now) : null;
 }
 
-// Compact copy of a frozen day for the Worker (track record): scores, family scores, hashes. ~2 KB.
+// Compact copy of a frozen day for the Worker (track record and the §7 parity check): scores and, per
+// family, score, raw value, percentile and asOf, plus hashes. A few KB.
 function frozenRecord(dir, date) {
   let f; try { f = JSON.parse(fs.readFileSync(path.join(dir, 'frozen', `${date}.json`), 'utf8')); } catch { return null; }
   if (f.missing) return { date, missing: true, reason: f.reason };
-  const e = f.snapshot.engine || {};
+  const e = f.frozenEngine || f.snapshot.engine || {};
+  const pick = v => ({ score: v.score ?? null, raw: typeof v.raw === 'number' ? v.raw : null, pct: typeof v.pct === 'number' ? v.pct : null, asOf: v.asOf ?? null, state: v.state ?? null, reason: v.score == null ? (v.reason ?? null) : null });
   return {
     date, missing: false, seq: f.snapshot.seq, generatedAt: f.snapshot.generatedAt, frozenAt: f.frozenAt,
-    engine: { status: e.status ?? null, withheld: e.withheld ?? true, reason: e.reason ?? null, declarationHash: e.declarationHash ?? null, engineCodeHash: e.engineCodeHash ?? null,
+    engine: { status: e.status ?? null, mode: e.mode ?? null, withheld: e.withheld ?? true, reason: e.reason ?? null, declarationHash: e.declarationHash ?? null, engineCodeHash: e.engineCodeHash ?? null,
       primary: e.primary ?? null, scores: e.scores ?? null,
-      families: e.families ? Object.fromEntries(Object.entries(e.families).map(([k, v]) => [k, { score: v.score ?? null, asOf: v.asOf ?? null }])) : null },
+      families: e.families ? Object.fromEntries(Object.entries(e.families).map(([k, v]) => [k, pick(v)])) : null },
   };
 }
 
-module.exports = { Vintage, State, archiveSnapshot, freezeDaily, frozenRecord, day, FREEZE_DEADLINE_MIN };
+module.exports = { Vintage, State, archiveSnapshot, freezeDaily, freezeDue, writeFrozen, frozenRecord, day, FREEZE_DEADLINE_MIN };

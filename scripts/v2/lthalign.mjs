@@ -50,7 +50,14 @@ export function buildLTHRows(raw, closes, endDaySec) {
   if ((endDaySec - Date.parse(last + 'T00:00:00Z') / 1000) / 86400 > 3) throw new Error(`last aligned day ${last} is stale`);
   const rows = al.map((a, i) => ({ t: Date.parse(a.d + 'T00:00:00Z') / 1000, v: Math.round(pts[i].l), errPct: Math.round(a.err * 1e5) / 1e3 }))
     .filter(r => r.errPct <= 2);   // a point whose price does not match within 2% has an uncertain date → dropped
-  return { rows, medianAlignErrPct: Math.round(med * 1e5) / 1e3, last };
+  // Date uncertainty (Board build review #15): share of points whose price also matches the PREVIOUS
+  // calendar day within 0.1 percentage point of the chosen match — those could be dated one day late
+  // or (worse for look-ahead) the chosen date could be a day early. Reported, and covered by the
+  // Stage 4 lag+1 sensitivity run.
+  const cIdx = new Map(closes.map((r, i) => [r.d, i]));
+  let amb = 0;
+  al.forEach((a, i) => { const j = cIdx.get(a.d); if (j > 0) { const e2 = Math.abs(pts[i].p / closes[j - 1].c - 1); if (e2 <= a.err + 0.001) amb++; } if (j < closes.length - 1) { const e3 = Math.abs(pts[i].p / closes[j + 1].c - 1); if (e3 <= a.err + 0.001) amb++; } });
+  return { rows, medianAlignErrPct: Math.round(med * 1e5) / 1e3, last, ambiguousDatePct: Math.round(amb / al.length * 1000) / 10 };
 }
 
 // 30-day net LTH change in BTC/day on the calendar (gaps allowed): (v(d) − v(d')) / days(d − d'),

@@ -82,13 +82,20 @@ export function checkText(text, p) {
     });
     if (!ok) fails.push(`number not in the snapshot: ${m.trim()}`);
   }
-  const scores = [p.entry_1_to_7_days, p.tendency_3_to_9_months].filter(c => !c.withheld).map(c => c.score);
-  const t = text.toLowerCase();
-  if (/\bbull(ish)?\b|\bfavou?rable\b|\bgood time to (buy|enter|get in)\b|\bbuy signal\b/.test(t) && !scores.some(s => s >= 3)) fails.push("bullish wording without a Bull score");
-  if (/\bbear(ish)?\b|\bunfavou?rable\b|\bsell signal\b/.test(t) && !scores.some(s => s <= -3)) fails.push("bearish wording without a Bear score");
-  if (/strong bull/.test(t) && !scores.some(s => s >= 6)) fails.push("'strong bull' without a Strong bull score");
-  if (/strong bear/.test(t) && !scores.some(s => s <= -6)) fails.push("'strong bear' without a Strong bear score");
-  if (/\b(will|going to)\b[^.]*\b(rise|fall|rally|drop|crash|pump|dump|reach|hit)\b/.test(t)) fails.push("price prediction");
+  // Direction words are checked per sentence against the card that sentence talks about (entry,
+  // tendency, or either when it names neither) — Board build review #16.
+  const E = p.entry_1_to_7_days, T = p.tendency_3_to_9_months;
+  const val = c => (c.withheld ? null : c.score);
+  for (const sent of text.toLowerCase().split(/(?<=[.!?])\s+/)) {
+    const mE = /\bentry\b/.test(sent), mT = /\btendency\b/.test(sent);
+    const pool = (mE && !mT) ? [val(E)] : (mT && !mE) ? [val(T)] : [val(E), val(T)];
+    const has = f => pool.some(x => x != null && f(x));
+    if (/\bbull(ish)?\b|\bfavou?rable\b|\bgood time to (buy|enter|get in)\b|\bbuy signal\b/.test(sent) && !/\bnot\b[^.]*\bbull/.test(sent) && !has(x => x >= 3)) fails.push("bullish wording without a matching Bull score");
+    if (/\bbear(ish)?\b|\bunfavou?rable\b|\bsell signal\b/.test(sent) && !/\bnot\b[^.]*\bbear/.test(sent) && !has(x => x <= -3)) fails.push("bearish wording without a matching Bear score");
+    if (/strong bull/.test(sent) && !has(x => x >= 6)) fails.push("'strong bull' without a Strong bull score");
+    if (/strong bear/.test(sent) && !has(x => x <= -6)) fails.push("'strong bear' without a Strong bear score");
+  }
+  if (/\b(will|going to)\b[^.]*\b(rise|fall|rally|drop|crash|pump|dump|reach|hit)\b/.test(text.toLowerCase())) fails.push("price prediction");
   return fails;
 }
 
@@ -139,7 +146,11 @@ export async function handleCommentary(request, env, now, fetchImpl = fetch, out
   } catch (e) { return out({ error: "model unreachable" }, 502); }
   const fails = checkText(text, payload);
   if (fails.length) return out({ error: "checks failed — not published", fails: fails.slice(0, 5) }, 422);
-  const c = { date: day, text, seq: snap.seq, snapshotGeneratedAt: snap.generatedAt, declarationHash: snap.engine.declarationHash, writtenAt: new Date(now).toISOString() };
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(snap)));
+  const snapshotSha256 = [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, "0")).join("");
+  const sc = c => (c.withheld ? { withheld: true } : { score: c.score, band: c.band });
+  const c = { date: day, text, seq: snap.seq, snapshotSha256, snapshotGeneratedAt: snap.generatedAt, declarationHash: snap.engine.declarationHash,
+    scores: { entry: sc(payload.entry_1_to_7_days), tendency: sc(payload.tendency_3_to_9_months) }, writtenAt: new Date(now).toISOString() };
   await env.BRIEF_KV.put(key(day), JSON.stringify(c), { expirationTtl: 40 * 86400 });
   return out(c);
 }

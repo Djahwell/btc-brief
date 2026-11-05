@@ -43,7 +43,7 @@ function lthNet30(rows) {
 // hist: parsed history files keyed by name (as in v2-data/v2/history, gunzipped JSON).
 function prepare(hist) {
   const bs = new Map(hist.bitstamp_daily.rows.map(r => [r.t, r.v]));
-  const bars = hist.coinbase_daily.rows.map(r => ({ d: iso(r.t), o: r.o, h: r.h, l: r.l, c: r.c, v: r.v + (bs.get(r.t) || 0) }));
+  const bars = hist.coinbase_daily.rows.map(r => ({ d: iso(r.t), o: r.o, h: r.h, l: r.l, c: r.c, v: Number.isFinite(r.v) && Number.isFinite(bs.get(r.t)) ? r.v + bs.get(r.t) : null }));   // both legs or none (E2 withholds)
   // E3a: one reading per day = mean of the 8 hourly closes ending at that day's 00:00 (all 8 required).
   const ph = new Map(hist.binance_premium_index_1h.rows.map(r => [r.t, r.close]));
   const prem = [];

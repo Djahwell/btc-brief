@@ -9,7 +9,8 @@
 const fs = require('fs');
 const path = require('path');
 const { Http } = require('./lib/http');
-const { Vintage, State, archiveSnapshot, freezeDaily, frozenRecord } = require('./lib/store');
+const { Vintage, State, archiveSnapshot, freezeDue, writeFrozen, frozenRecord } = require('./lib/store');
+const { computeE3aHourly } = require('./lib/e3ahourly');
 const { refreshHistory, loadHistory } = require('./lib/history');
 const { scoreSnapshot } = require('./lib/score');
 const { computeE3a } = require('./lib/premium');
@@ -48,8 +49,9 @@ async function main() {
   const errors = [];
 
   // Live families (each isolated: one failing source never stops the others)
-  let e3a = null, der = null, e5a = null, e4 = null;
+  let e3a = null, der = null, e5a = null, e4 = null, e3h = null;
   try { e3a = await computeE3a(http, state.data, now); errors.push(...e3a.errors.map(e => `E3a ${e}`)); } catch (e) { errors.push(`E3a: ${e.message}`); }
+  try { e3h = await computeE3aHourly(http, now); } catch (e) { errors.push(`E3a hourly: ${e.message}`); }
   try { der = await computeDerivs(http, state.data, now); errors.push(...der.errors.map(e => `derivs ${e}`)); } catch (e) { errors.push(`derivs: ${e.message}`); }
   try { e5a = await computeE5a(http, state.data, vintage, now); } catch (e) { errors.push(`E5a: ${e.message}`); }
   try { e4 = await computeE4({ dir: expand(cfg.liqDir), statusFile: expand(cfg.liqStatusFile), unit: cfg.liqUnit }, now, der?.total_btc ?? null); } catch (e) { errors.push(`E4: ${e.message}`); }
@@ -61,7 +63,7 @@ async function main() {
   if (daily?.inputs) for (const [k, v] of Object.entries(daily.inputs)) dailyInputs[k] = { ...v, via: 'github v2-daily' };
 
   const inputs = {
-    perp_premium_binance_8h: rec({ ...(e3a?.scored || {}), source: 'Binance fapi premiumIndexKlines 1m (BTCUSDT)', scope: 'Binance BTCUSDT perp (scored series; OKX/Bybit cross-checks only)', staleAfterSec: 1800, crosscheck: e3a?.crosscheck ?? null, check_series: e3a?.check ?? null }),
+    perp_premium_binance_8h: rec({ ...(e3a?.scored || {}), source: 'Binance fapi premiumIndexKlines 1m (BTCUSDT)', scope: 'Binance BTCUSDT perp (scored series; OKX/Bybit cross-checks only)', staleAfterSec: 1800, crosscheck: e3a?.crosscheck ?? null, check_series: e3a?.check ?? null, hourly8: e3h }),
     funding_context: rec({ value: der && Object.values(der.funding).some(v => v != null) ? der.funding : null, unit: 'fraction per funding interval', window: 'last/current interval', asOf: new Date(now).toISOString(), source: 'Binance premiumIndex, Bybit tickers, OKX funding-rate', scope: 'context only (dead band at 0.01%; not scored)', quality: der && Object.values(der.funding).some(v => v != null) ? 'OK' : 'MISSING', staleAfterSec: 1800 }),
     oi_btc_total: rec({ value: der?.total_btc ?? null, unit: 'BTC', window: 'spot', asOf: der?.asOf ?? null, source: 'Binance fapi/dapi, Bybit v5, OKX v5 open interest (contract specs checked live)', scope: 'USDT-linear + USD-inverse perps on Binance, Bybit, OKX (USDC perps excluded)', quality: der?.total_btc != null ? 'OK' : 'MISSING', staleAfterSec: 1800, chg24h_pct: der?.chg24h_pct ?? null, chg7d_pct: der?.chg7d_pct ?? null, partial_total_btc: der?.partial_total_btc ?? null, byVenue: der?.venues ?? null }),
     coinbase_premium_adj: rec({ ...(e5a || {}), source: 'Coinbase BTC-USD, Coinbase USDT-USD, Binance BTCUSDT (vision mirror), hourly closes', scope: 'US spot (Coinbase) vs offshore spot (Binance), USDT corrected', staleAfterSec: 7200 }),
@@ -80,15 +82,19 @@ async function main() {
   }
   // History files (once per UTC day, acceptance-checked) and the engine. Any failure withholds the
   // scores block; it never stops the inputs snapshot.
-  let hist = { status: 'not run' }, engine = null;
+  let hist = { status: 'not run' }, engine = null, frozenEngine = null;
   try {
     hist = await refreshHistory({ dir: path.join(BASE, 'history'), baseUrl: cfg.historyBaseUrl, state: state.data, now, deadline: t0 + (cfg.cycleDeadlineSec ?? 140) * 1000 - 20000 });
     if (hist.issues?.length) errors.push(`history ${hist.status}: ${hist.issues.join('; ')}`);
   } catch (e) { errors.push(`history: ${e.message}`); }
   try {
     const history = loadHistory(path.join(BASE, 'history'));
-    engine = scoreSnapshot({ inputs, history, daily, nowMs: now });
+    engine = scoreSnapshot({ inputs, history, daily, nowMs: now, mode: 'live' });
     engine.historyPull = { status: hist.status, issues: hist.issues || [] };
+    // Frozen daily evaluation (windows ending at D 00:00), only in the cycle that freezes the day.
+    if (freezeDue(path.join(BASE, 'snapshots'), { dailyGeneratedAt: daily?.generatedAt ?? null }, now) === 'due') {
+      frozenEngine = scoreSnapshot({ inputs, history, daily, nowMs: now, mode: 'frozen' });
+    }
     if (engine.joinIssues?.length) errors.push(`join: ${engine.joinIssues.length} overlap issue(s), first: ${engine.joinIssues[0].series} ${engine.joinIssues[0].issue}`);
   } catch (e) { errors.push(`engine: ${e.message}`); engine = { status: 'ERROR', withheld: true, reason: `engine error: ${e.message}`.slice(0, 200), families: null, scores: null }; }
 
@@ -106,11 +112,15 @@ async function main() {
 
   // Frozen daily snapshot (track record). Decided and written BEFORE the push so the Worker gets it;
   // the compact record rides along on every push until one push succeeds (Worker never overwrites).
-  const frozen = freezeDaily(path.join(BASE, 'snapshots'), snap, { dailyGeneratedAt: daily?.generatedAt ?? null }, now);
-  if (frozen) { console.log(`[cycle] frozen daily snapshot: ${frozen}`); state.data.frozenPending = new Date(now).toISOString().slice(0, 10); }
-  if (state.data.frozenPending) {
-    const rec = frozenRecord(path.join(BASE, 'snapshots'), state.data.frozenPending);
-    if (rec) snap.frozen = rec; else delete state.data.frozenPending;
+  // Pending dates are a queue, oldest first, so an unpushed day is never overwritten by the next one.
+  const due = freezeDue(path.join(BASE, 'snapshots'), { dailyGeneratedAt: daily?.generatedAt ?? null }, now);
+  const frozen = due ? writeFrozen(path.join(BASE, 'snapshots'), due, { snap, frozenEngine: frozenEngine || { status: 'ERROR', withheld: true, reason: 'frozen evaluation did not run' } }, now) : null;
+  if (!Array.isArray(state.data.frozenPending)) state.data.frozenPending = state.data.frozenPending ? [state.data.frozenPending] : [];
+  if (frozen) { console.log(`[cycle] frozen daily snapshot: ${frozen}`); state.data.frozenPending.push(new Date(now).toISOString().slice(0, 10)); }
+  while (state.data.frozenPending.length) {
+    const rec = frozenRecord(path.join(BASE, 'snapshots'), state.data.frozenPending[0]);
+    if (rec) { snap.frozen = rec; break; }
+    state.data.frozenPending.shift();
   }
   let push = { ok: false, status: null, skipped: DRY ? 'dry-run' : null };
   if (!DRY) {
@@ -126,7 +136,7 @@ async function main() {
       } catch (e) { push = { ok: false, error: e.message }; }
     }
   }
-  if (push.ok && snap.frozen) delete state.data.frozenPending;
+  if (push.ok && snap.frozen && state.data.frozenPending[0] === snap.frozen.date) state.data.frozenPending.shift();
   archiveSnapshot(path.join(BASE, 'snapshots'), snap, { pushed: !!push.ok, receivedAt: push.body?.receivedAt ?? null, pushStatus: push.status ?? push.skipped ?? push.error ?? null });
   state.save();
   fs.writeFileSync(path.join(BASE, 'status.json'), JSON.stringify({ lastRun: snap.generatedAt, seq: snap.seq, push, runs: snap.runs, quality: Object.fromEntries(Object.entries(inputs).map(([k, v]) => [k, v.quality])) }, null, 1));

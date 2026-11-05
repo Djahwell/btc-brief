@@ -36,6 +36,8 @@
   };
 
   let decl = null, declHash = null, lastFetchError = null;
+  const KNOWN_SCHEMAS = ['brief-v2/1', 'brief-v2/2'];
+  let lastView = null;
 
   async function sha256Hex(text) {
     const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
@@ -57,6 +59,8 @@
   function viewTimeEngine(snap, now) {
     const eng = snap.engine;
     if (!decl) return { withheld: true, reason: 'the declaration file did not load' };
+    if (!KNOWN_SCHEMAS.includes(snap.schema)) return { withheld: true, reason: `unknown snapshot schema ${snap.schema}` };
+    if (state.fromCache) return { withheld: true, reason: 'the Worker could not be reached; scores are never shown from a cached copy' };
     if (!eng || !eng.families || !eng.scores) return { withheld: true, reason: eng ? (eng.reason || 'engine withheld its scores') : 'scores start when the engine is installed on the VPS (on or after 19 Nov 2026)' };
     if (eng.declarationHash !== declHash) return { withheld: true, reason: 'scores were computed under a declaration this page does not know' };
     const ageSec = (now - Date.parse(snap.generatedAt)) / 1000;
@@ -180,15 +184,26 @@
     }
   }
 
+  // The paragraph is shown only for the snapshot it was written for, or while the two scorecards and
+  // the declaration are unchanged since then (it is labelled with its snapshot time). Never while the
+  // scores are withheld, never across a declaration change.
   async function renderCommentary(snap) {
     const box = $('#claude-text'), btn = $('#claude-btn');
+    const v = lastView;
+    if (!v || v.withheld) { box.innerHTML = '<span class="muted">No commentary while scores are withheld.</span>'; btn.hidden = true; return; }
     try {
       const c = await getJSON(`${WORKER}/v2/commentary`);
       if (c && c.text && c.date === today()) {
-        box.innerHTML = `${esc(c.text)}<span class="stamp">Claude, written ${esc(new Date(c.writtenAt).toUTCString().slice(17, 22))} UTC for the snapshot of ${esc(new Date(c.snapshotGeneratedAt).toUTCString().slice(17, 22))} UTC${c.seq !== snap.seq ? ' (scores may have moved since)' : ''}.</span>`;
+        const now = { entry: v.scores[v.primary.entry], tendency: v.scores[v.primary.tendency] };
+        const same = k => c.scores && c.scores[k] && !now[k].withheld && c.scores[k].score === now[k].score && c.scores[k].band === now[k].band;
+        const ok = c.declarationHash === snap.engine.declarationHash && (c.seq === snap.seq || (same('entry') && same('tendency')));
+        const hhmm = t => new Date(t).toUTCString().slice(17, 22);
+        box.innerHTML = ok
+          ? `${esc(c.text)}<span class="stamp">Claude, written ${esc(hhmm(c.writtenAt))} UTC from the ${esc(hhmm(c.snapshotGeneratedAt))} UTC snapshot${c.seq !== snap.seq ? '; both scores unchanged since, other readings may have moved' : ''}.</span>`
+          : `<span class="muted">Today's paragraph described the ${esc(hhmm(c.snapshotGeneratedAt))} UTC reading; the scores have changed since, so it is not shown.</span>`;
         btn.hidden = true; return;
       }
-      box.textContent = ''; btn.hidden = false; btn.disabled = !(snap.engine && snap.engine.scores);
+      box.textContent = ''; btn.hidden = false; btn.disabled = false;
     } catch (_) { box.innerHTML = '<span class="muted">No commentary.</span>'; btn.hidden = true; }
   }
   async function askClaude() {
@@ -215,7 +230,9 @@
     ageEl.className = 'age' + (ageSec > WITHHOLD_SEC ? ' red' : ageSec > AMBER_SEC ? ' amber' : '');
     $('#age').textContent = `data ${ago(ageSec)} old`;
     const mark = markPrice(snap); $('#price').textContent = Number.isFinite(mark) ? usd(mark) : '';
-    const v = viewTimeEngine(snap, now);
+    let v;
+    try { v = viewTimeEngine(snap, now); } catch (e) { v = { withheld: true, reason: 'the scores could not be checked on this device' }; }
+    lastView = v;
     renderCard($('#card-entry'), v.withheld ? null : v.scores[v.primary.entry], v.reason);
     renderCard($('#card-tendency'), v.withheld ? null : v.scores[v.primary.tendency], v.reason);
     const banner = [];

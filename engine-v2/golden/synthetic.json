@@ -85,7 +85,7 @@
    },
    "T4": {
     "score": null,
-    "reason": "warm-up (57/365 reference days)"
+    "reason": "warm-up (92/365 reference days)"
    }
   },
   "scores": {
@@ -146,6 +146,13 @@
     "band": "Strong bear",
     "active": 1,
     "of": 1,
+    "withheld": false
+   },
+   "R-E1E2E7 (robustness 2019–2021)": {
+    "score": -6,
+    "band": "Strong bear",
+    "active": 3,
+    "of": 3,
     "withheld": false
    }
   },
@@ -254,7 +261,7 @@
    },
    "T4": {
     "score": null,
-    "reason": "warm-up (255/365 reference days)"
+    "reason": "warm-up (290/365 reference days)"
    }
   },
   "scores": {
@@ -315,6 +322,13 @@
     "band": "Neutral",
     "active": 1,
     "of": 1,
+    "withheld": false
+   },
+   "R-E1E2E7 (robustness 2019–2021)": {
+    "score": 3,
+    "band": "Bull",
+    "active": 3,
+    "of": 3,
     "withheld": false
    }
   },
@@ -423,7 +437,7 @@
    },
    "T4": {
     "score": 0,
-    "pct": 47.46192893401015,
+    "pct": 51.28205128205128,
     "raw": 0.0015397492830886428,
     "asOf": "2019-01-30"
    }
@@ -483,6 +497,13 @@
     "band": "Neutral",
     "active": 1,
     "of": 1,
+    "withheld": false
+   },
+   "R-E1E2E7 (robustness 2019–2021)": {
+    "score": 2,
+    "band": "Neutral",
+    "active": 3,
+    "of": 3,
     "withheld": false
    }
   },
@@ -591,7 +612,7 @@
    },
    "T4": {
     "score": 5,
-    "pct": 85.85858585858585,
+    "pct": 86.64546899841018,
     "raw": 0.013299784855678176,
     "asOf": "2019-08-18"
    }
@@ -651,6 +672,13 @@
     "band": "Strong bull",
     "active": 1,
     "of": 1,
+    "withheld": false
+   },
+   "R-E1E2E7 (robustness 2019–2021)": {
+    "score": 8,
+    "band": "Strong bull",
+    "active": 3,
+    "of": 3,
     "withheld": false
    }
   },
@@ -759,7 +787,7 @@
    },
    "T4": {
     "score": -4,
-    "pct": 14.701378254211333,
+    "pct": 15.883668903803134,
     "raw": -0.014217116733290402,
     "asOf": "2021-07-30"
    }
@@ -819,6 +847,13 @@
     "band": "Bull",
     "active": 1,
     "of": 1,
+    "withheld": false
+   },
+   "R-E1E2E7 (robustness 2019–2021)": {
+    "score": 3,
+    "band": "Bull",
+    "active": 3,
+    "of": 3,
     "withheld": false
    }
   },

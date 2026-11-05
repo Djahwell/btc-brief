@@ -7,7 +7,7 @@ if [ "${1:-}" = "--previous" ]; then
   # Restore the code that the last install replaced (e.g. v1.1 → v1.0). Data, history and snapshots stay.
   [ -d "$DIR/.prev-code" ] || { echo "no previous code kept in $DIR/.prev-code"; exit 1; }
   sudo systemctl stop brief-v2-cycle.timer 2>/dev/null || true
-  while systemctl is-active --quiet brief-v2-cycle.service; do sleep 2; done
+  while case "$(systemctl show -p ActiveState --value brief-v2-cycle.service 2>/dev/null)" in activating|active|deactivating|reloading) true;; *) false;; esac; do sleep 2; done   # a running oneshot is "activating"
   rm -rf "$DIR/lib" "$DIR/test" "$DIR/systemd" "$DIR/engine"
   cp -r "$DIR/.prev-code/." "$DIR/"
   sudo systemctl start brief-v2-cycle.timer

@@ -26,12 +26,12 @@ function join(name, hist, live, tol, issues, valueOf = r => r.v) {
 }
 
 // hist: parsed history files (as for view.prepare); P: optional cached prepare(hist) result.
-// daily: parsed daily.json; live: { nowMs, premium8hPct, e5aZ }.
+// daily: parsed daily.json; live: { nowMs, premium8h (fraction), e5aZ }.
 function liveView({ hist, P, daily, live }) {
   P = P || V.prepare(hist);
   const s = (daily && daily.series) || {};
   const issues = [];
-  const dailyBars = (s.daily_candles?.rows || []).map(r => ({ d: r.d, o: r.o, h: r.h, l: r.l, c: r.c, v: (r.v_cb || 0) + (r.v_bs || 0) }));
+  const dailyBars = (s.daily_candles?.rows || []).map(r => ({ d: r.d, o: r.o, h: r.h, l: r.l, c: r.c, v: Number.isFinite(r.v_cb) && Number.isFinite(r.v_bs) ? r.v_cb + r.v_bs : null }));
   const bars = join('daily_bars', P.bars, dailyBars, TOL.bars, issues, r => r.c);
   const prem = join('premium8h', P.prem, s.premium8h?.rows || [], TOL.prem, issues);
   const fng = join('fear_greed', P.fng, s.fear_greed?.rows || [], TOL.fng, issues);
@@ -41,7 +41,8 @@ function liveView({ hist, P, daily, live }) {
   const supply = join('lth_supply', supplyHist, s.lth_supply?.rows || [], TOL.lthSupply, issues);
   const lth30 = V.lthNet30(supply.map(r => ({ t: Date.parse(r.d + 'T00:00:00Z') / 1000, v: r.v }))).map(r => ({ d: iso(r.t), v: r.v }));
   const D = new Date(live.nowMs).toISOString().slice(0, 10);
-  const cur = Number.isFinite(live.premium8hPct) ? live.premium8hPct / 100 : null;   // VPS reports %, engine uses fraction
+  // live.premium8h: fraction, mean of 8 completed hourly closes (same definition as view.js). Legacy % input accepted.
+  const cur = Number.isFinite(live.premium8h) ? live.premium8h : Number.isFinite(live.premium8hPct) ? live.premium8hPct / 100 : null;
   return {
     view: {
       date: D,

@@ -8,6 +8,6 @@
     "node": ">=20"
   },
   "scripts": {
-    "test": "node --test test/units.test.js test/e2e.test.js test/v11.test.js"
+    "test": "node --test test/*.test.js"
   }
 }
