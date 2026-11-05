@@ -64,6 +64,27 @@ jobs:
             "https://raw.githubusercontent.com/Djahwell/btc-brief/gh-pages/all_data.json?t=$(date +%s)" || \
           { echo "[fatal] all_data.json unavailable — brief-worker will abort without calling Anthropic"; exit 1; }
 
+      # History preservation (2026-11-05, D-0): the deploy below replaces the
+      # whole gh-pages tree with public/. Without history/ in public/, every
+      # brief deleted the 6-hourly snapshot archive. Seed it from gh-pages first.
+      - name: Checkout gh-pages (to preserve history/)
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: _gh-pages
+        continue-on-error: true
+
+      - name: Preserve history/ from gh-pages
+        run: |
+          mkdir -p public/history
+          if [ -d _gh-pages/history ]; then
+            cp -r _gh-pages/history/. public/history/
+            echo "[ok] preserved $(find public/history -name '*.json' -not -name index.json | wc -l) snapshots"
+          else
+            echo "[info] no history/ on gh-pages yet"
+          fi
+          rm -rf _gh-pages
+
       - name: Create .env from secrets
         run: |
           echo "VITE_ANTHROPIC_API_KEY=${{ secrets.VITE_ANTHROPIC_API_KEY }}" > .env
