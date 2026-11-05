@@ -1,0 +1,155 @@
+{
+ "schema": "brief-v2-history/1",
+ "codeVersion": "v2-daily/1.0.0",
+ "generatedAt": "2026-11-05T09:20:56.655Z",
+ "files": {
+  "coinbase_daily": {
+   "source": "Coinbase BTC-USD daily",
+   "unit": "USD; v BTC",
+   "rows": 4126,
+   "first": "2015-07-20T00:00:00.000Z",
+   "last": "2026-11-04T00:00:00.000Z",
+   "gaps": [],
+   "sha256": "02cd9f62481d91fcb9072fff5fc04b037741516347c18063795f582c996165a4"
+  },
+  "bitstamp_daily": {
+   "source": "Bitstamp BTC-USD daily",
+   "unit": "USD; v BTC",
+   "rows": 4691,
+   "first": "2014-01-01T00:00:00.000Z",
+   "last": "2026-11-04T00:00:00.000Z",
+   "gaps": [],
+   "sha256": "12eec185602b30ffc1707bb23711032871114245d5eb78c1d290e10940ef9fd4"
+  },
+  "coinbase_premium_legs_1h": {
+   "source": "Coinbase BTC-USD, Coinbase USDT-USD, Binance BTCUSDT (vision mirror) hourly closes",
+   "unit": "USD / USDT; adj_pct %",
+   "rows": 48250,
+   "first": "2021-05-04T01:00:00.000Z",
+   "last": "2026-11-05T08:00:00.000Z",
+   "gaps": [
+    {
+     "after": "2021-08-13T01:00:00.000Z",
+     "missing": 4
+    },
+    {
+     "after": "2021-09-29T06:00:00.000Z",
+     "missing": 2
+    },
+    {
+     "after": "2023-03-04T17:00:00.000Z",
+     "missing": 4
+    },
+    {
+     "after": "2023-03-24T12:00:00.000Z",
+     "missing": 1
+    },
+    {
+     "after": "2025-10-25T14:00:00.000Z",
+     "missing": 6
+    },
+    {
+     "after": "2026-05-08T01:00:00.000Z",
+     "missing": 5
+    }
+   ],
+   "sha256": "8659de4519f930bd697e51b2e27e3ff423b9f27ef547e8a1a24902fda9b224e9"
+  },
+  "binance_premium_index_1h": {
+   "source": "data.binance.vision premiumIndexKlines BTCUSDT 1h",
+   "unit": "fraction",
+   "missingMonths": [],
+   "rows": 59663,
+   "first": "2020-01-01T00:00:00.000Z",
+   "last": "2026-10-31T23:00:00.000Z",
+   "gaps": [
+    {
+     "after": "2020-12-01T22:00:00.000Z",
+     "missing": 1
+    },
+    {
+     "after": "2021-06-30T23:00:00.000Z",
+     "missing": 24
+    },
+    {
+     "after": "2021-07-23T23:00:00.000Z",
+     "missing": 96
+    },
+    {
+     "after": "2022-10-01T23:00:00.000Z",
+     "missing": 24
+    },
+    {
+     "after": "2023-02-23T23:00:00.000Z",
+     "missing": 24
+    },
+    {
+     "after": "2026-06-28T23:00:00.000Z",
+     "missing": 24
+    },
+    {
+     "after": "2026-10-27T23:00:00.000Z",
+     "missing": 48
+    }
+   ],
+   "sha256": "3c63d57e4bcb5714c3c317e47a2cfd1bc50a57a514e2b510db87f6330d43c8d0"
+  },
+  "binance_funding": {
+   "source": "data.binance.vision fundingRate BTCUSDT",
+   "unit": "fraction per interval",
+   "missingMonths": [],
+   "rows": 7488,
+   "first": "2020-01-01T00:00:00.000Z",
+   "last": "2026-10-31T16:00:00.000Z",
+   "gaps": [],
+   "sha256": "6d0f4b9a73d8894262e78c1f491786a89ad813788216d7e172732923f6dc3686"
+  },
+  "fear_greed": {
+   "source": "alternative.me",
+   "unit": "index",
+   "rows": 3196,
+   "first": "2018-02-01T00:00:00.000Z",
+   "last": "2026-11-05T00:00:00.000Z",
+   "gaps": [
+    {
+     "after": "2018-04-13T00:00:00.000Z",
+     "missing": 3
+    },
+    {
+     "after": "2024-10-25T00:00:00.000Z",
+     "missing": 1
+    }
+   ],
+   "sha256": "d6cadb301415e581eda17153f66729e67f4be6c0ca44bc9f77fafcaaaec0f31c"
+  },
+  "coinmetrics_mvrv": {
+   "source": "CoinMetrics community CapMVRVCur",
+   "unit": "ratio",
+   "licence": "CC BY-NC 4.0",
+   "rows": 5954,
+   "first": "2010-07-18T00:00:00.000Z",
+   "last": "2026-11-04T00:00:00.000Z",
+   "gaps": [],
+   "sha256": "cc89c193a1708715316e30503a656bca3ccd717c3f9d58d726a72a43cbaee892"
+  },
+  "bgeometrics_realized": {
+   "source": "BGeometrics free tier",
+   "unit": "USD",
+   "rows": 1455,
+   "first": "2022-11-05T00:00:00.000Z",
+   "last": "2026-10-29T00:00:00.000Z",
+   "gaps": [],
+   "sha256": "0b448e2a581d848fc41d2fd12d3bf5229a7c9500e760cc5373ffbda7b7d89454"
+  },
+  "stablecoins_usdt_usdc": {
+   "source": "DefiLlama",
+   "unit": "USD",
+   "rows": 3264,
+   "first": "2017-11-29T00:00:00.000Z",
+   "last": "2026-11-05T00:00:00.000Z",
+   "gaps": [],
+   "sha256": "5b4af2368eef09f951a819bb88aacfe701c0eb57360600964544a0f691828e74"
+  }
+ },
+ "errors": []
+}
