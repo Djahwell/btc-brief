@@ -61,7 +61,7 @@ const l=s.inputs.liquidations_24h,h=l.heartbeat||{};
 console.log([l.quality,h.filesRead,h.badRows,h.service,(h.headerErrors||[]).join("|"),s.runs.binanceMaxUsedWeight1m].join(";"));' "$NEW")"
 IFS=';' read -r LQ LFILES LBAD LSVC LHDR LWEIGHT <<<"$LIQ"
 echo "liquidations: quality=$LQ files=$LFILES badRows=$LBAD service=$LSVC ${LHDR:+headerErrors=$LHDR}"
-echo "Binance max used weight seen (whole IP, includes the bot): $LWEIGHT of 2400 (job stops its own calls above 480)"
+echo "Binance max used weight seen (whole IP, includes the bot): $LWEIGHT of 2400 (job stops its own calls above 1200)"
 [ "${LBAD:-0}" = "0" ] || fail "liquidation CSV rows could not be parsed ($LBAD bad rows) — format differs from ts,venue,inst,liq,price,btc,usd,raw; send me the log"
 [ -z "$LHDR" ] || fail "liquidation CSV header problem: $LHDR"
 grn "dry cycle OK"

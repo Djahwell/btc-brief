@@ -37,12 +37,14 @@ test('E3a end to end (mock): scored series, check series matches funding prints,
   assert.equal(r2.crosscheck.status, 'CROSSCHECK_FAIL'); assert.equal(r2.scored.quality, 'CROSSCHECK_FAIL');
 });
 
-test('Binance budget guard: weight above 20% stops further Binance calls; 429 never retried', async () => {
-  const m = mk({ now: NOW, weight: 900 }); const http = new Http({ fetchImpl: m.fetch, log: quiet });
+test('Binance budget guard: weight above 50% stops further Binance calls; 429 never retried', async () => {
+  const m = mk({ now: NOW, weight: 1500 }); const http = new Http({ fetchImpl: m.fetch, log: quiet });
   await http.json('a', 'https://fapi.binance.com/fapi/v1/openInterest?symbol=BTCUSDT');
   assert.equal(http.binanceStopped, true);
   await assert.rejects(http.json('b', 'https://fapi.binance.com/fapi/v1/premiumIndex?symbol=BTCUSDT'), /budget guard/);
   assert.equal(m.calls.length, 1);
+  const mb = mk({ now: NOW, weight: 702 }); const hb = new Http({ fetchImpl: mb.fetch, log: quiet });   // VPS baseline seen at install
+  await hb.json('base', 'https://fapi.binance.com/fapi/v1/openInterest?symbol=BTCUSDT'); assert.equal(hb.binanceStopped, false);
   const m2 = mk({ now: NOW, fail: u => u.includes('fapi'), failStatus: 429 }); const h2 = new Http({ fetchImpl: m2.fetch, log: quiet });
   await assert.rejects(h2.json('c', 'https://fapi.binance.com/fapi/v1/openInterest?symbol=BTCUSDT'), /not retried/);
   assert.equal(m2.calls.length, 1); assert.equal(h2.binanceStopped, true);

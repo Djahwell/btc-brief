@@ -2,7 +2,7 @@
 // HTTP with timeouts, NO retries, and a Binance request-weight budget shared with the
 // live bot on the same IP (STAGE2-PLAN §8.2). Every raw response is handed to the vintage store.
 
-const BUDGET = { binanceWeightLimit: 2400, maxShare: 0.20 };   // stop Binance calls above 20% of the IP limit
+const BUDGET = { binanceWeightLimit: 2400, maxShare: 0.50 };   // stop Binance calls above 50% of the IP limit (Djahwell 2026-11-05: VPS baseline ~700/2400 from the bot + recorders)
 
 class Http {
   constructor({ vintage, fetchImpl = globalThis.fetch, now = () => Date.now(), log = console, deadline = Infinity } = {}) {
