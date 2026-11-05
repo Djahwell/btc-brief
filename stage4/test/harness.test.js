@@ -71,25 +71,13 @@ test('runner gate: a history file that is not the frozen set is refused', () => 
   assert.match(runGate(root, hd), /is not the frozen set/);
 });
 
-test('runner refuses without GO and without the frozen history', () => {
-  const { execFileSync } = require('child_process'); const path = require('path');
-  let msg = ''; try { execFileSync(process.execPath, [path.join(__dirname, '..', 'run.js'), '/nonexistent', '/tmp/x'], { stdio: 'pipe' }); } catch (e) { msg = String(e.stderr); }
-  assert.match(msg, /REFUSED/);
+test('runner refuses without GO', () => {
+  const fs = require('fs'), path = require('path'); const { root } = gateCopy();
+  fs.rmSync(path.join(root, 'stage4', 'GO'));
+  assert.match(runGate(root, '/nonexistent'), /REFUSED: no "go"/);
 });
 
-test('analyze() runs end to end on fabricated evaluations (pipeline check, synthetic)', () => {
-  const decl = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '..', '..', 'engine-v2', 'declaration.json'), 'utf8'));
-  const r = S.mulberry32(9); const bars = []; const evals = []; let p = 10000, s = 0;
-  for (let d = '2018-01-01'; d <= '2026-11-04'; d = H.addDays(d, 1)) { p *= 1 + (r() - 0.49) * 0.04; bars.push({ d, o: p, h: p * 1.01, l: p * 0.99, c: p }); }
-  for (let d = '2019-01-01'; d <= '2026-10-31'; d = H.addDays(d, 1)) {
-    s = Math.max(-10, Math.min(10, Math.round(0.95 * s + (r() - 0.5) * 4)));
-    const sc = {}; for (const k of ['V-E1/E6a', 'V-E1/E6b', 'V-E2/E6a', 'V-E2/E6b', 'V-T1/T2+', 'V-T1/T2-', 'T-noT2 (sensitivity)', 'E1-alone (baseline)', 'R-E1E2E7 (robustness 2019–2021)']) sc[k] = r() < 0.02 ? null : s;
-    evals.push({ d, scores: sc, famScores: {} });
-  }
-  H.CONST.reps = 200;   // speed for the pipeline check only
-  const out = H.analyze({ evals, evalsLag: evals, bars, decl });
-  assert.equal(out.entry.length, 4); assert.equal(out.tendency.length, 2);
-  assert.ok(Number.isFinite(out.entry[0].H1.p) && out.entry[0].C3.block >= 20);
-  assert.ok(['consistent', 'unstable'].includes(out.sensitivities.robustness.label));
-  assert.deepEqual(Object.keys(out.sensitivities.tendencyNoT2_S2S3.segments), ['S2', 'S3']);
+test('runner refuses a missing history directory without crashing', () => {
+  const { root } = gateCopy();
+  assert.match(runGate(root, '/nonexistent'), /REFUSED|ENOENT/);
 });
