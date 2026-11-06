@@ -9,6 +9,15 @@
    ],
    "recordedAt": "2026-11-05T16:34:08.496Z",
    "sourcesOk": true
+  },
+  {
+   "date": "2026-11-06",
+   "within48h": true,
+   "events": [
+    "NFP 2026-11-06T13:30:00.000Z"
+   ],
+   "recordedAt": "2026-11-06T06:28:51.561Z",
+   "sourcesOk": true
   }
  ]
 }

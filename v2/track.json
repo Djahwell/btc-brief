@@ -1,9 +1,15 @@
 {
  "schema": "brief-v2-track/1",
- "generatedAt": "2026-11-05T16:34:18.524Z",
+ "generatedAt": "2026-11-06T06:28:52.323Z",
  "label": "live (frozen daily snapshots)",
  "definitions": "STAGE4-PLAN §4",
- "rows": [],
+ "rows": [
+  {
+   "date": "2026-11-06",
+   "status": "missing",
+   "reason": "no cycle read that day's daily.json by the 02:07 UTC cycle"
+  }
+ ],
  "entry": {
   "declarationHash": null,
   "byBand": {},
@@ -18,7 +24,7 @@
   "otherDeclarations": 0,
   "byHash": {},
   "withheldDays": 0,
-  "missingDays": 0
+  "missingDays": 1
  },
  "tendency": {
   "note": "tendency outcomes start after 180 days of records"
@@ -30,5 +36,8 @@
   "unflagged": 0,
   "minEach": 40,
   "status": "collecting"
+ },
+ "fw1": {
+  "status": "not started"
  }
 }
