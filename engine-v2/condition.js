@@ -85,10 +85,10 @@
   function score(S, decl) {
     const v = k => (S[k] && S[k].state != null ? (S[k].convention === 'supportive' ? 1 : S[k].convention === 'headwind' ? -1 : 0) : null);
     const avg = ks => { const a = ks.map(v).filter(x => x != null); return a.length ? a.reduce((x, y) => x + y, 0) / a.length : null; };
-    const groups = { Value: v('value'), Trend: avg(['trend200', 'structure']), Positioning: v('leverage'), Flows: avg(['spot', 'liquidity']), Sentiment: v('sentiment') };
+    const groups = { Value: v('value'), Trend: avg(['trend200', 'structure']), Flows: avg(['spot', 'liquidity']), Sentiment: v('sentiment') };   // leverage not scored (no OI history)
     const have = Object.values(groups).filter(x => x != null);
-    if (have.length < 4) return { withheld: true, reason: `only ${have.length} of 5 groups have data`, groups };
-    const sc = Math.round(have.reduce((x, y) => x + y, 0) * 2 * 10) / 10;
+    if (have.length < 3) return { withheld: true, reason: `only ${have.length} of 4 groups have data`, groups };
+    const sc = Math.round(have.reduce((x, y) => x + y, 0) * 2.5 * 10) / 10;
     const band = sc >= 5 ? 'Strong bull' : sc >= 2 ? 'Bull' : sc > -2 ? 'Neutral' : sc > -5 ? 'Bear' : 'Strong bear';
     return { withheld: false, score: sc, band, groups, of: have.length };
   }

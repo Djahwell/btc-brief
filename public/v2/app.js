@@ -287,8 +287,10 @@
     const e = cev && cev.rows && cev.rows[k] && cev.rows[k][st];
     if (!e) return '';
     const lead = 'History 2019–26, not a tested link to later price:';
+    const nh = cev.noHistory && cev.noHistory[`${k}.${st}`];
+    if (nh) return `<p class="cev">${lead} no history, this state ${esc(nh)}.</p>`;
     if (e.suppressed) return `<p class="cev">${lead} too few days in this state to describe (${e.windows} windows of 90 days).</p>`;
-    return `<p class="cev">${lead} next 90 days median ${pp(e.medianRet)} (10–90% range ${pp(e.p10)} to ${pp(e.p90)}), up ${Math.round(e.upShare * 100)}% of the time, typical dip ${pp(e.medianDip)}. ${e.windows} windows of 90 days, ${e.episodes} separate episode${e.episodes === 1 ? '' : 's'}. All days: median ${pp(cev.allDays.medianRet)}, up ${Math.round(cev.allDays.upShare * 100)}%.</p>`;
+    return `<p class="cev">${lead} next 90 days median ${pp(e.medianRet)} (10–90% range ${pp(e.p10)} to ${pp(e.p90)}), up ${Math.round(e.upShare * 100)}% of the time, typical dip ${pp(e.medianDip)}. ${e.windows} windows of 90 days${e.episodes >= 2 ? `, ${e.episodes} separate episodes` : ''}. All days: median ${pp(cev.allDays.medianRet)}, up ${Math.round(cev.allDays.upShare * 100)}%.</p>`;
   }
   function condReadings(snap, v) {
     const fam = v.families, f = snap.engine || {};
@@ -357,16 +359,23 @@
   }
   function renderCondScore(sc) {
     const el = $('#cond-score'), num = el.querySelector('.num'), band = el.querySelector('.band'), mark = el.querySelector('.mark'), sub = el.querySelector('.sub');
-    if (sc.withheld) { num.className = 'num'; num.textContent = 'Withheld'; band.textContent = ''; mark.style.display = 'none'; sub.textContent = sc.reason; return; }
-    const c = sc.score > 0 ? 'pos' : sc.score < 0 ? 'neg' : 'zero';
-    num.className = 'num ' + c; num.textContent = (sc.score > 0 ? '+' : '') + sc.score;
-    band.className = 'band ' + c; band.textContent = sc.band + ' condition';
+    if (sc.withheld) { num.className = 'num'; num.textContent = 'Withheld'; band.textContent = ''; mark.style.display = 'none'; sub.textContent = sc.reason; renderBandHistory(null); return; }
+    num.className = 'num'; num.textContent = (sc.score > 0 ? '+' : '') + sc.score;            // neutral colour (Board): not a buy/sell light
+    band.className = 'band'; band.textContent = sc.band + ' condition';
     mark.style.display = 'block'; mark.style.left = `${(sc.score + 10) * 5}%`;
     const g = Object.entries(sc.groups).map(([k, x]) => `${k} ${x == null ? 'no data' : (x > 0 ? '+' : '') + x}`).join(' · ');
-    const e = cev && cev.score && cev.score[sc.band];
-    const hist = !e ? '' : e.suppressed ? ` History 2019–26: too few days in this band to describe (${e.windows} windows).` :
-      ` History 2019–26 (not a tested forecast): next 90 days median ${pp(e.medianRet)}, range ${pp(e.p10)} to ${pp(e.p90)}, up ${Math.round(e.upShare * 100)}% of the time, typical dip ${pp(e.medianDip)}; ${e.windows} windows, ${e.episodes} episodes. All days: median ${pp(cev.allDays.medianRet)}.`;
-    sub.textContent = `Financial condition by stated convention, not a price call. Votes: ${g}.` + hist;
+    sub.textContent = `Financial condition by stated convention: how supportive today's figures are, not a price call and not a tested forecast. Votes: ${g}. Leverage is shown below but not scored (no open-interest history).`;
+    renderBandHistory(sc.band);
+  }
+  function renderBandHistory(now) {
+    let box = $('#cond-bands'); if (!box) { box = document.createElement('div'); box.id = 'cond-bands'; box.className = 'track cbands'; $('#cond-score').appendChild(box); }
+    if (!cev || !cev.score) { box.innerHTML = ''; return; }
+    const B = ['Strong bull', 'Bull', 'Neutral', 'Bear', 'Strong bear'];
+    const rows = B.map(b => { const e = cev.score[b]; const cur = b === now ? ' class="cur"' : '';
+      return e.suppressed ? `<tr${cur}><td>${esc(b)}</td><td colspan="3" class="muted">too few days (${e.windows} windows)</td><td>${e.windows}</td></tr>`
+        : `<tr${cur}><td>${esc(b)}</td><td>${pp(e.medianRet)}</td><td>${Math.round(e.upShare * 100)}%</td><td>${pp(e.medianDip)}</td><td>${e.windows}</td></tr>`; }).join('') +
+      `<tr><td>All days</td><td>${pp(cev.allDays.medianRet)}</td><td>${Math.round(cev.allDays.upShare * 100)}%</td><td>${pp(cev.allDays.medianDip)}</td><td></td></tr>`;
+    box.innerHTML = `<table><thead><tr><th>Condition, 2019–26</th><th>Next 90 d median</th><th>Up</th><th>Typical dip</th><th>Windows</th></tr></thead><tbody>${rows}</tbody></table><p class="fine">What followed each band in 2019–26, side by side. Descriptive, not a tested forecast; the score has no forward test.</p>`;
   }
   async function loadCondBase() { try { cbase = await getJSON(COND_BASE_URL + '?t=' + Math.floor(Date.now() / 6e5)); } catch (_) { cbase = null; } }
 

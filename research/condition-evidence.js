@@ -11,7 +11,9 @@ const BS = C.barSeries(bars.filter(b => b.d <= '2026-10-31'));
 const H = 90; const rows = loadLong(hist, ff, H, '2026-10-31').filter(r => r.y.ret90 != null && r.y.dd90 != null);
 const q = (a, p) => { const s = a.slice().sort((x, y) => x - y); const h = (s.length - 1) * p, lo = Math.floor(h); return s[lo] + (h - lo) * ((s[lo + 1] ?? s[lo]) - s[lo]); };
 const ST = rows.map(r => C.states({ ...r, ...(BS.get(C.addDays(r.d, -1)) || {}), oiChg7d: null, liq: null }, decl));
-const res = { generated: new Date().toISOString().slice(0, 10), horizonDays: H, period: `${rows[0].d} .. ${rows.at(-1).d}`, label: 'Not a tested link to later price (2019-26). Medians and 10-90% ranges of the next 90 days for days in this state; windows = days / 90; episodes = separate runs (a gap of more than 30 days starts a new one).',
+const res = { generated: new Date().toISOString().slice(0, 10), horizonDays: H, period: `${rows[0].d} .. ${rows.at(-1).d}`, noHistory: { 'leverage.crowdedLong': 'needs open-interest history (not recorded before Nov 2026)', 'leverage.shortCrowded': 'needs open-interest history (not recorded before Nov 2026)' },
+  notes: 'Bar-based percentiles include the day itself (mid-rank); the 200-week measure starts about 2020-05. Episodes are shown only when there are at least 2.',
+  label: 'Not a tested link to later price (2019-26). Medians and 10-90% ranges of the next 90 days for days in this state; windows = days / 90; episodes = separate runs (a gap of more than 30 days starts a new one).',
   historySha: crypto.createHash('sha256').update(fs.readFileSync(path.join(hist, 'coinbase_daily.json.gz'))).digest('hex'),
   allDays: { days: rows.length, medianRet: q(rows.map(r => r.y.ret90), 0.5), upShare: rows.filter(r => r.y.ret90 > 0).length / rows.length, medianDip: q(rows.map(r => r.y.dd90), 0.5) }, rows: {} };
 for (const k of Object.keys(decl.rows)) {
@@ -32,7 +34,7 @@ for (const k of Object.keys(decl.rows)) {
     const w = idx.length / H; const r = idx.map(i => rows[i].y.ret90), dd = idx.map(i => rows[i].y.dd90);
     res.score[b] = w < 4 ? { days: idx.length, windows: +w.toFixed(1), episodes: ep, suppressed: true } : { days: idx.length, windows: +w.toFixed(1), episodes: ep, medianRet: q(r, 0.5), p10: q(r, 0.1), p90: q(r, 0.9), upShare: r.filter(x => x > 0).length / r.length, medianDip: q(dd, 0.5) };
   }
-  res.score.withheldDays = SC.filter(x => x.withheld).length;
+  res.score.withheldDays = SC.filter(x => x.withheld).length; res.score.groups = 'Value, Trend, Flows, Sentiment (leverage not scored)';
   console.log('score', JSON.stringify(Object.fromEntries(Object.entries(res.score).map(([k, o]) => [k, o.suppressed ? `${o.days}d sup` : o.days ? `${o.days}d ${o.windows}w ${o.episodes}ep med ${(o.medianRet * 100).toFixed(0)}% up ${(o.upShare * 100).toFixed(0)}% dip ${(o.medianDip * 100).toFixed(0)}%` : o]))));
 }
 fs.writeFileSync(out, JSON.stringify(res, null, 1) + '\n');

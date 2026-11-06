@@ -60,9 +60,10 @@ test('evidence file covers every state and suppresses below 4 windows', () => {
 test('condition score: one vote per group, trend counted once, quorum 4 of 5', () => {
   const S = C.states({ ...base, mvrvPct: 10, pctW200: 10, pctNearATH: 10, cbZ: 2, stableX: 0.05, fng: 20 }, decl);
   const r = C.score(S, decl);
-  // Value +1, Trend (up,up) +1, Positioning 0, Flows (+1,+1) +1, Sentiment +1 → 4 × 2 = 8
-  assert.deepStrictEqual([r.score, r.band, r.of], [8, 'Strong bull', 5]);
+  // Value +1, Trend (up,up) +1, Flows (+1,+1) +1, Sentiment +1 → 4 × 2.5 = 10; leverage never scored
+  assert.deepStrictEqual([r.score, r.band, r.of], [10, 'Strong bull', 4]);
+  assert.ok(!('Positioning' in r.groups));
   const T = C.score(C.states({ ...base, dist200: -1, slope200: -1 }, decl), decl);          // trend split: (−1 + +1)/2 = 0
   assert.strictEqual(T.groups.Trend, 0);
-  assert.ok(C.score(C.states({ mvrvPct: 50, pctW200: 50, dist200: 1, slope200: 1 }, decl), decl).withheld);
+  assert.ok(C.score(C.states({ mvrvPct: 50, pctW200: 50, dist200: 1, slope200: 1 }, decl), decl).withheld);   // 2 of 4
 });

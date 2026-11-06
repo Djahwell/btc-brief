@@ -2,6 +2,11 @@
  "generated": "2026-11-06",
  "horizonDays": 90,
  "period": "2019-01-01 .. 2026-08-02",
+ "noHistory": {
+  "leverage.crowdedLong": "needs open-interest history (not recorded before Nov 2026)",
+  "leverage.shortCrowded": "needs open-interest history (not recorded before Nov 2026)"
+ },
+ "notes": "Bar-based percentiles include the day itself (mid-rank); the 200-week measure starts about 2020-05. Episodes are shown only when there are at least 2.",
  "label": "Not a tested link to later price (2019-26). Medians and 10-90% ranges of the next 90 days for days in this state; windows = days / 90; episodes = separate runs (a gap of more than 30 days starts a new one).",
  "historySha": "02cd9f62481d91fcb9072fff5fc04b037741516347c18063795f582c996165a4",
  "allDays": {
@@ -361,47 +366,48 @@
  },
  "score": {
   "Strong bull": {
-   "days": 83,
-   "windows": 0.9,
-   "episodes": 5,
+   "days": 211,
+   "windows": 2.3,
+   "episodes": 9,
    "suppressed": true
   },
   "Bull": {
-   "days": 633,
+   "days": 626,
    "windows": 7,
-   "episodes": 15,
-   "medianRet": 0.13216155679664854,
-   "p10": -0.19103191178722506,
-   "p90": 0.649678359781484,
-   "upShare": 0.6255924170616114,
-   "medianDip": -0.11391761546100987
+   "episodes": 16,
+   "medianRet": 0.20872836214305945,
+   "p10": -0.2004748251801498,
+   "p90": 1.0021996165761577,
+   "upShare": 0.6517571884984026,
+   "medianDip": -0.08909507174217984
   },
   "Neutral": {
-   "days": 1227,
-   "windows": 13.6,
-   "episodes": 9,
-   "medianRet": 0.017946777517430457,
-   "p10": -0.28026445866535277,
-   "p90": 0.5181213402762279,
-   "upShare": 0.5289323553382234,
-   "medianDip": -0.18918686499101345
+   "days": 1385,
+   "windows": 15.4,
+   "episodes": 10,
+   "medianRet": 0.014764881076437586,
+   "p10": -0.2849687442500091,
+   "p90": 0.5417415652389014,
+   "upShare": 0.5191335740072203,
+   "medianDip": -0.19240789481303244
   },
   "Bear": {
-   "days": 518,
-   "windows": 5.8,
-   "episodes": 13,
-   "medianRet": 0.08025155612920065,
-   "p10": -0.30856466229996926,
-   "p90": 1.307969414644544,
-   "upShare": 0.5926640926640927,
-   "medianDip": -0.16824527345974388
+   "days": 448,
+   "windows": 5,
+   "episodes": 14,
+   "medianRet": 0.03754576535428422,
+   "p10": -0.32075337981493157,
+   "p90": 0.6840926571050209,
+   "upShare": 0.5424107142857143,
+   "medianDip": -0.19342289994036843
   },
   "Strong bear": {
-   "days": 11,
-   "windows": 0.1,
-   "episodes": 4,
+   "days": 99,
+   "windows": 1.1,
+   "episodes": 12,
    "suppressed": true
   },
-  "withheldDays": 299
+  "withheldDays": 2,
+  "groups": "Value, Trend, Flows, Sentiment (leverage not scored)"
  }
 }

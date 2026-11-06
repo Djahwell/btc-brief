@@ -280,8 +280,8 @@
   "score": {
     "name": "Financial condition score",
     "requestedBy": "Djahwell 2026-11-06: 'I'd still like a score and a bull or bear signal for the financial reading at that moment.'",
-    "rule": "One vote per group, each -1..+1, from the rows' stated conventions (supportive +1, headwind -1, neutral / not coloured 0). Value = valuation row. Trend = mean of long-term trend and medium-term structure (so trend counts once). Positioning = leverage. Flows = mean of US spot demand and stablecoin liquidity (holders not coloured). Sentiment = sentiment row. Score = sum of available group votes x 2, range -10..+10, rounded to 1 decimal.",
-    "quorum": "at least 4 of 5 groups available, otherwise withheld",
+    "rule": "One vote per group, each -1..+1, from the rows' stated conventions (supportive +1, headwind -1, neutral / not coloured 0). Value = valuation row. Trend = mean of long-term trend and medium-term structure (trend counts once). Flows = mean of US spot demand and stablecoin liquidity (holders not coloured). Sentiment = sentiment row. Positioning (leverage) is shown as a row but NOT in the score: its only headwind state needs open-interest history, which does not exist before Nov 2026, so the score could not be described on history. Score = sum of available group votes x 2.5, range -10..+10, rounded to 1 decimal.",
+    "quorum": "at least 3 of 4 groups available, otherwise withheld",
     "bands": {
       "Strong bull": ">= 5",
       "Bull": ">= 2",
@@ -289,6 +289,9 @@
       "Bear": "> -5",
       "Strong bear": "<= -5"
     },
-    "label": "Financial condition, by convention: describes how supportive today's figures are, not where price goes next. Not a tested forecast."
-  }
+    "label": "Financial condition, by convention: describes how supportive today's figures are, not where price goes next. Not a tested forecast.",
+    "bandNames": "always 'Bull condition' / 'Bear condition', never 'Bull' alone",
+    "notTested": "The score is not a tested forecast and has no forward test. Any later claim about it needs a new forward declaration written before the data."
+  },
+  "percentileNote": "Bar-based percentiles (200-week stretch, nearness to ATH) include the day's own value in its history (mid-rank); engine percentiles exclude it. The 200-week measure needs 1,400 + 365 days, so it starts about 2020-05; before that the valuation row uses 2 of 3 measures."
 }

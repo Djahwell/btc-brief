@@ -76,25 +76,41 @@
 - **FW1:** the status line stays; it is still recording.
 
 ## C6. Financial condition score (Djahwell, 2026-11-06: "I'd still like a score and a bull or bear signal for the financial reading at that moment")
-- **Rule (declaration `score`), fixed before any evidence was computed:**
-  - one vote per group, each from −1 to +1, from the rows' stated conventions;
-  - Trend = the mean of long-term trend and medium-term structure, so trend counts once;
-  - Flows = the mean of US spot demand and liquidity;
-  - score = the sum × 2, on a range of −10 to +10;
-  - quorum: 4 of 5 groups.
-- **Bands:** Strong bull ≥ 5, Bull ≥ 2, Neutral > −2, Bear > −5, Strong bear ≤ −5.
-- **Label:** "Financial condition, by convention: not a price call, not a tested forecast."
-- The band's 2019–26 history is shown next to it.
+**Rule (declaration `score`, after the Board build review):**
+- **Votes:** one per group (Value, Trend, Flows, Sentiment), each from −1 to +1, taken from the rows' stated conventions.
+  - Trend is the mean of the two trend rows, so trend counts once.
+  - Flows is the mean of US spot demand and liquidity.
+- **Leverage is shown but not scored.** Its headwind state needs open-interest history, which does not exist before Nov 2026, so a scored version could not be described on history (Board defect fix).
+- **Score:** the sum × 2.5, on a range of −10 to +10. Quorum: 3 of 4 groups.
+- **Bands:**
+
+  | Band name | Score |
+  |---|---|
+  | Strong bull condition | ≥ 5 |
+  | Bull condition | ≥ 2 |
+  | Neutral | > −2 |
+  | Bear condition | > −5 |
+  | Strong bear condition | ≤ −5 |
+
+- **Shown in neutral colours.** All five bands' 2019–26 history is shown side by side.
+- **Not tested and has no forward test.** Any later claim about the score needs a new forward declaration, written before the data.
 
 **History 2019–26** (descriptive; `condition-evidence.json`):
 
-| Band | Days | 90-day median | Share up | Typical dip | Windows / episodes |
+| Band | Days | 90-day median | Up | Typical dip | Windows |
 |---|---|---|---|---|---|
-| Strong bull | 83 | too few | | | |
-| Bull | 633 | +13% | 63% | −11% | 7.0 / 15 |
-| Neutral | 1,227 | +2% | 53% | −19% | 13.6 / 9 |
-| Bear | 518 | +8% | 59% | −17% | 5.8 / 13 |
-| Strong bear | 11 | too few | | | |
-| All days | | +8% | 58% | −15% | |
+| Strong bull | 211 | too few (2.3 windows) | | | |
+| Bull | 626 | +21% | 65% | −9% | 7.0 |
+| Neutral | 1,385 | +1% | 52% | −19% | 15.4 |
+| Bear | 448 | +4% | 54% | −19% | 5.0 |
+| Strong bear | 99 | too few (1.1 windows) | | | |
+| All days | 2,771 | +8% | 58% | −15% | |
 
-The bands are not in order: Bear did better than Neutral. This is shown, not hidden.
+**Board build review (PASS WITH CHANGES), applied:**
+- leverage removed from the score;
+- all-band history table added;
+- neutral colours;
+- "no history" shown for OI-dependent states;
+- episodes shown only when there are at least 2;
+- the percentile definition and the 200-week start date disclosed;
+- a no-forward-test line added.
