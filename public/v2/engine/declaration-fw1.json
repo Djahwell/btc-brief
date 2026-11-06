@@ -1,0 +1,127 @@
+{
+  "schema": "brief-v2-fw1/1",
+  "name": "FW1",
+  "status": "FORWARD CANDIDATE \u2014 declared 2026-11-06. The forward clock starts at the first frozen daily record that carries FW1 (after VPS v1.1 is installed); no earlier day is ever used to judge it. Any change = FW2, with its own clock; days already used to judge FW1 are never reused to judge FW2.",
+  "why": "Stage 4: averaging graded families flattened the score (85% Neutral) and trend carried almost all of the edge. FW1 is trend-led with a fixed base and counted confirmations/warnings instead of an average.",
+  "entry": {
+    "base": {
+      "strongUp": {
+        "rule": "close > SMA20 > SMA50, SMA20 rising over 5 bars, E1 >= +6",
+        "score": 6
+      },
+      "up": {
+        "rule": "close > SMA20 > SMA50, SMA20 rising over 5 bars",
+        "score": 4
+      },
+      "down": {
+        "rule": "close < SMA20 < SMA50, SMA20 falling over 5 bars",
+        "score": -4
+      },
+      "strongDown": {
+        "rule": "close < SMA20 < SMA50, SMA20 falling over 5 bars, E1 <= -6",
+        "score": -6
+      },
+      "otherwise": 0
+    },
+    "confirmations": {
+      "auctionUp": {
+        "rule": "E2 state IMBALANCE_UP or FAILED_AUCTION_LOW",
+        "points": 2
+      },
+      "auctionDown": {
+        "rule": "E2 state IMBALANCE_DOWN or FAILED_AUCTION_HIGH",
+        "points": -2
+      },
+      "usSpotBid": {
+        "rule": "E5a score >= +3",
+        "points": 2
+      },
+      "usSpotOffered": {
+        "rule": "E5a score <= -3",
+        "points": -2
+      }
+    },
+    "warnings": {
+      "perpFroth": {
+        "rule": "E3a score <= -3 (premium in its top percentiles)",
+        "points": -2
+      },
+      "greed": {
+        "rule": "Fear & Greed >= 75",
+        "points": -2
+      },
+      "capitulationBounce": {
+        "rule": "Fear & Greed <= 25 AND E2 FAILED_AUCTION_LOW",
+        "points": 2
+      }
+    },
+    "volatility": "E6 top decile (p >= 90): score = round(score / 2)",
+    "required": "E1 bars fresh (base) \u2014 otherwise withheld; each confirmation/warning only counts when its family is active",
+    "clamp": 10,
+    "note": "A failed auction low with Fear & Greed <= 25 scores +4 in total (+2 auction confirmation, +2 capitulation warning), by design."
+  },
+  "tendency": {
+    "base": {
+      "strongUp": {
+        "rule": "close > SMA200, SMA200 rising over 20 bars, T3 >= +6",
+        "score": 6
+      },
+      "up": {
+        "rule": "close > SMA200, SMA200 rising over 20 bars",
+        "score": 4
+      },
+      "down": {
+        "rule": "close < SMA200, SMA200 falling over 20 bars",
+        "score": -4
+      },
+      "strongDown": {
+        "rule": "close < SMA200, SMA200 falling over 20 bars, T3 <= -6",
+        "score": -6
+      },
+      "otherwise": 0
+    },
+    "modifiers": {
+      "cheap": {
+        "rule": "T1 (MVRV, contrarian) >= +6",
+        "points": 2
+      },
+      "rich": {
+        "rule": "T1 <= -6",
+        "points": -2
+      },
+      "liquidityUp": {
+        "rule": "T4 >= +3",
+        "points": 1
+      },
+      "liquidityDown": {
+        "rule": "T4 <= -3",
+        "points": -1
+      }
+    },
+    "notUsed": "T2 (LTH): both signs failed Stage 4 and its direction is unknown",
+    "required": "T3 active \u2014 otherwise withheld",
+    "clamp": 10
+  },
+  "bands": [
+    {
+      "min": 6,
+      "name": "Strong bull"
+    },
+    {
+      "min": 3,
+      "name": "Bull"
+    },
+    {
+      "min": -2,
+      "name": "Neutral"
+    },
+    {
+      "min": -5,
+      "name": "Bear"
+    },
+    {
+      "min": -10,
+      "name": "Strong bear"
+    }
+  ]
+}

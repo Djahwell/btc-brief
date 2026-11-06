@@ -36,10 +36,11 @@
     coinbase_premium_adj_repro: 'Coinbase premium (repro copy)',
   };
 
-  let decl = null, declHash = null, lastFetchError = null;
+  let decl = null, declHash = null, fw1Hash = null, lastFetchError = null;
   const KNOWN_SCHEMAS = ['brief-v2/1', 'brief-v2/2'];
   // Stage 4 (5 Nov 2026, STAGE4.md): no entry or tendency candidate passed → descriptive mode (§F).
   // The page shows family readings, states and levels only; never a scorecard number or band.
+  const FW1_SINCE = 'its first daily record (Nov 2026)';
   const DESCRIPTIVE = { since: '2026-11-05', reason: 'No score: neither read passed its test on 2019–2026 history (5 Nov 2026). The family readings below are shown as context.' };
   let lastView = null;
 
@@ -51,6 +52,18 @@
     const r = await fetch('engine/declaration.json', { cache: 'no-store' });
     decl = await r.json();
     declHash = await sha256Hex(JSON.stringify(decl));
+    try { const f = await (await fetch('engine/declaration-fw1.json', { cache: 'no-store' })).json(); fw1Hash = await sha256Hex(JSON.stringify(f)); } catch (_) { fw1Hash = null; }
+  }
+
+  // FW1 forward candidate (FORWARD-FW1.md): shown labelled UNTESTED, only for a fresh, live snapshot
+  // whose FW1 declaration hash equals this page's copy. Never shown from a cached copy.
+  function fw1View(snap, now) {
+    const f = snap.engine && snap.engine.fw1;
+    if (!f || f.error) return { withheld: true, reason: 'the FW1 score starts when the engine runs on the VPS' };
+    if (!fw1Hash || f.declarationHash !== fw1Hash) return { withheld: true, reason: 'FW1 was computed under a declaration this page does not know' };
+    if (state.fromCache) return { withheld: true, reason: 'the Worker could not be reached; scores are never shown from a cached copy' };
+    if ((now - Date.parse(snap.generatedAt)) / 1000 > WITHHOLD_SEC) return { withheld: true, reason: 'snapshot older than 90 min' };
+    return { withheld: false, entry: f.entry, tendency: f.tendency };
   }
   async function getJSON(url, ms = 15000) {
     const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms);
@@ -85,9 +98,17 @@
   // ---- rendering ---------------------------------------------------------------------------
   function renderCard(el, c, fallbackReason) {
     const box = el.querySelector('.score'), num = el.querySelector('.num'), band = el.querySelector('.band'), sub = el.querySelector('.sub'), mark = el.querySelector('.mark');
-    if (DESCRIPTIVE) {
+    if (DESCRIPTIVE && !(c && c.fw1)) {
       box.classList.add('withheld'); num.className = 'num'; num.textContent = 'Descriptive'; band.textContent = ''; mark.style.display = 'none';
       el.querySelector('.gauge').style.display = 'none'; sub.textContent = DESCRIPTIVE.reason; return;
+    }
+    if (c && c.fw1) {
+      el.querySelector('.gauge').style.display = '';
+      if (c.withheld || c.score == null) { box.classList.add('withheld'); num.className = 'num'; num.textContent = 'Withheld'; band.textContent = ''; mark.style.display = 'none'; sub.textContent = c.reason || ''; return; }
+      box.classList.remove('withheld'); num.className = 'num ' + cls(c.score); num.textContent = sgn(c.score);
+      band.className = 'band ' + cls(c.score); band.textContent = c.band; mark.style.display = 'block'; mark.style.left = `${(c.score + 10) * 5}%`;
+      sub.innerHTML = `<strong>FW1 · Untested</strong> — forward test since ${esc(FW1_SINCE)}. ` + esc((c.parts || []).map(p => `${p.label} ${p.pts > 0 ? '+' : ''}${p.pts}`).join(' · ')) + (c.volatilityHalved ? ' · halved (high volatility)' : '');
+      return;
     }
     if (!c || c.withheld || c.score == null) {
       box.classList.add('withheld'); num.className = 'num'; num.textContent = 'Withheld'; band.textContent = ''; mark.style.display = 'none';
@@ -260,10 +281,11 @@
     let v;
     try { v = viewTimeEngine(snap, now); } catch (e) { v = { withheld: true, reason: 'the scores could not be checked on this device' }; }
     lastView = v;
-    renderCard($('#card-entry'), v.withheld ? null : v.scores[v.primary.entry], v.reason);
-    renderCard($('#card-tendency'), v.withheld ? null : v.scores[v.primary.tendency], v.reason);
+    const f1 = fw1View(snap, now);
+    renderCard($('#card-entry'), f1.withheld ? { fw1: true, withheld: true, reason: f1.reason } : { fw1: true, ...f1.entry }, v.reason);
+    renderCard($('#card-tendency'), f1.withheld ? { fw1: true, withheld: true, reason: f1.reason } : { fw1: true, ...f1.tendency }, v.reason);
     const banner = [];
-    if (DESCRIPTIVE) banner.push(`<strong>Descriptive mode.</strong> Neither score passed its 2019–2026 test, so the page shows the market's readings (families, value area, levels, events) without a buy/hold verdict.${v.withheld ? ` Family readings: ${esc(v.reason)}.` : ''}`);
+    if (DESCRIPTIVE) banner.push(`<strong>Scores are FW1, untested.</strong> The first design failed its 2019–2026 test; FW1 (trend-led) is judged only on days from ${esc(FW1_SINCE)} onward and needs about 12 months for a verdict. Treat it as a reading, not a signal.${v.withheld ? ` Family readings: ${esc(v.reason)}.` : ''}`);
     else if (!v.withheld && v.status) banner.push(`<strong>Candidate scores.</strong> Untested until the Stage 4 test passes; shown so the live record can start.`);
     else if (v.withheld) banner.push(`<strong>Scores withheld:</strong> ${esc(v.reason)}.`);
     if (!v.withheld && v.dropped.length) banner.push(`Stale at view time and left out: ${esc(v.dropped.map(k => (FAM[k] || [k])[0]).join(', '))}.`);

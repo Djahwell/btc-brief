@@ -187,7 +187,7 @@ test('golden file (real v2-data history)', { skip: !process.env.V2_HISTORY_DIR }
 });
 
 test('V2 page ships byte-identical engine files (public/v2/engine)', () => {
-  for (const f of ['engine.js', 'summary.js', 'declaration.json']) {
+  for (const f of ['engine.js', 'summary.js', 'fw1.js', 'declaration.json', 'declaration-fw1.json']) {
     const a = fs.readFileSync(path.join(__dirname, '..', f)); const b = fs.readFileSync(path.join(__dirname, '..', '..', 'public', 'v2', 'engine', f));
     assert.ok(a.equals(b), `public/v2/engine/${f} differs from engine-v2/${f} — run: cp engine-v2/{engine.js,summary.js,declaration.json} public/v2/engine/`);
   }
@@ -206,4 +206,22 @@ test('FW1: trend base, counted modifiers, withheld without E1/T3, volatility hal
   assert.equal(o.entry.withheld, true); assert.equal(o.tendency.withheld, true);
   const down = bars.map((b, i) => ({ ...b, c: 400 - i })); o = F.fw1({ date: D, families: fam({ E1: { score: -3 }, E2: { score: 0, state: 'BALANCE' }, E3a: { score: 0 } }) }, down, fd);
   assert.equal(o.entry.score, -4); assert.equal(o.entry.band, 'Bear');
+});
+
+test('FW1: remaining declared cases (E5a ±, greed, capitulation +4, strong down, frozen order)', () => {
+  const F = require('../fw1.js'); const fd = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'declaration-fw1.json'), 'utf8'));
+  const up = []; for (let i = 0; i < 260; i++) up.push({ d: E.addDays('2025-01-01', i), c: 100 + i, h: 101 + i, l: 99 + i, o: 100 + i, v: 1 });
+  const down = up.map((b, i) => ({ ...b, c: 400 - i }));
+  const D = E.addDays('2025-01-01', 260);
+  const base = { E1: { score: 4 }, E2: { score: 0, state: 'BALANCE' }, E3a: { score: 0 }, E5a: { score: 0 }, E7: { score: 0, raw: 50 }, E6: { topDecile: false }, T1: { score: 0 }, T3: { score: 4 }, T4: { score: 0 } };
+  const run = (x, bars = up) => F.fw1({ date: D, families: { ...base, ...x } }, bars, fd);
+  assert.equal(run({ E5a: { score: 3 } }).entry.score, 6);
+  assert.equal(run({ E5a: { score: -3 } }).entry.score, 2);
+  assert.equal(run({ E7: { score: -1, raw: 80 } }).entry.score, 2);
+  assert.equal(run({ E2: { score: 4, state: 'FAILED_AUCTION_LOW' }, E7: { score: 3, raw: 20 } }, down).entry.score, -4 + 2 + 2);
+  const sd = run({ E1: { score: -7 }, T3: { score: -8 }, T1: { score: -6 }, T4: { score: -3 } }, down);
+  assert.equal(sd.entry.score, -6); assert.equal(sd.entry.band, 'Strong bear');
+  assert.equal(sd.tendency.score, -6 - 2 - 1); assert.equal(sd.tendency.band, 'Strong bear');
+  assert.equal(run({ E3a: { score: 0 }, E1: { score: 4 } }).entry.parts[0].label, 'uptrend');
+  assert.equal(run({ E5a: { score: null } }).entry.score, 4);   // inactive family never counts
 });

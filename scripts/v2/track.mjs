@@ -11,6 +11,7 @@ import { getJSON, writeJSON, coinbaseCandles, isoDay } from './lib.mjs';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const S = require('../../stage4/stats.js');
+const { fw1Status } = require('../../stage4/fw1test.js');
 
 const OUT = process.env.OUT || 'out/v2';
 const WORKER = process.env.WORKER_URL || 'https://btc-brief.joel-toe.workers.dev';
@@ -95,7 +96,7 @@ async function main() {
   const bars = (await coinbaseCandles('BTC-USD', DAY, first, end)).map(r => ({ d: isoDay(r.t * 1000), o: r.o, h: r.h, l: r.l, c: r.c }));
   const o = outcomes(fr.rows, bars, { lastDay: isoDay(Date.now()) });
   const events = eventFlagTest(evlog, bars);
-  writeJSON(`${OUT}/track.json`, { schema: 'brief-v2-track/1', generatedAt: new Date().toISOString(), label: 'live (frozen daily snapshots)', definitions: 'STAGE4-PLAN §4', ...o, tendency: { note: 'tendency outcomes start after 180 days of records' }, eventFlag: events });
+  writeJSON(`${OUT}/track.json`, { schema: 'brief-v2-track/1', generatedAt: new Date().toISOString(), label: 'live (frozen daily snapshots)', definitions: 'STAGE4-PLAN §4', ...o, tendency: { note: 'tendency outcomes start after 180 days of records' }, eventFlag: events, fw1: fw1Status(fr.rows, bars, new Date().toISOString()) });
   console.log(`[v2-track] ${fr.rows.length} frozen days, ${o.rows.filter(r => r.closed).length} closed`);
 }
 if (import.meta.url === `file://${process.argv[1]}`) main().catch(e => { console.error('[v2-track] failed:', e.message); process.exitCode = 1; });

@@ -54,10 +54,16 @@ function scoreSnapshot({ inputs, history, daily, nowMs, mode = 'live' }) {
   const { view, joinIssues } = L.liveView({ hist: history.hist, daily, live: { nowMs, premium8h: lr.premium8h, e5aZ: lr.e5aZ } });
   const r = E.evaluate(view, decl);
   let summary = null; try { summary = require(path.join(dir, 'summary.js')).summarize(r, decl); } catch (_) { /* optional */ }
+  // FW1 forward candidate (FORWARD-FW1.md): same families and bars, its own declaration and hash.
+  let fw1 = null;
+  try {
+    const fd = JSON.parse(fs.readFileSync(path.join(dir, 'declaration-fw1.json'), 'utf8'));
+    fw1 = { ...require(path.join(dir, 'fw1.js')).fw1(r, view.bars, fd), declarationHash: E.declarationHash(fd), fw1CodeHash: crypto.createHash('sha256').update(fs.readFileSync(path.join(dir, 'fw1.js'))).digest('hex'), status: 'UNTESTED — forward test (FORWARD-FW1.md)' };
+  } catch (e) { fw1 = { error: String(e.message).slice(0, 120) }; }
   return {
     ...base, withheld: false,
     date: r.date, primary: r.primary, families: r.families, scores: r.scores, warnings: r.warnings,
-    summary, joinIssues, readingNotes: lr.notes, history: { generatedAt: history.manifest.generatedAt },
+    summary, fw1, joinIssues, readingNotes: lr.notes, history: { generatedAt: history.manifest.generatedAt },
     daily: { generatedAt: daily?.generatedAt ?? null },
   };
 }
