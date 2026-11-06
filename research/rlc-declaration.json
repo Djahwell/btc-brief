@@ -1,0 +1,42 @@
+{
+  "id": "RLC-1",
+  "date": "2026-11-06",
+  "decidedBy": "Djahwell chose 'map + one rating' after the RL0 feasibility check (STAGE-RL-PLAN.md RL0b)",
+  "composite": {
+    "formula": "C = 0.5*V + 0.5*T, range -1..+1",
+    "valuation_V": "mean of (50 - mvrvPct)/50 and (50 - pctATH)/50; pctATH = expanding percentile (0-100) of ddATH over all Coinbase days since 2015-07-20 up to D-1, ties = mid-rank; positive = cheap",
+    "trend_T": "T3/10 (engine family T3: close vs rising/falling 200-day average)",
+    "withheld": "if any component is missing on a day, C is missing"
+  },
+  "bands": {
+    "strongFavourable": ">= 0.3",
+    "favourable": ">= 0.15",
+    "neutral": "> -0.15",
+    "unfavourable": "> -0.3",
+    "strongUnfavourable": "<= -0.3",
+    "why": "Set from the composite's own distribution before any outcome was read (C 5/20/50/80/95%: -0.30/-0.17/-0.01/0.19/0.35). V and T correlate -0.66, so their average rarely leaves +/-0.3; the first cuts (+/-0.3/0.6) left 86% of days neutral."
+  },
+  "period": "rows 2019-01-01 .. 2026-10-31 minus h; entry = close of D-1, Coinbase",
+  "primary": {
+    "horizons": [
+      30,
+      90
+    ],
+    "statistic": "Spearman(C, forward h-day return) over all rows",
+    "null": "two-sided circular shift, shifts from s to N-s, s = max(h, ceil(Politis-White block of C))",
+    "multiplicity": "Holm across the 2 horizons at alpha 0.10",
+    "pass": "Holm-significant AND positive sign AND positive Spearman in both halves (2019-01..2022-12, 2023-01..end)"
+  },
+  "descriptive": [
+    "h = 180 (8 independent windows: no test)",
+    "partial Spearman of C given T alone (does valuation add to trend?)",
+    "mean forward return per band with circular block-bootstrap 95% interval and number of independent windows",
+    "90-day max drawdown by band",
+    "per-indicator map of all 33 indicators (quintile profiles, halves, window counts), suppressed where fewer than 4 windows"
+  ],
+  "labels": {
+    "pass": "Passed a one-shot test on 2019-2026 history (partly seen; forward check from first live day)",
+    "fail": "Did not pass on history: shown as descriptive context only"
+  },
+  "noRetry": "If RLC-1 fails it is retired; no variant is tested on the same history."
+}
