@@ -1,4 +1,4 @@
-# BTC Brief V2: Stage C, the daily market-condition read (plan v1.0, 2026-11-06)
+# BTC Brief V2: Stage C, the daily market-condition read (plan v1.1, 2026-11-06)
 
 *Djahwell, 2026-11-06: "The tool should indicate what the market condition is for BTC regardless of its immediate direction. I want a solid financial glimpse each day of where it stands and what the figures mean. Sometimes all indicators will be green and one whale drives it the other way. I don't mind, as long as the supporting evidence is sound and the interpretation makes sense."*
 
@@ -56,3 +56,45 @@
 - A test that the evidence file sha matches.
 - Checker tests for the Claude paragraph.
 - A Board build review before deploy, then a VPS package (v1.2) with test, install and rollback steps, so the frozen daily record carries the condition states for the live log.
+
+## C5. v1.1: Board check (APPROVE WITH CHANGES), all applied in `engine-v2/condition-declaration.json` (COND-1)
+- **Wording and colour:** the words read "supportive / headwind (by convention)", shown in blue and amber hues, never green and red.
+- **Evidence:** every row shows its evidence inline, labelled "not a tested link to later price (2019–26)". Missing data shows "no data" and is never counted as neutral.
+- **Long-term holders:** shown, not coloured.
+- **Leverage:**
+  - "crowded long" needs the premium above the 80th percentile **and** open interest rising over 7 days, with funding shown;
+  - a low premium with rising OI reads "short-crowded (squeeze fuel)", not coloured.
+- **Valuation:** "nearness to the ATH" is signed so that high = expensive, matching the other two measures. Each series' start date is stated.
+- **Liquidity:** uses growth against its own trend (engine T4 raw). The flat bands are fixed at 0.25 × the median absolute value.
+- **Wording fixes:**
+  - Coinbase: "versus its recent norm";
+  - auction: 30-day value area;
+  - volatility evidence is by volatility state.
+- **Structure:** the medium-term trend and auction rows are merged into one structure row.
+- **No numeric tally:** a grouped one-line read (Value · Trend · Positioning · Flows · Sentiment) replaces it.
+- **The Claude paragraph stays off** until its checker is rebuilt for state words, with a ban on causal and predictive phrases.
+- **FW1:** the status line stays; it is still recording.
+
+## C6. Financial condition score (Djahwell, 2026-11-06: "I'd still like a score and a bull or bear signal for the financial reading at that moment")
+- **Rule (declaration `score`), fixed before any evidence was computed:**
+  - one vote per group, each from −1 to +1, from the rows' stated conventions;
+  - Trend = the mean of long-term trend and medium-term structure, so trend counts once;
+  - Flows = the mean of US spot demand and liquidity;
+  - score = the sum × 2, on a range of −10 to +10;
+  - quorum: 4 of 5 groups.
+- **Bands:** Strong bull ≥ 5, Bull ≥ 2, Neutral > −2, Bear > −5, Strong bear ≤ −5.
+- **Label:** "Financial condition, by convention: not a price call, not a tested forecast."
+- The band's 2019–26 history is shown next to it.
+
+**History 2019–26** (descriptive; `condition-evidence.json`):
+
+| Band | Days | 90-day median | Share up | Typical dip | Windows / episodes |
+|---|---|---|---|---|---|
+| Strong bull | 83 | too few | | | |
+| Bull | 633 | +13% | 63% | −11% | 7.0 / 15 |
+| Neutral | 1,227 | +2% | 53% | −19% | 13.6 / 9 |
+| Bear | 518 | +8% | 59% | −17% | 5.8 / 13 |
+| Strong bear | 11 | too few | | | |
+| All days | | +8% | 58% | −15% | |
+
+The bands are not in order: Bear did better than Neutral. This is shown, not hidden.

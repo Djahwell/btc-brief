@@ -187,7 +187,7 @@ test('golden file (real v2-data history)', { skip: !process.env.V2_HISTORY_DIR }
 });
 
 test('V2 page ships byte-identical engine files (public/v2/engine)', () => {
-  for (const f of ['engine.js', 'summary.js', 'fw1.js', 'declaration.json', 'declaration-fw1.json']) {
+  for (const f of ['engine.js', 'summary.js', 'fw1.js', 'declaration.json', 'declaration-fw1.json', 'condition.js', 'condition-declaration.json', 'condition-evidence.json']) {
     const a = fs.readFileSync(path.join(__dirname, '..', f)); const b = fs.readFileSync(path.join(__dirname, '..', '..', 'public', 'v2', 'engine', f));
     assert.ok(a.equals(b), `public/v2/engine/${f} differs from engine-v2/${f} — run: cp engine-v2/{engine.js,summary.js,declaration.json} public/v2/engine/`);
   }

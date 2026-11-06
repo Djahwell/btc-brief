@@ -19,19 +19,12 @@
 <main>
   <div id="banner" class="banner" hidden></div>
 
-  <section class="cards" aria-label="Scorecards">
-    <article class="card" id="card-entry">
-      <h2>Entry <small>1–7 days</small></h2>
-      <div class="score"><span class="num">—</span><span class="band"></span></div>
-      <div class="gauge" aria-hidden="true"><div class="ticks"></div><div class="mark"></div></div>
-      <p class="sub"></p>
-    </article>
-    <article class="card" id="card-tendency">
-      <h2>Tendency <small>3–9 months</small></h2>
-      <div class="score"><span class="num">—</span><span class="band"></span></div>
-      <div class="gauge" aria-hidden="true"><div class="ticks"></div><div class="mark"></div></div>
-      <p class="sub"></p>
-    </article>
+  <section class="panel cond" aria-labelledby="h-cond">
+    <h3 id="h-cond">Market condition <small id="cond-asof"></small></h3>
+    <div class="cscore" id="cond-score"><div class="score"><span class="num">—</span><span class="band"></span></div><div class="gauge" aria-hidden="true"><div class="ticks"></div><div class="mark"></div></div><p class="sub"></p></div>
+    <div id="cond-summary" class="cond-summary"></div>
+    <div id="cond-rows"></div>
+    <p class="fine" id="cond-foot"></p>
   </section>
 
   <section class="panel" aria-labelledby="h-events">
@@ -44,17 +37,6 @@
     <ul id="health" class="health"></ul>
   </section>
 
-  <section class="panel" aria-labelledby="h-why">
-    <h3 id="h-why">Why</h3>
-    <ol id="why" class="why"></ol>
-    <p id="notes" class="note"></p>
-  </section>
-
-  <section class="panel" aria-labelledby="h-fam">
-    <h3 id="h-fam">Families</h3>
-    <div id="families"></div>
-  </section>
-
   <section class="panel" aria-labelledby="h-levels">
     <h3 id="h-levels">Levels <small>from daily data</small></h3>
     <div id="levels" class="levels"></div>
@@ -62,7 +44,6 @@
 
   <section class="panel" aria-labelledby="h-comm">
     <h3 id="h-comm">Commentary</h3>
-    <div id="summary" class="summary"></div>
     <div class="claude">
       <div id="claude-text" class="claude-text"></div>
       <button id="claude-btn" type="button" class="btn" hidden>Write today's paragraph</button>
@@ -71,7 +52,7 @@
   </section>
 
   <section class="panel" aria-labelledby="h-track">
-    <h3 id="h-track">Track record <small>live, frozen daily</small></h3>
+    <h3 id="h-track">Background record</h3>
     <div id="track" class="track"></div>
   </section>
 
@@ -89,6 +70,7 @@
 <script src="engine/engine.js"></script>
 <script src="engine/summary.js"></script>
 <script src="engine/fw1.js"></script>
+<script src="engine/condition.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

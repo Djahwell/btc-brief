@@ -6,9 +6,10 @@
   const WORKER = 'https://btc-brief.joel-toe.workers.dev';
   const EVENTS_URL = 'https://raw.githubusercontent.com/Djahwell/btc-brief/v2-data/v2/events.json';
   const TRACK_URL = 'https://raw.githubusercontent.com/Djahwell/btc-brief/v2-data/v2/track.json';
+  const COND_BASE_URL = 'https://raw.githubusercontent.com/Djahwell/btc-brief/v2-data/v2/condition-base.json';
   const REFRESH_MS = 30 * 60 * 1000;
   const AMBER_SEC = 45 * 60, WITHHOLD_SEC = 90 * 60;
-  const E = window.BriefEngine, S = window.BriefSummary;
+  const E = window.BriefEngine, S = window.BriefSummary, C = window.BriefCondition;
   const $ = s => document.querySelector(s);
   const store = {
     get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (_) { return null; } },
@@ -37,6 +38,7 @@
   };
 
   let decl = null, declHash = null, fw1Hash = null, lastFetchError = null;
+  let cdecl = null, cdeclHash = null, cev = null, cbase = null;
   const KNOWN_SCHEMAS = ['brief-v2/1', 'brief-v2/2'];
   // Stage 4 (5 Nov 2026, STAGE4.md): no entry or tendency candidate passed → descriptive mode (§F).
   // The page shows family readings, states and levels only; never a scorecard number or band.
@@ -53,6 +55,10 @@
     decl = await r.json();
     declHash = await sha256Hex(JSON.stringify(decl));
     try { const f = await (await fetch('engine/declaration-fw1.json', { cache: 'no-store' })).json(); fw1Hash = await sha256Hex(JSON.stringify(f)); } catch (_) { fw1Hash = null; }
+    try {
+      const t = await (await fetch('engine/condition-declaration.json', { cache: 'no-store' })).text(); cdecl = JSON.parse(t); cdeclHash = await sha256Hex(t);
+      cev = await (await fetch('engine/condition-evidence.json', { cache: 'no-store' })).json();
+    } catch (_) { cdecl = null; }
   }
 
   // FW1 forward candidate (FORWARD-FW1.md): shown labelled UNTESTED, only for a fresh, live snapshot
@@ -217,7 +223,7 @@
   }
 
   async function renderTrack() {
-    if (DESCRIPTIVE) { $('#track').innerHTML = '<p class="muted">The frozen candidate scores failed Stage 4. They keep being recorded every day in the background (not shown), so a future design can be compared with them on new data.</p>'; return; }
+    if (DESCRIPTIVE) { $('#track').innerHTML = `<p class="muted">No forecast is shown. The Stage 4 candidates and FW1 (untested, trend-led) keep recording every day in the background; FW1's forward test continues from ${esc(FW1_SINCE)} (FORWARD-FW1.md).</p>`; return; }
     try {
       const t = await getJSON(TRACK_URL + '?t=' + Math.floor(Date.now() / 6e5));
       const b = t.entry && t.entry.byBand;
@@ -237,7 +243,7 @@
   async function renderCommentary(snap) {
     const box = $('#claude-text'), btn = $('#claude-btn');
     const v = lastView;
-    if (DESCRIPTIVE) { box.innerHTML = '<span class="muted">The Claude paragraph is off while the page is descriptive (it was built to describe scores).</span>'; btn.hidden = true; return; }
+    if (DESCRIPTIVE) { box.innerHTML = '<span class="muted">The daily Claude paragraph returns once its checker is rebuilt for the condition read (it was built to describe scores).</span>'; btn.hidden = true; return; }
     if (!v || v.withheld) { box.innerHTML = '<span class="muted">No commentary while scores are withheld.</span>'; btn.hidden = true; return; }
     try {
       const c = await getJSON(`${WORKER}/v2/commentary`);
@@ -268,6 +274,102 @@
     if (state.snap) renderCommentary(state.snap);
   }
 
+
+  // ---- market condition (STAGE-C-PLAN, COND-1) -----------------------------------------------
+  const pctTxt = p => (Number.isFinite(p) ? `${Math.round(p)}th pct` : '—');
+  const pp = (x, d = 0) => (Number.isFinite(x) ? `${x > 0 ? '+' : ''}${(x * 100).toFixed(d)}%` : '—');
+  const CONV = { supportive: ['sup', 'supportive (by convention)'], headwind: ['head', 'headwind (by convention)'], neutral: ['neu', 'neutral'] };
+  function condBaseFresh() {
+    if (!cbase || !cbase.barDate) return null;
+    return cbase.barDate >= addDays(today(), -3) ? cbase : null;           // completed bar to D-1, allow 2 late days
+  }
+  function evidenceLine(k, st) {
+    const e = cev && cev.rows && cev.rows[k] && cev.rows[k][st];
+    if (!e) return '';
+    const lead = 'History 2019–26, not a tested link to later price:';
+    if (e.suppressed) return `<p class="cev">${lead} too few days in this state to describe (${e.windows} windows of 90 days).</p>`;
+    return `<p class="cev">${lead} next 90 days median ${pp(e.medianRet)} (10–90% range ${pp(e.p10)} to ${pp(e.p90)}), up ${Math.round(e.upShare * 100)}% of the time, typical dip ${pp(e.medianDip)}. ${e.windows} windows of 90 days, ${e.episodes} separate episode${e.episodes === 1 ? '' : 's'}. All days: median ${pp(cev.allDays.medianRet)}, up ${Math.round(cev.allDays.upShare * 100)}%.</p>`;
+  }
+  function condReadings(snap, v) {
+    const fam = v.families, f = snap.engine || {};
+    const fw = f.fw1 && f.fw1.entry && !f.fw1.entry.withheld && f.fw1.entry.parts && f.fw1.entry.parts[0];
+    const oi = snap.inputs && snap.inputs.oi_btc_total, fu = snap.inputs && snap.inputs.funding_context, lq = snap.inputs && snap.inputs.liquidations_24h;
+    const now = Date.now(); const ok = inp => inp && inp.quality === 'OK' && inputAgeSec(inp, now) <= inp.staleAfterSec;
+    const atr = fam.E1 && fam.E1.levels && fam.E1.levels.atr14, close = fam.E1 && fam.E1.levels && fam.E1.levels.close;
+    return C.readingsFromFamilies(fam, condBaseFresh(), {
+      fw1Base: fw && fw.k === 'trend' ? fw.pts : null,
+      oiChg7d: ok(oi) && Number.isFinite(oi.chg7d_pct) ? oi.chg7d_pct : null,
+      funding: ok(fu) ? fu.value : null,
+      atrPct: Number.isFinite(atr) && Number.isFinite(close) ? atr / close : null,
+      liq: ok(lq) && lq.value ? { ...lq.value, pct: lq.pct_of_oi } : null,
+    });
+  }
+  function readingText(k, o, R, snap, fam) {
+    const mark = markPrice(snap);
+    switch (k) {
+      case 'value': {
+        const b = condBaseFresh(); const rp = b && b.realized && b.realized.v;
+        return `MVRV ${pctTxt(R.mvrvPct)}${fam.T1 && Number.isFinite(fam.T1.raw) ? ` (${fam.T1.raw.toFixed(2)})` : ''} · vs 200-week average ${pctTxt(R.pctW200)}${b ? ` (${pp(b.w200)})` : ''} · nearness to high ${pctTxt(R.pctNearATH)}${b ? ` (${pp(b.nearATH)} from the all-time high)` : ''}${rp ? ` · realized price ${usd(rp)}` : ''}${b ? '' : ' · daily bar readings unavailable'}`;
+      }
+      case 'trend200': {
+        const sma = fam.T3 && fam.T3.levels && fam.T3.levels.sma200;
+        return `200-day average ${usd(sma)}${Number.isFinite(mark) && Number.isFinite(sma) ? `, price ${pp(mark / sma - 1, 1)} from it` : ''}; average ${R.slope200 > 0 ? 'rising' : R.slope200 < 0 ? 'falling' : 'flat'} over 20 days`;
+      }
+      case 'structure': {
+        const L = fam.E1 && fam.E1.levels; const auc = o.auction ? cdecl.rows.structure.auction[o.auction] : null;
+        return `20-day ${usd(L && L.sma20)}, 50-day ${usd(L && L.sma50)}${auc ? ` · price ${auc}` : ''}`;
+      }
+      case 'leverage': {
+        const fu = o.funding && Number.isFinite(o.funding.binance) ? ` · funding Binance ${(o.funding.binance * 100).toFixed(4)}%/8 h` : '';
+        return `perp premium ${pctTxt(o.pct)}${fam.E3a && Number.isFinite(fam.E3a.raw) ? ` (${(fam.E3a.raw * 100).toFixed(3)}%)` : ''} · open interest 7-day change ${Number.isFinite(o.oiChg7d) ? pp(o.oiChg7d / 100, 1) : 'not yet available'}${fu}`;
+      }
+      case 'spot': return `Coinbase premium z ${o.z.toFixed(2)} against its last 30 days`;
+      case 'liquidity': return `30-day supply growth ${pp(o.x, 1)} versus its usual pace`;
+      case 'holders': return `${Math.round(o.x).toLocaleString('en-US')} BTC net over 30 days`;
+      case 'sentiment': return `Fear & Greed ${Math.round(o.x)}`;
+      case 'volatility': return `30-day realized volatility ${pctTxt(o.pct)}${Number.isFinite(o.atrPct) ? ` · daily range ${(o.atrPct * 100).toFixed(1)}% of price` : ''}`;
+      case 'liquidations': { const c = o.context; if (!c) return 'no data'; return `longs ${Math.round(c.long_btc).toLocaleString('en-US')} BTC${c.pct ? ` (${c.pct.long.toFixed(2)}% of OI)` : ''}, shorts ${Math.round(c.short_btc).toLocaleString('en-US')} BTC${c.pct ? ` (${c.pct.short.toFixed(2)}%)` : ''}`; }
+    }
+    return '';
+  }
+  function renderCondition(snap, v) {
+    if (!cdecl || !C) { $('#cond-rows').innerHTML = '<p class="muted">Condition files did not load.</p>'; return; }
+    if (v.withheld) { $('#cond-summary').innerHTML = ''; $('#cond-rows').innerHTML = `<p class="muted">No condition read: ${esc(v.reason)}.</p>`; return; }
+    const R = condReadings(snap, v); const S2 = C.states(R, cdecl);
+    renderCondScore(C.score(S2, cdecl));
+    $('#cond-summary').innerHTML = C.summary(S2, cdecl).map((l, i, a) => `<p class="${i === a.length - 1 ? 'fine' : ''}">${esc(l)}</p>`).join('');
+    let html = '', grp = null;
+    for (const [k, def] of Object.entries(cdecl.rows)) {
+      const o = S2[k];
+      if (def.group !== grp) { grp = def.group; html += `<div class="group">${esc(grp)}</div>`; }
+      const has = o.state != null || (k === 'liquidations' && o.context);
+      const [c, word] = o.state == null ? ['nod', 'no data'] : o.convention ? CONV[o.convention] : ['unc', 'not coloured'];
+      const chip = k === 'liquidations' ? (o.context ? '<span class="chip unc">context</span>' : '<span class="chip nod">no data</span>') : `<span class="chip ${c}">${esc(o.label || 'No data')}${o.state != null && o.convention !== 'neutral' ? ` · ${esc(word)}` : ''}</span>`;
+      html += `<div class="crow"><div class="chead"><span class="clabel">${esc(def.label)}</span>${chip}</div>` +
+        (has ? `<div class="cread">${esc(readingText(k, o, R, snap, v.families))}</div>` : '') +
+        (o.meaning ? `<p class="cmean">${esc(o.meaning)}</p>` : '') + (def.note ? `<p class="cnote">${esc(def.note)}</p>` : '') +
+        (o.state != null ? evidenceLine(k, o.state) : '') + '</div>';
+    }
+    $('#cond-rows').innerHTML = html;
+    const b = condBaseFresh();
+    $('#cond-asof').textContent = b ? `daily bars to ${b.barDate}` : '';
+    $('#cond-foot').textContent = `Describes conditions, not the next move. Supportive / headwind is a stated financial convention, fixed before build and never fitted to prices. Declaration ${cdecl.id} · ${cdeclHash ? cdeclHash.slice(0, 10) : '—'} · evidence ${cev ? cev.period : '—'}.`;
+  }
+  function renderCondScore(sc) {
+    const el = $('#cond-score'), num = el.querySelector('.num'), band = el.querySelector('.band'), mark = el.querySelector('.mark'), sub = el.querySelector('.sub');
+    if (sc.withheld) { num.className = 'num'; num.textContent = 'Withheld'; band.textContent = ''; mark.style.display = 'none'; sub.textContent = sc.reason; return; }
+    const c = sc.score > 0 ? 'pos' : sc.score < 0 ? 'neg' : 'zero';
+    num.className = 'num ' + c; num.textContent = (sc.score > 0 ? '+' : '') + sc.score;
+    band.className = 'band ' + c; band.textContent = sc.band + ' condition';
+    mark.style.display = 'block'; mark.style.left = `${(sc.score + 10) * 5}%`;
+    const g = Object.entries(sc.groups).map(([k, x]) => `${k} ${x == null ? 'no data' : (x > 0 ? '+' : '') + x}`).join(' · ');
+    const e = cev && cev.score && cev.score[sc.band];
+    const hist = !e ? '' : e.suppressed ? ` History 2019–26: too few days in this band to describe (${e.windows} windows).` :
+      ` History 2019–26 (not a tested forecast): next 90 days median ${pp(e.medianRet)}, range ${pp(e.p10)} to ${pp(e.p90)}, up ${Math.round(e.upShare * 100)}% of the time, typical dip ${pp(e.medianDip)}; ${e.windows} windows, ${e.episodes} episodes. All days: median ${pp(cev.allDays.medianRet)}.`;
+    sub.textContent = `Financial condition by stated convention, not a price call. Votes: ${g}.` + hist;
+  }
+  async function loadCondBase() { try { cbase = await getJSON(COND_BASE_URL + '?t=' + Math.floor(Date.now() / 6e5)); } catch (_) { cbase = null; } }
+
   // ---- main loop -----------------------------------------------------------------------------
   const state = { snap: null, fetchedAt: null, fromCache: false };
   function render() {
@@ -281,18 +383,13 @@
     let v;
     try { v = viewTimeEngine(snap, now); } catch (e) { v = { withheld: true, reason: 'the scores could not be checked on this device' }; }
     lastView = v;
-    const f1 = fw1View(snap, now);
-    renderCard($('#card-entry'), f1.withheld ? { fw1: true, withheld: true, reason: f1.reason } : { fw1: true, ...f1.entry }, v.reason);
-    renderCard($('#card-tendency'), f1.withheld ? { fw1: true, withheld: true, reason: f1.reason } : { fw1: true, ...f1.tendency }, v.reason);
     const banner = [];
-    if (DESCRIPTIVE) banner.push(`<strong>Scores are FW1, untested.</strong> The first design failed its 2019–2026 test; FW1 (trend-led) is judged only on days from ${esc(FW1_SINCE)} onward and needs about 12 months for a verdict. Treat it as a reading, not a signal.${v.withheld ? ` Family readings: ${esc(v.reason)}.` : ''}`);
-    else if (!v.withheld && v.status) banner.push(`<strong>Candidate scores.</strong> Untested until the Stage 4 test passes; shown so the live record can start.`);
-    else if (v.withheld) banner.push(`<strong>Scores withheld:</strong> ${esc(v.reason)}.`);
-    if (!v.withheld && v.dropped.length) banner.push(`Stale at view time and left out: ${esc(v.dropped.map(k => (FAM[k] || [k])[0]).join(', '))}.`);
+    if (v.withheld) banner.push(`<strong>Readings withheld:</strong> ${esc(v.reason)}.`);
+    if (!v.withheld && v.dropped.length) banner.push(`Stale at view time, shown as "no data": ${esc(v.dropped.map(k => (FAM[k] || [k])[0]).join(', '))}.`);
     if (state.fromCache) banner.push(`Offline: showing the copy fetched ${ago((now - state.fetchedAt) / 1000)} ago${lastFetchError ? ` (last error: ${esc(lastFetchError)})` : ''}.`);
     else if (lastFetchError) banner.push(`Last refresh failed: ${esc(lastFetchError)}.`);
     $('#banner').innerHTML = banner.join('<br>'); $('#banner').hidden = !banner.length;
-    renderHealth(snap, now); renderFamilies(v); renderLevels(snap, v); renderSummary(v); renderDetail(snap, now);
+    renderHealth(snap, now); renderCondition(snap, v); renderLevels(snap, v); renderDetail(snap, now);
     $('#foot').textContent = `Snapshot ${snap.seq} · ${snap.codeVersion}${snap.engine && snap.engine.declarationHash ? ' · declaration ' + snap.engine.declarationHash.slice(0, 10) : ''}`;
   }
 
@@ -312,12 +409,14 @@
     if (state.snap) renderCommentary(state.snap);
     renderTrack();
     renderEvents();
+    loadCondBase().then(() => { if (state.snap) render(); });
   }
 
   async function start() {
     $('#refresh').addEventListener('click', refresh);
     $('#claude-btn').addEventListener('click', askClaude);
     try { await loadDecl(); } catch (e) { lastFetchError = 'declaration file missing'; }
+    await loadCondBase();
     await refresh();
     setInterval(refresh, REFRESH_MS);
     setInterval(render, 60 * 1000);                      // ages and view-time withholding move with the clock

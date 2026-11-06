@@ -42,6 +42,10 @@ jobs:
       - name: Run daily job
         env: { OUT: _data/v2 }
         run: node scripts/v2/daily.mjs
+      - name: Condition read base (200-week stretch, ATH percentiles; non-fatal)
+        continue-on-error: true
+        env: { OUT: _data/v2 }
+        run: node scripts/v2/condition-base.mjs
       - name: Event calendar (FOMC, CPI, payrolls, options expiries; non-fatal)
         continue-on-error: true
         env: { OUT: _data/v2 }
