@@ -8,10 +8,10 @@ const HALVINGS = ['2016-07-09', '2020-05-11', '2024-04-20'];
 const add = (d, n) => new Date(Date.parse(d + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10);
 const dayNum = d => Date.parse(d + 'T00:00:00Z') / 864e5;
 
-function bars(historyDir) {
+function bars(historyDir, cut = CUT) {
   return JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(historyDir, 'coinbase_daily.json.gz')))).rows
     .map(r => ({ d: new Date(r.t * 1000).toISOString().slice(0, 10), h: r.h, l: r.l, c: r.c }))
-    .filter(b => b.d <= CUT);                                         // nothing after the cut-off, ever
+    .filter(b => b.d <= cut);                                         // nothing after the cut-off, ever
 }
 
 function slow(B, idx, D) {
@@ -31,9 +31,9 @@ function outcome(B, idx, D, h) {
 }
 
 // rows: [{...features, ...slow, y: {ret30, ret60, ret90, ret180, dd90}}] restricted for horizon h
-function loadLong(historyDir, featuresFile, h) {
-  const B = bars(historyDir); const idx = new Map(B.map((b, i) => [b.d, i]));
-  const last = add(CUT, -h);
+function loadLong(historyDir, featuresFile, h, cut = CUT) {
+  const B = bars(historyDir, cut); const idx = new Map(B.map((b, i) => [b.d, i]));
+  const last = add(cut, -h);
   const feats = JSON.parse(fs.readFileSync(featuresFile, 'utf8')).filter(f => f.d >= START && f.d <= last);
   return feats.map(f => {
     const y = {}; for (const hh of [30, 60, 90, 180]) { if (hh <= h) { const o = outcome(B, idx, f.d, hh); y['ret' + hh] = o ? o.ret : null; if (hh === 90 && o) y.dd90 = o.maxDD; } }

@@ -63,7 +63,7 @@ function run(dir, ff) {
   for (const h of [30, 90, 180]) {
     const R = rows(dir, ff, h, true).filter(r => r.ret != null); const N = R.length; const C = R.map(r => r.C), y = R.map(r => r.ret), T = R.map(r => r.T);
     const s = shiftOf(h, C); const obs = spear(C, y); let ge = 0, n = 0;
-    for (let k = s; k <= N - s; k++) { const v = spear(S.rotate(C, k), y); if (!Number.isFinite(v)) continue; n++; if (Math.abs(v) >= Math.abs(obs)) ge++; }
+    for (let k = s; k <= N - s; k += s) { const v = spear(S.rotate(C, k), y); if (!Number.isFinite(v)) continue; n++; if (Math.abs(v) >= Math.abs(obs)) ge++; }   // s-spaced grid (Board RLC check #1)
     const half = R.map(r => r.d < '2023-01-01'); const hs = m => spear(C.map((v, i) => (half[i] === m ? v : null)), y);
     const blk = Math.max(h, s);
     const bands = ['strongFavourable', 'favourable', 'neutral', 'unfavourable', 'strongUnfavourable'].map((b, bi) => {
@@ -75,7 +75,7 @@ function run(dir, ff) {
   }
   const ps = [30, 90].map(h => rep.horizons[h].p); const order = ps[0] <= ps[1] ? [30, 90] : [90, 30];
   let ok = true; rep.holm = {}; order.forEach((h, j) => { const thr = 0.10 / (2 - j); const sig = ok && rep.horizons[h].p <= thr; if (!sig) ok = false; rep.holm[h] = { threshold: thr, significant: sig }; });
-  for (const h of [30, 90]) { const H = rep.horizons[h]; H.pass = rep.holm[h].significant && H.spearman > 0 && H.halves.to2022 > 0 && H.halves.from2023 > 0; }
+  for (const h of [30, 90]) { const H = rep.horizons[h]; H.pass = rep.holm[h].significant && H.spearman > 0 && H.halves.to2022 > 0 && H.halves.from2023 > 0; H.label = !H.pass ? 'fail' : (H.partialGivenTrend > 0 && H.valuationAlone > 0 ? 'pass' : 'pass, but trend-driven'); }
   return rep;
 }
 

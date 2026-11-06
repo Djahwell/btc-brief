@@ -1,0 +1,286 @@
+{
+ "declarationSha": "5f4bcda51f8f14a4d988ff7cdb6b269aaa70e748d1b7e57d059322330987e837",
+ "horizons": {
+  "30": {
+   "N": 2829,
+   "from": "2019-01-03",
+   "to": "2026-10-01",
+   "shift": 126,
+   "rotations": 21,
+   "spearman": 0.11546002183007717,
+   "p": 0.6363636363636364,
+   "halves": {
+    "to2022": 0.14886550204496332,
+    "from2023": 0.07229088761291304
+   },
+   "partialGivenTrend": 0.11402407235243121,
+   "trendAlone": 0.02027017671201344,
+   "valuationAlone": 0.06632167683646978,
+   "bands": [
+    {
+     "band": "strongFavourable",
+     "days": 268,
+     "separateStretches": 35,
+     "independentWindows": 8.9,
+     "meanRet": 0.08060616623220578,
+     "medianRet": 0.024783265804493415,
+     "ci": [
+      -0.014386748713911919,
+      0.2431360452906384
+     ],
+     "meanDD": -0.08674858905221575,
+     "shareUp": 0.5447761194029851
+    },
+    {
+     "band": "favourable",
+     "days": 442,
+     "separateStretches": 62,
+     "independentWindows": 14.7,
+     "meanRet": 0.12263527088491828,
+     "medianRet": 0.08532997149808308,
+     "ci": [
+      0.0539285924794177,
+      0.2159923195134432
+     ],
+     "meanDD": -0.08009149114167562,
+     "shareUp": 0.7330316742081447
+    },
+    {
+     "band": "neutral",
+     "days": 1484,
+     "separateStretches": 59,
+     "independentWindows": 49.5,
+     "meanRet": 0.025037317694068265,
+     "medianRet": 0.012604189825940693,
+     "ci": [
+      -0.024465456509719673,
+      0.0802476662104739
+     ],
+     "meanDD": -0.12963866352805617,
+     "shareUp": 0.5303234501347709
+    },
+    {
+     "band": "unfavourable",
+     "days": 501,
+     "separateStretches": 56,
+     "independentWindows": 16.7,
+     "meanRet": 0.04155986420409154,
+     "medianRet": 0.012378364660996288,
+     "ci": [
+      -0.01932045765472847,
+      0.13467821634495544
+     ],
+     "meanDD": -0.11274685628211113,
+     "shareUp": 0.5349301397205589
+    },
+    {
+     "band": "strongUnfavourable",
+     "days": 134,
+     "separateStretches": 26,
+     "independentWindows": 4.5,
+     "meanRet": 0.0794432064451008,
+     "medianRet": 0.04243157200742198,
+     "ci": [
+      -0.05061783586549841,
+      0.21629511402600063
+     ],
+     "meanDD": -0.09017652115119248,
+     "shareUp": 0.5746268656716418
+    }
+   ],
+   "alwaysLong": 0.05105320020122149,
+   "pass": false,
+   "label": "fail"
+  },
+  "90": {
+   "N": 2769,
+   "from": "2019-01-03",
+   "to": "2026-08-02",
+   "shift": 124,
+   "rotations": 21,
+   "spearman": 0.17720719216845765,
+   "p": 0.6818181818181818,
+   "halves": {
+    "to2022": 0.12930733246671058,
+    "from2023": 0.20127311888696367
+   },
+   "partialGivenTrend": 0.1771797680916984,
+   "trendAlone": 0.00985602939653718,
+   "valuationAlone": 0.13346902053020046,
+   "bands": [
+    {
+     "band": "strongFavourable",
+     "days": 268,
+     "separateStretches": 35,
+     "independentWindows": 3,
+     "meanRet": 0.25291085931963064,
+     "medianRet": 0.15763604309572,
+     "ci": [
+      0.05368813657755646,
+      0.65497648661014
+     ],
+     "meanDD": -0.12196190295023183,
+     "shareUp": 0.7313432835820896
+    },
+    {
+     "band": "favourable",
+     "days": 442,
+     "separateStretches": 62,
+     "independentWindows": 4.9,
+     "meanRet": 0.35385262167000586,
+     "medianRet": 0.2955144904352547,
+     "ci": [
+      0.11561899826425133,
+      0.6996626450392541
+     ],
+     "meanDD": -0.13186341077837677,
+     "shareUp": 0.7330316742081447
+    },
+    {
+     "band": "neutral",
+     "days": 1424,
+     "separateStretches": 59,
+     "independentWindows": 15.8,
+     "meanRet": 0.14582295528666575,
+     "medianRet": 0.018334238894150867,
+     "ci": [
+      -0.030610656425874107,
+      0.3569541215721195
+     ],
+     "meanDD": -0.21509528553666568,
+     "shareUp": 0.5161516853932584
+    },
+    {
+     "band": "unfavourable",
+     "days": 501,
+     "separateStretches": 56,
+     "independentWindows": 5.6,
+     "meanRet": 0.11827942459460113,
+     "medianRet": 0.03912369372530988,
+     "ci": [
+      -0.026203162835413813,
+      0.29943607250754906
+     ],
+     "meanDD": -0.17413508691330967,
+     "shareUp": 0.5608782435129741
+    },
+    {
+     "band": "strongUnfavourable",
+     "days": 134,
+     "separateStretches": 26,
+     "independentWindows": 1.5,
+     "meanRet": 0.026926687447583836,
+     "medianRet": 0.017747647817040302,
+     "ci": [
+      -0.23531534990788266,
+      0.28345024295266863
+     ],
+     "meanDD": -0.17950525485849472,
+     "shareUp": 0.5671641791044776
+    }
+   ],
+   "alwaysLong": 0.17865692497070695,
+   "pass": false,
+   "label": "fail"
+  },
+  "180": {
+   "N": 2679,
+   "from": "2019-01-03",
+   "to": "2026-05-04",
+   "shift": 180,
+   "rotations": 13,
+   "spearman": 0.2984734547741386,
+   "p": 0.6428571428571429,
+   "halves": {
+    "to2022": 0.23811838264784163,
+    "from2023": 0.3682640864883118
+   },
+   "partialGivenTrend": 0.2982783252913181,
+   "trendAlone": 0.02203547805751104,
+   "valuationAlone": 0.23158919779884365,
+   "bands": [
+    {
+     "band": "strongFavourable",
+     "days": 268,
+     "separateStretches": 35,
+     "independentWindows": 1.5,
+     "meanRet": 0.39326044688575795,
+     "medianRet": 0.4182989652784247,
+     "ci": [
+      0.19562282180360038,
+      0.719362729985112
+     ],
+     "meanDD": -0.14501315182309177,
+     "shareUp": 0.8283582089552238
+    },
+    {
+     "band": "favourable",
+     "days": 432,
+     "separateStretches": 58,
+     "independentWindows": 2.4,
+     "meanRet": 0.763781379427138,
+     "medianRet": 0.3697055436140634,
+     "ci": [
+      0.21039829123662607,
+      1.6487671608090881
+     ],
+     "meanDD": -0.1942014106306854,
+     "shareUp": 0.7222222222222222
+    },
+    {
+     "band": "neutral",
+     "days": 1344,
+     "separateStretches": 55,
+     "independentWindows": 7.5,
+     "meanRet": 0.41610087970251863,
+     "medianRet": 0.16962912945318465,
+     "ci": [
+      0.022301810434608008,
+      0.9703535019648323
+     ],
+     "meanDD": -0.26593546922277594,
+     "shareUp": 0.6242559523809523
+    },
+    {
+     "band": "unfavourable",
+     "days": 501,
+     "separateStretches": 56,
+     "independentWindows": 2.8,
+     "meanRet": 0.04117801120937688,
+     "medianRet": 0.03683180804122421,
+     "ci": [
+      -0.17901841011976305,
+      0.24222695269665048
+     ],
+     "meanDD": -0.2559581917298555,
+     "shareUp": 0.5289421157684631
+    },
+    {
+     "band": "strongUnfavourable",
+     "days": 134,
+     "separateStretches": 26,
+     "independentWindows": 0.7,
+     "meanRet": -0.0305822963107616,
+     "medianRet": -0.16269283625590275,
+     "ci": [
+      -0.318262238089105,
+      0.32983629923936764
+     ],
+     "meanDD": -0.274734754861847,
+     "shareUp": 0.41044776119402987
+    }
+   ],
+   "alwaysLong": 0.3774240738739642
+  }
+ },
+ "holm": {
+  "30": {
+   "threshold": 0.05,
+   "significant": false
+  },
+  "90": {
+   "threshold": 0.1,
+   "significant": false
+  }
+ }
+}

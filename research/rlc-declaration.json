@@ -14,16 +14,23 @@
     "neutral": "> -0.15",
     "unfavourable": "> -0.3",
     "strongUnfavourable": "<= -0.3",
-    "why": "Set from the composite's own distribution before any outcome was read (C 5/20/50/80/95%: -0.30/-0.17/-0.01/0.19/0.35). V and T correlate -0.66, so their average rarely leaves +/-0.3; the first cuts (+/-0.3/0.6) left 86% of days neutral."
+    "why": "Set from the composite's own distribution before any outcome was read (C 5/20/50/80/95%: -0.30/-0.17/-0.01/0.19/0.35). V and T correlate -0.66, so their average rarely leaves +/-0.3; the first cuts (+/-0.3/0.6) left 86% of days neutral.",
+    "quantilesC": {
+      "p05": -0.3,
+      "p20": -0.17,
+      "p50": -0.01,
+      "p80": 0.19,
+      "p95": 0.35
+    }
   },
-  "period": "rows 2019-01-01 .. 2026-10-31 minus h; entry = close of D-1, Coinbase",
+  "period": "rows from the first day all components exist (2019-01-03; mvrvPct starts 2019-01-03) to 2026-10-31 minus h; entry = close of D-1, Coinbase",
   "primary": {
     "horizons": [
       30,
       90
     ],
     "statistic": "Spearman(C, forward h-day return) over all rows",
-    "null": "two-sided circular shift, shifts from s to N-s, s = max(h, ceil(Politis-White block of C))",
+    "null": "two-sided circular shift on an s-spaced grid k = s, 2s, ... <= N-s, s = max(h, ceil(Politis-White block of C)); p = (1 + #|r_k| >= |r_obs|)/(1 + #rotations)",
     "multiplicity": "Holm across the 2 horizons at alpha 0.10",
     "pass": "Holm-significant AND positive sign AND positive Spearman in both halves (2019-01..2022-12, 2023-01..end)"
   },
@@ -35,8 +42,25 @@
     "per-indicator map of all 33 indicators (quintile profiles, halves, window counts), suppressed where fewer than 4 windows"
   ],
   "labels": {
-    "pass": "Passed a one-shot test on 2019-2026 history (partly seen; forward check from first live day)",
-    "fail": "Did not pass on history: shown as descriptive context only"
+    "pass": "Survived a one-shot test on seen 2019-2026 history (T3 and MVRV were part of the failed Stage 4 tendency cards; the forward check decides)",
+    "passTrendDriven": "Passes, but trend-driven: used if C passes and either the partial Spearman of C given T <= 0 or valuation alone <= 0",
+    "fail": "Did not pass on history: band means and the indicator map are shown as context only, with no rating language; no band of a failed RLC-1 is used as a rating"
   },
-  "noRetry": "If RLC-1 fails it is retired; no variant is tested on the same history."
+  "noRetry": "If RLC-1 fails it is retired; no variant is tested on the same history.",
+  "forward": {
+    "statistic": "Spearman(C, forward h-day return) on live frozen days only, circular shift on the same s-spaced grid, sign and p reported",
+    "verdicts": {
+      "30": "after 2 years of live days",
+      "90": "after 3 years of live days",
+      "180": "none (descriptive)"
+    },
+    "retire": "a negative forward Spearman at the verdict date retires the rating"
+  },
+  "frozen": {
+    "rlc.js": "5268836de5c43e093de3341b92a079da8d97eb7e119ba28e0be81032b81e50cd",
+    "coinbase_daily.json.gz": "02cd9f62481d91fcb9072fff5fc04b037741516347c18063795f582c996165a4",
+    "features.json": "d4ee9ea8662dfa1aa38011b5d775378ba75525b14f0647e8d67674ebd4726afe",
+    "historyManifest": "2026-11-05T13:08:55.235Z",
+    "board": "APPROVE WITH CHANGES 2026-11-06, changes 1-5 applied"
+  }
 }
