@@ -16,8 +16,9 @@ red(){ printf '\033[31m%s\033[0m\n' "$*"; }; grn(){ printf '\033[32m%s\033[0m\n'
 fail(){ red "FAIL: $*"; red "The current install (if any) was not changed."; exit 1; }
 
 [ "$(id -u)" -ne 0 ] || fail "run as your normal user, not root (sudo is asked only for the unit files)"
-# STAGE3-PLAN §8: v1.1 is installed only after the Stage 2 tolerance gate, so the gate measures unchanged input code.
-[ "$(date -u +%Y%m%d)" -ge 20261119 ] || [ "${BRIEF_V2_BEFORE_GATE:-}" = "yes" ] || fail "v1.1 installs on or after 2026-11-19 (Stage 2 gate)"
+# v1.2 (STAGE-C-PLAN): adds the condition read to the snapshot and the frozen record. Input-fetching code is
+# unchanged from v1.1, so the Stage 2 tolerance gate (19 Nov) still measures the same input code.
+grep -q 'brief-v2-vps/1.1.0' "$DIR/cycle.js" 2>/dev/null || grep -q 'brief-v2-vps/1.2.0' "$DIR/cycle.js" 2>/dev/null || fail "v1.2 installs over v1.1 (found: $(grep -o 'brief-v2-vps/[0-9.]*' "$DIR/cycle.js" 2>/dev/null | head -1 || echo none))"
 
 echo "== 1/10 package checksums"
 ( cd "$PKG" && sha256sum -c --quiet SHA256SUMS ) || fail "checksum mismatch — re-copy the package"
@@ -68,6 +69,7 @@ echo "Binance max used weight seen (whole IP, includes the bot): $LWEIGHT of 240
 [ -z "$LHDR" ] || fail "liquidation CSV header problem: $LHDR"
 grep -q "\[cycle\] engine" /tmp/brief-v2-dry.log || fail "engine line missing from the dry cycle"
 grep -q "engine (CANDIDATE" /tmp/brief-v2-dry.log || red "note: the engine withheld its scores in the dry cycle (see the engine line above); inputs are unaffected"
+grep -q "\[cycle\] condition" /tmp/brief-v2-dry.log || fail "condition line missing from the dry cycle"
 grn "dry cycle OK"
 
 echo "== 7/10 live services unchanged during checks?"

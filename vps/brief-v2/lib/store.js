@@ -85,7 +85,8 @@ function frozenRecord(dir, date) {
     engine: { status: e.status ?? null, mode: e.mode ?? null, withheld: e.withheld ?? true, reason: e.reason ?? null, declarationHash: e.declarationHash ?? null, engineCodeHash: e.engineCodeHash ?? null,
       primary: e.primary ?? null, scores: e.scores ?? null,
       families: e.families ? Object.fromEntries(Object.entries(e.families).map(([k, v]) => [k, pick(v)])) : null,
-      fw1: e.fw1 && !e.fw1.error ? { declarationHash: e.fw1.declarationHash, fw1CodeHash: e.fw1.fw1CodeHash || null, entry: e.fw1.entry || null, tendency: e.fw1.tendency || null } : null },
+      fw1: e.fw1 && !e.fw1.error ? { declarationHash: e.fw1.declarationHash, fw1CodeHash: e.fw1.fw1CodeHash || null, entry: e.fw1.entry || null, tendency: e.fw1.tendency || null } : null,
+      condition: e.condition && !e.condition.error ? { id: e.condition.id, declarationHash: e.condition.declarationHash, conditionCodeHash: e.condition.conditionCodeHash, barDate: e.condition.barDate, states: e.condition.states, score: e.condition.score, readings: e.condition.readings } : null },
   };
 }
 

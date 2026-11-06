@@ -20,7 +20,7 @@ const { computeE4 } = require('./lib/liq');
 const { diskOk, clockSynced, dirBytes } = require('./lib/sys');
 const { pushSnapshot } = require('./lib/push');
 
-const CODE_VERSION = 'brief-v2-vps/1.1.0';
+const CODE_VERSION = 'brief-v2-vps/1.2.0';
 const ROOT = __dirname;
 const DRY = process.argv.includes('--dry-run');
 const BASE = DRY ? path.join(ROOT, 'dry') : ROOT;
@@ -145,6 +145,7 @@ async function main() {
   for (const [k, v] of Object.entries(inputs)) console.log(`[cycle] ${k}: ${typeof v.value === 'object' && v.value ? JSON.stringify(v.value) : v.value} ${v.unit || ''} [${v.quality}]`);
   if (engine?.scores) { const e = engine.scores[engine.primary?.entry], t = engine.scores[engine.primary?.tendency]; console.log(`[cycle] engine (${engine.status}): entry ${e?.withheld ? 'withheld' : e?.score + ' ' + e?.band} | tendency ${t?.withheld ? 'withheld' : t?.score + ' ' + t?.band} | history ${hist.status}`); }
   else console.log(`[cycle] engine: withheld — ${engine?.reason || 'unknown'} | history ${hist.status}`);
+  { const c = engine?.condition; console.log(c && !c.error ? `[cycle] condition ${c.id}: ${c.score.withheld ? 'score withheld (' + c.score.reason + ')' : c.score.score + ' ' + c.score.band + ' condition'} | bars to ${c.barDate || 'n/a'} | ${Object.entries(c.states).map(([k, o]) => k + '=' + (o.state || 'no-data')).join(' ')}` : `[cycle] condition: ${c?.error || 'not computed'}`); }
   console.log(`[cycle] daily inputs: ${Object.keys(dailyInputs).join(', ') || 'none'} | push: ${push.ok ? 'OK seq ' + snap.seq : JSON.stringify(push)} | binance weight max ${http.maxWeightSeen} | ${Date.now() - t0} ms | errors ${snap.runs.errors.length}`);
   if (snap.runs.errors.length) for (const e of snap.runs.errors) console.log(`[cycle]   ! ${e}`);
 }
