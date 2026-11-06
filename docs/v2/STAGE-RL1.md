@@ -13,33 +13,42 @@
 - **Why it fails although the sign is right everywhere:** the composite and BTC's returns both move in multi-month cycles. Rotating the composite against the returns produces correlations as large as the real one in about 13 of 21 rotations. Since 2019 there are too few cycles to tell a real link from cycle-on-cycle coincidence.
 - **The positive part comes from valuation; the 200-day trend contributes about nothing.**
 
-**Band context (no rating language, per the declaration):**
-- 90-day mean return:
-  - favourable band: +35%, 4.9 independent windows, interval +12…+70;
-  - neutral: +15%;
-  - unfavourable: +12%;
-  - always long: +18%.
-- Every band's interval overlaps the others.
+**Band context** (all five bands, no rating language, per the declaration; the bands are not in order):
+
+| 90 d | Strong fav. | Favourable | Neutral | Unfavourable | Strong unfav. | Always long |
+|---|---|---|---|---|---|---|
+| Mean return | +25% | +35% | +15% | +12% | +3% | +18% |
+| Independent windows | 3.0 | 4.9 | 15.8 | 5.6 | 1.5 | |
+
+| 30 d | Strong fav. | Favourable | Neutral | Unfavourable | Strong unfav. | Always long |
+|---|---|---|---|---|---|---|
+| Mean return | +8% | +12% | +2.5% | +4% | +8% | +5% |
+
+Every interval overlaps the others.
 
 ## 2. What each indicator has indicated (descriptive, 2019–2026)
 Quintile means are shown only where a quintile holds at least 4 independent windows; at 180 days none does. No row below is significant after correction; the "p" is the single-indicator s-grid value, uncorrected across 33 indicators.
 
-**A. Valuation / stretch (MVRV, distance from the 200-week average, drawdown from the all-time high).** This is the most consistent pattern in the data.
-- **Cheaper meant better next 90–180 days.** The sign is the same in both halves for all three indicators.
-  - Drawdown from the ATH vs the 90-day return: r −0.26. When BTC was deepest below its high (bottom fifth), the next 90 days averaged +36%; when it was nearest its high (top fifth), +7%.
-  - Distance from the 200-week average vs the 180-day return: r −0.44.
-- **Stretched also meant deeper dips.** Far above the 200-week average, the next-90-day worst point averaged −26%, against −11% when close to it (r −0.33, p 0.09). The drawdown-from-ATH halves are −0.33 / −0.29.
-- **Strength:** about 6–8 market cycles. The pattern is consistent but statistically unproven (p 0.14–0.57).
+**A. Valuation / stretch (drawdown from the ATH, distance from the 200-week average, MVRV).**
+- **Drawdown from the ATH and the 200-week stretch leaned the same way in both halves: cheaper came before better 90–180 days.**
+  - Drawdown from the ATH vs the 90-day return: r −0.26 (halves −0.26 / −0.36).
+  - Distance from the 200-week average: r −0.25 at 90 days and −0.44 at 180 days.
+- **MVRV leans that way only weakly:** r −0.09 at 90 days, its quintiles are not ordered, and its 30-day halves flip sign.
+- **None of these is statistically distinguishable from cycle coincidence:** single-indicator p 0.14–0.77, before any correction across 132 tests.
+- **The cheap days come from 2–3 episodes, not many cycles:**
+  - drawdown from the ATH: 2019-H1, late 2019 → Apr 2020, Jun 2022 → Sep 2023;
+  - 200-week stretch: Mar 2020, Jun 2022 → Oct 2023, Feb → Aug 2026.
+- **Count:** about 6 windows of 90 days per quintile, and 2019–2026 holds roughly 1.5 BTC market cycles.
 
-**B. Volatility (ATR, realized-volatility percentile).**
-- Higher volatility meant a deeper next-90-day drawdown: ATR r −0.26, p 0.04 uncorrected, both halves negative.
-- This is the R1 finding again, now at 90 days.
-- It tells you the size of the swing, not its direction.
+**B. Stretch and volatility vs the next-90-day drawdown.** This is a description, not a finding.
+- Far above the 200-week average, the next-90-day worst point averaged −26%, against −11% when close to it (r −0.33, p 0.09).
+- Higher ATR also came before deeper drawdowns (r −0.26, p 0.04, uncorrected). At 132 tests, about 5 p-values this low are expected by chance. The volatility link is also mostly mechanical: wider daily ranges produce deeper lows.
+- These tell you the size of the swing, not its direction. They repeat the R1 finding at 90 days.
 
 **C. Short-term trend and auction position (E1, distance from the 20- and 50-day averages, value-area position, past 30-day return).**
 - A mild positive at 30–90 days (r +0.10 to +0.18): buying strength worked slightly better than buying weakness.
 - Almost all of it comes from 2019–22 (r +0.15 to +0.27). Since 2023 it is about 0 to +0.09.
-- **A momentum effect that has faded.**
+- **Positive in 2019–22, near zero since; never established.**
 
 **D. The 200-day trend (T3, distance and slope from the 200-day average).** About zero at every horizon (|r| ≤ 0.05).
 
@@ -50,7 +59,20 @@ Quintile means are shown only where a quintile holds at least 4 independent wind
 **F. Days since the halving.** Descriptive only, because there are 2 cycles. Not reported as a finding.
 
 ## 3. Reading
-- **Direction:** history since 2019 cannot prove any indicator or combination at 30–180 days. There are too few independent cycles, about 19 at 30 days, 6 at 90 and 3 at 180.
-- The one consistent tendency is valuation: cheaper than usual (far below the ATH, near the 200-week average, low MVRV) came before better 3–6-month returns, and that held in both halves. It is a description, not a tested rating.
-- **Risk:** stretch above the 200-week average and current volatility both came before deeper 90-day drawdowns. That also holds in both halves, and it matches R1.
-- **Short-term momentum** helped in 2019–22 and has not since.
+- **Direction:** history since 2019 cannot prove any indicator or combination at 30–180 days.
+  - There are about 94, 31 and 15 non-overlapping windows at 30, 90 and 180 days.
+  - What limits the tests is about 21 effective rotations of slow, cyclical series, within roughly 1.5 market cycles.
+- **Valuation:** distance below the ATH and the 200-week stretch leaned the same way, cheaper before better, in both halves. MVRV leaned only weakly. None is distinguishable from cycle coincidence.
+- **Risk:** stretch above the 200-week average came before deeper 90-day drawdowns. Volatility did too, but that is largely mechanical.
+- **Short-term momentum:** positive in 2019–22, near zero since; never established.
+
+## 4. Board review of this doc (2026-11-06): APPROVE WITH CHANGES, applied
+- Corrected: cycle and window counts, MVRV, all five bands shown, multiple-testing note, momentum wording.
+- **Page rules, if a context panel is added:**
+  - show all three valuation/stretch measures together, never one;
+  - lead with the median, range and share of up periods, not the mean;
+  - give windows and distinct episodes;
+  - label it "descriptive, 2019–26, not a tested rating; not significant after correction";
+  - no favourable/unfavourable colour or wording.
+- **Dip line:** a lookup by quintile of ONE indicator, labelled "typical 90-day dip at this level, historically"; never a fitted combination.
+- **FW1:** the tendency number may be removed from display. Its forward test continues.
