@@ -192,3 +192,18 @@ test('V2 page ships byte-identical engine files (public/v2/engine)', () => {
     assert.ok(a.equals(b), `public/v2/engine/${f} differs from engine-v2/${f} — run: cp engine-v2/{engine.js,summary.js,declaration.json} public/v2/engine/`);
   }
 });
+
+test('FW1: trend base, counted modifiers, withheld without E1/T3, volatility halving', () => {
+  const F = require('../fw1.js'); const fd = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'declaration-fw1.json'), 'utf8'));
+  const bars = []; for (let i = 0; i < 260; i++) bars.push({ d: E.addDays('2025-01-01', i), c: 100 + i, h: 101 + i, l: 99 + i, o: 100 + i, v: 1 });
+  const D = E.addDays('2025-01-01', 260);
+  const fam = (x = {}) => ({ E1: { score: 7 }, E2: { score: 6, state: 'IMBALANCE_UP' }, E3a: { score: -4 }, E5a: { score: 1 }, E7: { score: 0, raw: 50 }, E6: { topDecile: false }, T1: { score: 0 }, T3: { score: 8 }, T4: { score: 4 }, ...x });
+  let o = F.fw1({ date: D, families: fam() }, bars, fd);
+  assert.equal(o.entry.score, 6 + 2 - 2); assert.equal(o.entry.band, 'Strong bull');
+  assert.equal(o.tendency.score, 6 + 1); assert.equal(o.tendency.band, 'Strong bull');
+  o = F.fw1({ date: D, families: fam({ E6: { topDecile: true } }) }, bars, fd); assert.equal(o.entry.score, 3);
+  o = F.fw1({ date: D, families: fam({ E1: { score: null }, T3: { score: null } }) }, bars, fd);
+  assert.equal(o.entry.withheld, true); assert.equal(o.tendency.withheld, true);
+  const down = bars.map((b, i) => ({ ...b, c: 400 - i })); o = F.fw1({ date: D, families: fam({ E1: { score: -3 }, E2: { score: 0, state: 'BALANCE' }, E3a: { score: 0 } }) }, down, fd);
+  assert.equal(o.entry.score, -4); assert.equal(o.entry.band, 'Bear');
+});
