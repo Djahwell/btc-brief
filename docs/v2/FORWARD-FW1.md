@@ -78,3 +78,23 @@ The frozen daily record keeps FW1's full breakdown (score, band, parts, volatili
 ## Board review record
 - **2026-11-06, APPROVE WITH CHANGES.** All 7 required changes are applied above: freeze hashes; start date = first frozen FW1 record; harness frozen with the null, episode and extension rules; beyond-trend p decides the label; tendency label limited to one regime; breakdown kept in the frozen record; tests for E5a ±, greed, capitulation +4 and strong down. The two ways a failed FW1 could be rescued are ruled out in writing.
 - **VPS v1.1 before the Stage 2 gate:** accepted; the Stage 2 tolerance report will state that the check ran on v1.1 code (input collection unchanged).
+
+## In-sample look at FW1 on 2019–2026 (Djahwell's request, 2026-11-06; descriptive, after the freeze)
+*This does not change FW1, its declaration or its forward test. FW1 was designed after Stage 4 had used this history, so these figures are biased and are not evidence either way.*
+
+- **Entry, 2021-06 → 2026-10:**
+  - Bull+ days minus the rest: −0.13 pp on the 7-day return (p 0.52).
+  - Band means are flat and not in order: Strong bear +0.70%, Bear +0.39%, Neutral +0.56%, Bull +0.04%, Strong bull +0.77% (average day +0.53%).
+  - Bull+ 7-day worst drops were about 0.9 pp shallower than the rest.
+- **Entry, 2019 → 2021-05:** Bull+ minus the rest +3.5 pp (p 0.04); Strong bull +5.9% over 7 days. Trend-following worked in that bull market and stopped working after it.
+- **Tendency** (long when ≥ +3, compared on return ÷ worst drawdown):
+
+| Period | FW1 rule | Always long | 200-day rule |
+|---|---|---|---|
+| 2019–2020 | 0.15 below zero | 1.38 | 0.15 below zero |
+| 2020–2024 | 1.32 | 2.59 | 2.17 |
+| 2024–2026 | 0.08 below zero | 0.36 | 0.21 below zero |
+
+  FW1 trailed always long in every period, at roughly the 200-day rule's level.
+
+**Reading:** on this history FW1 shows no 1–7 day edge since 2021, so its forward test is expected to fail unless the market's behaviour changes.
