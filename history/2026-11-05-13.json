@@ -1,0 +1,483 @@
+{
+  "etfFlow": {
+    "total_million_usd": 74.6,
+    "date": "04 Nov 2026"
+  },
+  "lthData": {
+    "lth_supply_btc": 16264148,
+    "lth_net_btc": -8438,
+    "lth_net_7d_avg": -8438,
+    "lth_net_30d_avg": -7829,
+    "lth_net_1d": 23411,
+    "lth_daily_noise_sd": 28445,
+    "lth_days_gap": 1,
+    "date": "2026-11-04",
+    "align_err_pct": 0.02,
+    "method": "7-day average of daily LTH supply change; dated by BMP price trace vs Kraken closes",
+    "source_url": "https://www.bitcoinmagazinepro.com/charts/long-term-holder-supply/"
+  },
+  "stablecoinSupply": {
+    "usdt_supply_usd": 177738332585.64792,
+    "usdc_supply_usd": 71106365117.36353,
+    "total_usd": 248844697703.01144,
+    "delta_7d_usd": -3348302768.480316,
+    "delta_7d_pct": -1.328,
+    "regime": "STABLE",
+    "date": "2026-11-05",
+    "source": "DefiLlama"
+  },
+  "mvrv_error": null,
+  "mvrv_query_id": "6985599",
+  "exflow_query_id": "6985606",
+  "cachedAt": "2026-11-05T13:24:18.029Z",
+  "market": {
+    "price": 79618.2,
+    "change24h": 1.73,
+    "volume24hUSD": 35384085055.60177,
+    "volumeScope": "CoinGecko aggregate",
+    "marketCap": 1600484471509.002,
+    "priceSource": "Kraken",
+    "fearGreedValue": 50,
+    "fearGreedLabel": "Neutral",
+    "fearGreed7d": [
+      50,
+      34,
+      26,
+      37,
+      34,
+      30,
+      30
+    ],
+    "fundingRate": 0.0001,
+    "fundingSource": "OKX",
+    "openInterest": 33914.029700000145,
+    "openInterestUSD": 2700173999.4605513,
+    "goldPrice": 4104.79,
+    "goldChange24h": 1.8061539867832086,
+    "btcGoldRatio": 19.4,
+    "btcDominance": 59.5
+  },
+  "tech": {
+    "sma200": 73210,
+    "sma50": 82062,
+    "sma20": 80112,
+    "candleCount": 210,
+    "cycleHigh": 86594,
+    "avgVol5d": 2254,
+    "avgVol20d": 2065,
+    "volTrendRatio": 1.09,
+    "volTrend": "STABLE",
+    "btcQqqCorr": null,
+    "corrWindow": 0
+  },
+  "options": {
+    "optionsSkew": 12.6,
+    "optionsPCRatio": 0.7,
+    "optionsPutIV": 48,
+    "optionsCallIV": 36
+  },
+  "macros": {
+    "dxy": 100.52,
+    "dxyChange": null,
+    "vix": 16.6,
+    "vixChange": null,
+    "tnxYield": 4.9,
+    "tnxChange": null,
+    "dxyApprox": true
+  },
+  "cme": {
+    "cmeBasisPct": 6.12,
+    "cmeDaysToExpiry": 22,
+    "cmeNearExpiry": false,
+    "cmeBasisSource": "OKX BTC-USD-261127 futures basis (annualized, proxy for CME)"
+  },
+  "coinMetrics": {
+    "date": "2026-11-04",
+    "activeAddresses": 650916,
+    "txCount": 635532,
+    "hashRate": 1054659658.0508502,
+    "totalFeesBTC": 2.33601471,
+    "refPrice": 80487.5875787084,
+    "txVolumeUSD": null,
+    "txVolumeArr90d": [],
+    "mvrv": null,
+    "realizedPrice": null,
+    "source": "CoinMetrics Community API"
+  },
+  "briefCachedAt": "2026-11-05T08:52:15.547Z",
+  "brief": {
+    "date": "Thursday, November 05 2026",
+    "compositeScore": 2,
+    "scoreDecomposition": {
+      "onChain": {
+        "score": 1,
+        "signal": "MVRV 1.488 sits in FAIR VALUE band (1–2) — no euphoria, no distress. LTH cost basis $48,521 gives LTH MVRV 1.66, still well below historical distribution thresholds (~3.5+). However, LTH net position is -8,438 BTC/day (7d avg), a confirmed DISTRIBUTING regime that caps the upside score. Exchange netflow UNAVAILABLE — no netflow component scored. Net: +1 for fair-value MVRV offset partially by active LTH selling pressure."
+      },
+      "etfInstitutional": {
+        "score": 0,
+        "signal": "Total net ETF inflow +$75M / +928 BTC on Nov 04 — below the $264M/day baseline by ~72%. Positive direction is constructive but insufficient to trigger a Phase B add signal (requires >$500M confirmed daily close). Score neutral; trend must improve materially to shift this axis positive."
+      },
+      "derivatives": {
+        "score": 0,
+        "signal": "Funding rate 0.0100%/8h (11.0% annualized) — elevated but not extreme; longs paying a modest premium. Fear & Greed 50/100 (Neutral) is consistent: neither capitulation nor euphoria. Scoring on the shared derivatives axis: funding slightly bullish lean offset by neutral sentiment — net zero. Options skew 16.4 (put IV 52% vs call IV 36%) signals hedging demand / residual fear, reinforcing neutral read. Squeeze risk MEDIUM: crowded longs could unwind on a failed VAH test."
+      },
+      "cmeBasis": {
+        "score": 0,
+        "signal": "CME annualized basis +4.09% with 22 days to expiry — classified FLAT. This is below the ~8–12% threshold that would indicate strong institutional futures demand. No directional edge; institutional carry trade is not loading up at current basis. Neutral score, independent of perp funding."
+      },
+      "macro": {
+        "score": 0,
+        "signal": "10Y real yield proxy at 4.9% nominal — meaningfully BEARISH for BTC as a risk asset, raising the opportunity cost of holding non-yielding assets. DXY 100.52 is NEUTRAL (not a tailwind, not a headwind). VIX 16.6 is benign NORMAL. Gold +2.22% to $4,109 is a macro risk-off signal that is directionally positive for BTC as a store-of-value narrative but cannot overcome the yield drag alone. Net macro: 0 — offsetting forces."
+      },
+      "sentiment": {
+        "score": 1,
+        "signal": "Fear & Greed already captured in the shared derivatives axis above — NOT double-counted here. Sentiment axis instead scored on gold surge (+2.22%), BTC V-shaped recovery post-midterms (per Nov 04 Crypto Briefing), and BTC dominance at 59.6% (alt-rotation not yet diluting BTC). Mild positive sentiment tailwind: +1."
+      },
+      "stablecoin": {
+        "score": -1,
+        "signal": "USDT+USDC combined supply $248.8B with a 7-day delta of -$3.4B. DefiLlama regime classified STABLE but the 7d delta is a net CONTRACTION — dry powder is leaving the system, not building. Per scoring rules CONTRACTING = -1. This is a meaningful headwind: less latent buying power on the sidelines."
+      },
+      "marketBalance": {
+        "score": 1,
+        "signal": "FAILED_AUCTION_LOW — price probed below VAL ($79,219) in the last 5 sessions then rejected back into value. Spot now at $80,370, MID_VALUE (23% through the $79,219–$84,195 range), above the 7d value area entirely. Sellers were exhausted at the lower boundary; auction theory favours rotation toward POC ($81,638) and VAH ($84,195). Score +1 per FAILED_AUCTION_LOW rule. Responsive buyers should be active near VAL; initiative breakout requires 2 daily closes above VAH."
+      },
+      "scaleNote": "Range -10 to +10. Composite: onChain(+1) + etfInstitutional(0) + derivatives(0) + cmeBasis(0) + macro(0) + sentiment(+1) + stablecoin(-1) + marketBalance(+1) = +2."
+    },
+    "overallBias": "NEUTRAL",
+    "biasReason": "Failed auction low supports rotation to $84,195 VAH; LTH selling and weak ETFs cap conviction.",
+    "headline": "V-Shape Recovery Holds Value; Democrats Win House, Crypto Policy Pivot Ahead",
+    "marketStatus": "BREAKOUT WATCH",
+    "auctionState": {
+      "state": "FAILED_AUCTION_LOW",
+      "location": "MID_VALUE — spot $80,370 sits 23% through the 30d value area ($79,219–$84,195); fully above the 7d value area ($76,251–$78,754)",
+      "poc": "$81,638 (30d POC)",
+      "vah": "$84,195",
+      "val": "$79,219",
+      "migration": "LOWER — 7d POC ($77,385) is -5.2% below the 30d POC, indicating recent value has been built at lower prices; the current bounce is re-entering legacy value from below",
+      "implication": "Sellers were rejected below VAL — responsive buyers are in control near-term, with the logical target being the POC at $81,638 then VAH at $84,195; a Phase B→C trigger requires two consecutive daily closes above $84,195."
+    },
+    "correlationRegime": {
+      "btcQqqCorrelation": "Unavailable",
+      "regime": "MODERATE",
+      "implication": "With BTC-QQQ correlation data unavailable, assume moderate regime as baseline; the Democrats' midterm House win introduces political uncertainty that may temporarily decouple BTC from equities, particularly around crypto-regulatory headlines in coming weeks."
+    },
+    "priceAnalysis": {
+      "trend": "Short-term bullish recovery: BTC up +3.01% in 24h, reclaiming 20d SMA ($80,150) and trading above it. 50d SMA at $82,077 is the next dynamic resistance. 200d SMA at $73,213 is 9.8% below — a substantial cushion confirming the uptrend is structurally intact.",
+      "keyLevel": "$82,077 (50d SMA) | $81,638 (30d POC) | $84,195 (VAH / Phase B→C threshold) | $79,219 (VAL — must hold for bull case)",
+      "realizedPriceContext": "Spot $80,370 is +48.8% above realized price $54,019 — holders are broadly in profit. LTH cost basis $48,521 means long-term holders carry a +65.8% unrealized gain; the -8,438 BTC/day LTH selling is rational profit-taking, not distress. MVRV 1.488 confirms the market is in fair-value territory, well below the >3.0 zones associated with cycle tops.",
+      "signal": "MIXED"
+    },
+    "whaleSignal": {
+      "status": "MIXED",
+      "netflowBTC": "UNAVAILABLE — blockchain.info legacy-address feed returned zero movement",
+      "netflowUSD": "N/A",
+      "netflowPctLiquid": "N/A",
+      "netflowPctVolume": "N/A",
+      "netflowPctMcap": "N/A",
+      "historicalContext": "Exchange netflow data is unavailable for this session. Directional whale read deferred to Binance taker pressure and ETF flow data as per Section F fallback rules.",
+      "detail": "LTH net selling at -8,438 BTC/day (7d avg, $678M/day equivalent at $80,370) represents the clearest large-holder signal available. This is a material distributing rate: -0.201% of liquid supply per day. At this pace, LTHs are absorbing the Phase B rally. ETF net inflow of +928 BTC (+$75M) partially offsets but does not neutralize LTH distribution.",
+      "actionable": "Without confirmed exchange netflow data, avoid adding size on whale conviction alone. Use Binance taker pressure as the primary confirming signal for intraday directional bias. LTH selling rate is the dominant whale-class signal and argues against aggressive accumulation above $81,638 (POC).",
+      "dataQuality": "UNAVAILABLE"
+    },
+    "binancePressure": {
+      "netTakerBTC": "UNAVAILABLE — no live Binance 24h taker pressure data provided in this session",
+      "buyVolumeBTC": "UNAVAILABLE",
+      "sellVolumeBTC": "UNAVAILABLE",
+      "buyRatioPct": "UNAVAILABLE",
+      "totalVolumeBTC": "UNAVAILABLE",
+      "pressure": "NEUTRAL",
+      "span": "24h",
+      "confluence": "Binance taker data unavailable; cannot confirm or contradict on-chain netflow direction — maintain neutral directional assumption pending live feed restoration.",
+      "dataQuality": "UNAVAILABLE"
+    },
+    "fundingRates": {
+      "rate8h": "0.0100%",
+      "annualized": "11.0%",
+      "regime": "ELEVATED",
+      "signal": "Longs paying a moderate premium — market is leaning bullish but not at extreme levels that historically precede liquidation cascades (>50% annualized = danger zone). Current 11% annualized is above neutral (~5–6%) but manageable.",
+      "detail": "Options skew at 16.4 (put IV 52% vs call IV 36%) is a notable divergence: derivatives traders are paying up for downside protection even as spot recovers. This put-heavy skew suggests institutional hedging or residual fear from the midterm volatility dip below $76,000. The skew acts as a check on the funding bullishness.",
+      "squeeze_risk": "MEDIUM"
+    },
+    "openInterest": {
+      "trend": "STABLE",
+      "regime": "Open interest at 33,381 BTC (~$2.7B) is moderate. With price up +3.01% and OI stable, this is consistent with spot-led recovery rather than leveraged pump — a constructive setup.",
+      "detail": "Stable OI during a +3% price move suggests real spot buying (or ETF/institutional flows) rather than futures-led momentum. This reduces cascade liquidation risk on the upside but also signals the move may lack the leveraged fuel for a rapid push through VAH ($84,195) without fresh OI accumulation.",
+      "leverageRisk": "MEDIUM"
+    },
+    "mvrvSignal": {
+      "estimatedZone": "FAIR VALUE — MVRV 1.488 (live BGeometrics, spot $80,370 / realized price $54,019)",
+      "implication": "At 1.488, the market is profitable for the average holder but nowhere near the euphoric >3.0 zones that have historically marked cycle tops. This range (1.0–2.0) is consistent with mid-cycle accumulation or early momentum phases — not a sell signal.",
+      "cycleContext": "LTH MVRV at 1.66 (spot / LTH cost basis $48,521) confirms long-term holders are in profit and have rational motivation to distribute into strength, which is consistent with the observed -8,438 BTC/day LTH net position. Historically, sustained LTH distribution at this MVRV level is absorbed by institutional and ETF demand without derailing the cycle — the question is whether ETF inflows (currently weak at $75M) can step up to match."
+    },
+    "etfFlows": {
+      "status": "INFLOW",
+      "totalNetUSD": "+$75M",
+      "totalNetBTC": "+928 BTC",
+      "totalNetPctLiquid": "+0.022%",
+      "ibitFlow": "Not broken out in today's data; total ETF net +$75M across all products",
+      "streakDays": "Insufficient streak data — single-day read only",
+      "vsBaseline": "-72% below $264M/day institutional baseline — a significant shortfall. This is NOT the >$500M/day confirmation required for a Phase B ADD signal.",
+      "detail": "Nov 04 ETF flows were constructive in direction (positive) but weak in magnitude. The $75M print represents roughly 28% of the daily baseline, suggesting institutional participation is cautious post-midterms. The V-shaped recovery in spot price is not yet matched by ETF demand. Need to see follow-through flows >$264M baseline for 3+ consecutive days before upgrading the ETF axis score.",
+      "trend": "STABLE"
+    },
+    "stablecoinSignal": {
+      "status": "OUTFLOW",
+      "detail": "USDT+USDC combined supply at $248.8B with a 7-day delta of -$3.4B. Despite the DefiLlama regime label of STABLE, the 7d delta is net negative — stablecoin supply is contracting, not building. This reduces the pool of immediately deployable buying power on crypto exchanges.",
+      "signal": "BEARISH — contracting stablecoin supply removes a key fuel source for sustained rallies. Watch for reversal of this trend as a leading indicator of a fresh buying wave."
+    },
+    "macroContext": {
+      "riskLevel": "MEDIUM",
+      "dxy": "100.52",
+      "dxySignal": "NEUTRAL — DXY below 101 is not a headwind for BTC; the dollar is not in a strong uptrend that would typically suppress risk assets.",
+      "realYield": "10Y nominal yield 4.9% — real yield estimated ~2.3–2.5% (assuming ~2.4–2.6% breakeven inflation). This is restrictive territory for non-yielding assets.",
+      "realYieldSignal": "BEARISH — 10Y at 4.9% raises the opportunity cost of holding BTC meaningfully. Fed policy remains tight; no near-term pivot catalyst visible.",
+      "gold": "$4,109.62 (+2.22% 24h) — Gold surging simultaneously with BTC suggests macro safe-haven demand is active, likely driven by midterm election uncertainty and geopolitical risk. BTC/Gold ratio 19.56.",
+      "fedWatch": "No live Fed data in this session. 10Y at 4.9% implies market is not pricing near-term cuts. Restrictive stance is a structural headwind for the 1–2 year BTC thesis if sustained.",
+      "detail": "The macro picture is a split verdict: rising gold validates the store-of-value narrative for BTC, but the 4.9% 10Y yield creates a meaningful risk-free rate alternative. VIX at 16.6 is benign, suggesting no systemic fear. DXY neutral at 100.52. The Democrats' midterm House win introduces near-term policy uncertainty — potential for crypto-adversarial legislation, but also potential for bipartisan compromise on stablecoin/digital asset bills."
+    },
+    "todayAction": {
+      "recommendation": "HOLD",
+      "size": "No new position additions today. Maintain current ETF (50%) and infrastructure equity (20%) allocations. Preserve 20% cash/stables DCA reserve for a confirmed Phase B→C breakout above $84,195 (VAH).",
+      "trigger": "ADD 25% to ETF allocation ONLY on: (1) confirmed daily close above $84,195 (VAH and Phase B→C threshold) with (2) ETF inflows >$500M on that session day. Near-term: watch for price acceptance at 30d POC $81,638 as a base-building signal. Add partial (10%) near VAL ($79,219) if price retests with no new negative catalyst.",
+      "stopAlert": "MONITORING",
+      "dynamicStop": "Hard stop remains $52,398 (realized price floor). Tactical stop: daily close below VAL $79,219 triggers re-evaluation and potential reduction of ETF allocation by 10%. A close below 200d SMA ($73,213) would be a Phase A regression signal — escalate to full stop review. Currently 9.8% below price — well clear.",
+      "scoreJustification": "Composite score +2 (NEUTRAL bias) reflects a balanced but slightly constructive setup: failed auction low (+1) and fair-value MVRV (+1) argue for patience and holding, while LTH distribution, weak ETFs, contracting stablecoins, and elevated 10Y yield prevent a BUY call. Phase B demands ETF confirmation >$500M before adding; that threshold is not met today."
+    },
+    "cmeBasis": {
+      "basisPct": "+4.09% annualized",
+      "regime": "FLAT",
+      "signal": "NEUTRAL — CME basis at +4.09% is below the 8–12% range that signals strong institutional futures demand via the cash-and-carry trade. Institutions are not loading up on CME futures aggressively at this basis level.",
+      "detail": "22 days to next CME expiry. A FLAT basis is not alarming — it means CME positioning is not overextended — but it also fails to provide the institutional confirmation tailwind that a STRONG CONTANGO reading (>10%) would supply. Post-midterm uncertainty may be suppressing CME institutional activity.",
+      "cmeOIvsPerp": "CME basis independently scored at 0; perp funding scored separately on the derivatives axis. No double-count. CME OI breakdown vs perp OI not provided in live data — noted as a data gap."
+    },
+    "catalystWatch": [
+      {
+        "event": "Democrats retake House majority — crypto regulatory pipeline reset",
+        "timing": "New Congress seated January 2027; immediate investigative posture begins November 2026",
+        "impact": "BINARY",
+        "note": "NewsAPI [2026-11-04] NBC News, Al Jazeera, Daily Caller: Democrats won House control with vow to combat Trump agenda via subpoenas and investigations. Crypto legislation (Clarity Act, stablecoin bills) faces headwinds in a divided Congress. Pro-crypto executive actions may be challenged. BINARY: could accelerate bipartisan compromise on stablecoins, or trigger adversarial committee hearings on crypto industry."
+      },
+      {
+        "event": "BTC post-midterm V-shaped recovery consolidation",
+        "timing": "Now — next 5–10 trading sessions",
+        "impact": "BULLISH",
+        "note": "NewsAPI [2026-11-04] Crypto Briefing: Bitcoin staged a V-shaped recovery after dipping below $76,000 on midterm results. The failed auction low (VAL $79,219 rejected) is now a confirmed support test. If price holds above POC $81,638 and ETF inflows recover >$264M/day, the Phase B→C breakout above $84,195 becomes the primary near-term scenario."
+      },
+      {
+        "event": "Trump corruption investigations by Democratic House majority",
+        "timing": "Early 2027 (new Congress seated), but posturing begins immediately",
+        "impact": "BEARISH",
+        "note": "NewsAPI [2026-11-04] Daily Mail, NBC News: Democratic majority plans subpoenas and investigations targeting Trump and family. If Trump's pro-crypto executive agenda (Bitcoin reserve, SAB 121 repeal, crypto-friendly SEC appointments) is legislatively neutralized or reversed, it removes a key 2026 regulatory tailwind for BTC. Watch for any executive order reversals or SEC leadership changes under political pressure."
+      },
+      {
+        "event": "Federal Reserve next policy decision / 10Y yield trajectory",
+        "timing": "Next FOMC meeting — monitor for November/December 2026 date",
+        "impact": "BINARY",
+        "note": "Live data shows 10Y at 4.9% — a restrictive level that is a structural headwind for BTC. No live FOMC date in regulatory news block this session. Any dovish surprise (rate cut signal or QE hint) would be strongly BULLISH for BTC; continued hold-or-hike stance reinforces the opportunity cost drag. Flag for next brief update when FOMC calendar is available."
+      }
+    ],
+    "analystNote": "BTC's V-shaped recovery from the midterm dip below $76,000 is technically impressive and confirmed by auction market theory — the failed auction low at VAL $79,219 is a textbook exhaustion signal that shifts near-term probability toward the 30d POC ($81,638) and VAH ($84,195). However, the Phase B→C breakout trigger at $84,195 demands two things we do not yet have: consecutive daily closes above VAH and ETF inflows exceeding $500M/day — today's $75M print is 72% below that threshold, and must be treated as institutional caution rather than endorsement. The most important risk signal in today's data is the LTH net selling rate of -8,438 BTC/day (0.201% of liquid supply daily) — at MVRV 1.49, this is rational profit-taking, not panic, but it means the market must continuously attract fresh institutional demand to absorb this supply, making ETF flow recovery the single most critical variable for the next 10 sessions. Democrats retaking the House creates genuine binary uncertainty for the regulatory pipeline: the Clarity Act and stablecoin frameworks now face a divided Congress, and Trump's pro-crypto executive posture may face legislative pushback — this warrants a slight upgrade to tail-risk hedging via the existing 10% put allocation, particularly given the already elevated options put skew at 16.4. The phase derivation is NORMAL and anchors are clean; the 200d SMA at $73,213 providing a 9.8% structural cushion is a genuine positive for the 1–2 year mandate, and MVRV at 1.49 confirms we are nowhere near cycle-top distribution territory.",
+    "riskWarning": "Democrats' House majority derails crypto legislation pipeline while ETF inflows remain anemic (<$75M), triggering a failed VAH auction and re-test of VAL $79,219 that breaks down toward the 50d SMA at $82,077 — potentially invalidating the Phase B breakout thesis entirely.",
+    "normalization": {
+      "currentPrice": "$80,370",
+      "marketCap": "$1.62T",
+      "dailyVolumeBTC": "432,484 BTC ($34.8B)",
+      "volumeTrend": "STABLE — 5d/20d ratio 1.05",
+      "lthSellingBTC": "-8,438 BTC/day (7d avg)",
+      "lthSellingPctLiquid": "-0.201% of liquid supply per day",
+      "whaleNetflowBTC": "UNAVAILABLE — blockchain.info legacy feed returned zero movement; not scored",
+      "whaleNetflowPctLiquid": "N/A",
+      "whaleNetflowPctVolume": "N/A",
+      "whaleNetflowPctMcap": "N/A",
+      "etfFlowUSD": "+$75M",
+      "etfFlowBTC": "+928 BTC (at $80,370/BTC)",
+      "etfFlowPctLiquid": "+0.022% of liquid supply"
+    },
+    "dataFreshness": {
+      "cachedAt": "2026-11-05T07:36:31.483Z",
+      "ageHours": 1.2,
+      "status": "FRESH",
+      "liveRefreshed": [],
+      "staleFields": [],
+      "staleSnapshotPrice": 80370
+    }
+  },
+  "phaseAnchors": {
+    "hardStop": 52398,
+    "phaseA_low": 54019,
+    "phaseA_high": 73210,
+    "phaseB_high": 84192,
+    "phaseC_high": 122272,
+    "derivedFrom": {
+      "realized": 54018.87,
+      "sma200": 73210,
+      "cycleHigh": 86594,
+      "ath": 124767,
+      "realizedSource": "realizedPrice"
+    },
+    "derivationStatus": "NORMAL",
+    "computedAt": "2026-11-05T13:24:18.029Z",
+    "regime": "NORMAL",
+    "regimeReason": "insufficient history — bear-realized rule needs 120 cycles, have 1; bear-sma rule needs 240 cycles, have 1; ath-cycle rule needs 112 cycles, have 1",
+    "rawRegime": "NORMAL",
+    "regimeState": {
+      "promoted": "NORMAL",
+      "pending": null,
+      "pendingCount": 0,
+      "normalCount": 1494
+    },
+    "historyCycles": 1
+  },
+  "catalystNews": [
+    {
+      "title": "Bitcoin Shrugs Off Midterms as Experts Say Democratic Sweep Was 'Priced In'",
+      "source": "Decrypt",
+      "date": "2026-11-04",
+      "url": "https://decrypt.co/382492/bitcoin-shrugs-off-midterms-as-experts-say-democratic-sweep-was-priced-in",
+      "description": "Experts say the Democratic sweep was largely priced in, but it makes the road ahead harder for crypto policy.",
+      "content": "In brief\r\n<ul><li>Bitcoin is up 1.6% to $78,277 after a brief dip, after the Democrats took both the House and the Senate.</li><li>Analysts say the result was priced in, but it raises fresh uncertain…"
+    },
+    {
+      "title": "Canton Coin Wins SEC Commodity Status: Is Crypto Regulation Finally Turning Bullish?",
+      "source": "Dcforecasts.com",
+      "date": "2026-11-04",
+      "url": "https://www.dcforecasts.com/regulation/canton-coin-sec-digital-commodity-no-action/",
+      "description": "The SEC's Division of Corporation Finance says it will not recommend enforcement over Canton Coin's programmatic issuance under specified conditions.",
+      "content": "Canton Coin has just become one of the clearest examples yet of US regulators drawing a line between crypto networks and securities.\r\nIn a November 3 no-action letter, the SEC’s Division of Corporati…"
+    },
+    {
+      "title": "Bitcoin rebounds after Democratic sweep despite three days of ETF outflows",
+      "source": "CryptoSlate",
+      "date": "2026-11-04",
+      "url": "https://cryptoslate.com/bitcoin-rebounds-after-democratic-sweep-despite-three-days-of-etf-outflows/",
+      "description": "Ryan Kirkley sees a year-end rebound even under Democratic control, while fund withdrawals and overhead supply keep the outlook conditional.\nRead the full story on CryptoSlateUnderstand the crypto stories that matter and what to watch next. Get The Catalyst i…",
+      "content": "Bitcoin rebounded above $78,000 on Wednesday after Democrats won both chambers of Congress, despite three consecutive trading sessions of US spot ETF withdrawals.\r\nThe Democratic victories in Tuesday…"
+    },
+    {
+      "title": "South Korea may delay crypto tax for Digital Asset Basic Act passage",
+      "source": "Crypto Briefing",
+      "date": "2026-11-04",
+      "url": "https://cryptobriefing.com/south-korea-may-delay-crypto-tax-for-digital-asset-basic-act-passage/",
+      "description": "Delaying the crypto tax for regulatory clarity may boost market confidence, fostering innovation and potentially influencing global crypto policies.\nThe post South Korea may delay crypto tax for Digital Asset Basic Act passage appeared first on Crypto Briefin…",
+      "content": "South Korean Democratic Party leader Kim Min-seok has suggested that lawmakers prioritize the passage of the Digital Asset Basic Act before implementing a crypto tax. This proposal, if accepted, woul…"
+    },
+    {
+      "title": "Bitcoin near $78,600, Ethereum at $2,300 as US midterm results put crypto regulation in focus",
+      "source": "The Times of India",
+      "date": "2026-11-04",
+      "url": "https://economictimes.indiatimes.com/markets/cryptocurrency/crypto-news/bitcoin-near-78600-ethereum-at-2300-as-us-midterm-results-put-crypto-regulation-in-focus/articleshow/135536095.cms",
+      "description": "Bitcoin traded near $78,000 as institutional outflows and macroeconomic uncertainty kept sentiment cautious across the cryptocurrency market. Investors tracked US midterm election results, potential changes in crypto regulation, Federal Reserve rate expectati…",
+      "content": "Bitcoin trades near the $78,000 mark on Wednesday amid institutional outflows and macroeconomic uncertainty. The cryptocurrency was trading at the $78,330 mark, and Ethereum was trading at $2,317.In …"
+    },
+    {
+      "title": "CLARITY Act Faces January 3 Deadline After Democrats Win Congress",
+      "source": "Bitcoinfoundation.org",
+      "date": "2026-11-04",
+      "url": "https://bitcoinfoundation.org/news/regulation/clarity-act-faces-january-3-deadline-after-democrats-win-congress/",
+      "description": "The CLARITY Act has until January 3 to pass before it must be reintroduced, as Democrats take control of Congress and reshape its legislative outlook.\nThe post CLARITY Act Faces January 3 Deadline After Democrats Win Congress appeared first on Bitcoin Foundat…",
+      "content": "After Democrats secured control of the Senate and House in the November 3, 2026, midterm elections, the CLARITY Act faces a deadline: it must pass before the new Congress convenes on January 3, 2027,…"
+    },
+    {
+      "title": "Philly Outcomes in the 2026 General Election",
+      "source": "Thephiladelphiacitizen.org",
+      "date": "2026-11-04",
+      "url": "https://thephiladelphiacitizen.org/outcomes-2026-election-philly/",
+      "description": "The winners, losers — and ballot question results — from Election Day, November 3rd. Read more at The Philadelphia Citizen.",
+      "content": "Amid the surging blue seas metaphors making headlines post Election Day 2026, Philadelphia’s waters remained as solid blue as ever. A modest but could-have-been-worse 44 percent voter turnout restore…"
+    },
+    {
+      "title": "Bitcoin Recovery Reclaims $78K After the Midterms: Is a New Rally Coming?",
+      "source": "Dcforecasts.com",
+      "date": "2026-11-04",
+      "url": "https://www.dcforecasts.com/bitcoin-news/bitcoin-recovery-78k-etf-outflows-fade-midterms/",
+      "description": "Bitcoin bounced from a six-week low back above $78,000 after the US midterms, as spot ETF outflows fell by more than 80% in three sessions.",
+      "content": "The Bitcoin recovery is underway after the US midterm elections reshaped Washington, and BTC is already back above $78,000.\r\nThe world’s largest cryptocurrency briefly slipped to a six-week low near …"
+    },
+    {
+      "title": "US midterm election results: What happens next as Democrats take over of Congress",
+      "source": "The Times of India",
+      "date": "2026-11-04",
+      "url": "https://economictimes.indiatimes.com/news/international/world-news/us-midterm-election-results-what-happens-next-as-democrats-take-over-of-congress/articleshow/135537044.cms",
+      "description": "With Democrats now in control of both chambers of Congress, they are gearing up for a strategic offensive against Donald Trump. Their newfound Senate majority gives them the power to challenge Trump's nominees and shape important legislation, promising a dyna…",
+      "content": "Washington: Democrats are preparing a legislative offensive against US President Donald Trump after their sweeping midterm victory handed them control of both chambers of Congress and the power to ch…"
+    },
+    {
+      "title": "Democrats in House Poised to Investigate the Trump Administration",
+      "source": "Nakedcapitalism.com",
+      "date": "2026-11-04",
+      "url": "https://www.nakedcapitalism.com/2026/11/democrats-in-house-poised-to-investigate-the-trump-administration.html",
+      "description": "Democrats have been rumbling that they will investigate Trump and his cronies. Will they go ahead or become the dog that caught the car?",
+      "content": "Yves here. The Democrats and their pundit allies, as Democrat midterm prospects brightened, talked up investigations as a key way to bring the hyper-aggressive, rule-and-law ignoring Administration t…"
+    }
+  ],
+  "mvrv": {
+    "mvrv": 1.4738960663190472,
+    "realizedPrice": 54018.87,
+    "lthRealizedPrice": 48520.54,
+    "lthMvrv": 1.640917434142324,
+    "realizedDate": "2026-10-29",
+    "date": "2026-11-05",
+    "method": "spot / realizedPrice",
+    "source": "BGeometrics (bitcoin-data.com)",
+    "stale": false
+  },
+  "exchangeFlow": {
+    "netflow_btc": 0,
+    "inflow_btc": 0,
+    "outflow_btc": 0,
+    "total_exchange_btc": 438728.64,
+    "exchange_addr_count": 6,
+    "elapsed_hours": 0,
+    "source": "blockchain.info balance delta (16 legacy exchange addresses)",
+    "date": "2026-11-05"
+  },
+  "_exchangeAddressBalances": {
+    "34xp4vRoCGJym3xR7yCVPFHoCNxv4Twseo": 248597.59296263,
+    "1P5ZEDWTKTFGxQjZphgWPQUpe554WKDfHQ": 0.03557311,
+    "3M219KR5vEneNb47ewrPfWyb5jQ2DjxRP6": 152203.76742059,
+    "3D2oetdNuZUqQHPJmcMDDHYoqkyNVsFk9r": 0.15395293,
+    "1HQ3Go3ggs8pFnXuHVHRytPCq5fGG8Hbhx": 0.01423332,
+    "3LQUu4v9z6KNch71j7kbj8GPeAGUo1FW6a": 37927.07837562
+  },
+  "binanceLargeTrades": {
+    "threshold_btc": 2,
+    "whale_buy_btc": 0,
+    "whale_sell_btc": 2.07,
+    "net_whale_btc": -2.07,
+    "whale_buy_count": 0,
+    "whale_sell_count": 1,
+    "whale_buy_ratio": 0,
+    "span_minutes": 8,
+    "pressure": "NEUTRAL",
+    "source": "Binance aggTrades (BTCUSDT, last 1000 trades)",
+    "date": "2026-10-11"
+  },
+  "amt": {
+    "state": "FAILED_AUCTION_LOW",
+    "reason": "probe below VAL in last 5d rejected back into value — sellers exhausted; rotation toward POC/VAH favoured",
+    "suggestedScore": 1,
+    "location": "LOWER_EDGE",
+    "price": 79618,
+    "poc": 81638,
+    "vah": 84195,
+    "val": 79219,
+    "vaWidthPct": 6.1,
+    "posInValuePct": 8,
+    "short": {
+      "poc": 77385,
+      "vah": 78754,
+      "val": 76251,
+      "location": "ABOVE_7D_VALUE"
+    },
+    "migration": "LOWER",
+    "pocShiftPct": -5.2,
+    "coiling": false,
+    "closesAboveVAH": 0,
+    "closesBelowVAL": 2,
+    "lookbackDays": 30,
+    "shortLookbackDays": 7,
+    "asOf": "2026-11-04"
+  },
+  "snapshotAt": "2026-11-05T13:24:19.543Z",
+  "snapshotKey": "2026-11-05-13"
+}
