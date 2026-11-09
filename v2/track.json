@@ -1,6 +1,6 @@
 {
  "schema": "brief-v2-track/1",
- "generatedAt": "2026-11-08T13:16:01.569Z",
+ "generatedAt": "2026-11-09T06:06:40.133Z",
  "label": "live (frozen daily snapshots)",
  "definitions": "STAGE4-PLAN §4",
  "rows": [
@@ -16,6 +16,11 @@
   },
   {
    "date": "2026-11-08",
+   "status": "missing",
+   "reason": "no cycle read that day's daily.json by the 02:07 UTC cycle"
+  },
+  {
+   "date": "2026-11-09",
    "status": "missing",
    "reason": "no cycle read that day's daily.json by the 02:07 UTC cycle"
   }
@@ -34,16 +39,16 @@
   "otherDeclarations": 0,
   "byHash": {},
   "withheldDays": 0,
-  "missingDays": 3
+  "missingDays": 4
  },
  "tendency": {
   "note": "tendency outcomes start after 180 days of records"
  },
  "eventFlag": {
   "definition": "FORWARD-EVENTS.md",
-  "days": 2,
+  "days": 3,
   "flagged": 2,
-  "unflagged": 0,
+  "unflagged": 1,
   "minEach": 40,
   "status": "collecting"
  },
