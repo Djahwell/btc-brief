@@ -1,92 +1,91 @@
 {
  "schema": "brief-v2-daily/1",
  "codeVersion": "v2-daily/1.0.0",
- "generatedAt": "2026-11-11T14:18:56.766Z",
+ "generatedAt": "2026-11-12T07:00:24.615Z",
  "inputs": {
   "btc_daily_close": {
-   "value": 73697.87,
+   "value": 73927.63,
    "unit": "USD",
    "window": "1d",
-   "asOf": "2026-11-10",
-   "fetchedAt": "2026-11-11T14:18:58.436Z",
+   "asOf": "2026-11-11",
+   "fetchedAt": "2026-11-12T07:00:26.337Z",
    "source": "Coinbase BTC-USD daily candles",
    "scope": "Coinbase spot (USD)",
    "quality": "OK",
    "staleAfterSec": 172800,
    "crosscheck": {
-    "bitstamp_close": 73697.92,
-    "diff_bp": 0,
+    "bitstamp_close": 73915.03,
+    "diff_bp": -1.7,
     "tolerance_bp": 25,
     "status": "OK"
    }
   },
   "fear_greed": {
-   "value": 29,
+   "value": 28,
    "unit": "index 0-100",
    "window": "1d",
-   "asOf": "2026-11-11",
-   "fetchedAt": "2026-11-11T14:18:58.664Z",
+   "asOf": "2026-11-12",
+   "fetchedAt": "2026-11-12T07:00:26.404Z",
    "source": "alternative.me Fear & Greed",
    "scope": "third-party composite (includes momentum and volatility)",
    "quality": "OK",
    "staleAfterSec": 172800
   },
   "mvrv": {
-   "value": 1.3666465515175559,
+   "value": 1.3697140832346657,
    "unit": "ratio",
    "window": "1d",
-   "asOf": "2026-11-10",
-   "fetchedAt": "2026-11-11T14:18:59.919Z",
+   "asOf": "2026-11-11",
+   "fetchedAt": "2026-11-12T07:00:27.159Z",
    "source": "CoinMetrics community CapMVRVCur",
    "scope": "network-wide; Coin Metrics data (CC BY-NC 4.0)",
    "quality": "OK",
    "staleAfterSec": 259200,
    "crosscheck": {
-    "bgeometrics_date": "2026-11-04",
-    "bgeometrics_realized": 53952.45,
-    "diff_pct": -0.04,
+    "bgeometrics_date": "2026-11-05",
+    "bgeometrics_realized": 53947.12,
+    "diff_pct": -0.27,
     "tolerance_pct": 2,
     "status": "OK"
    },
    "attribution": "Data: Coin Metrics Community (CC BY-NC 4.0)"
   },
   "stablecoin_supply": {
-   "value": 245881816756.24,
+   "value": 245507877798.76,
    "unit": "USD",
    "window": "1d",
-   "asOf": "2026-11-11",
-   "fetchedAt": "2026-11-11T14:19:00.013Z",
+   "asOf": "2026-11-12",
+   "fetchedAt": "2026-11-12T07:00:27.331Z",
    "source": "DefiLlama stablecoins (USDT + USDC circulating)",
    "scope": "USDT + USDC, all chains",
    "quality": "OK",
    "staleAfterSec": 172800
   },
   "lth_net_30d": {
-   "value": -6584,
+   "value": -6349,
    "unit": "BTC/day",
    "window": "30-day calendar change ÷ days",
-   "asOf": "2026-11-10",
-   "fetchedAt": "2026-11-11T14:19:10.552Z",
+   "asOf": "2026-11-11",
+   "fetchedAt": "2026-11-12T07:00:31.202Z",
    "source": "Bitcoin Magazine Pro LTH supply (full trace; dated by price alignment to Bitstamp)",
    "scope": "network-wide, single provider",
    "quality": "OK",
    "staleAfterSec": 259200,
-   "lth_supply_btc": 16239185,
+   "lth_supply_btc": 16237449,
    "align_err_pct": 0.021
   },
   "coinbase_premium_adj_repro": {
-   "value": -0.006466369118995896,
+   "value": -0.00019372362063951876,
    "unit": "%",
    "window": "24h median (reproducibility copy; the VPS value is the live one)",
-   "asOf": "2026-11-11T14:00:00.000Z",
-   "fetchedAt": "2026-11-11T14:19:14.398Z",
+   "asOf": "2026-11-12T07:00:00.000Z",
+   "fetchedAt": "2026-11-12T07:00:34.675Z",
    "source": "Coinbase BTC-USD, Coinbase USDT-USD, Binance BTCUSDT (vision), hourly",
    "scope": "reproducibility check only",
    "quality": "OK",
    "staleAfterSec": 86400,
-   "z30": 0.3507078203273492,
+   "z30": 0.6572207723321871,
    "dayMedians": {
-    "2026-10-12": -0.004232912089674468,
     "2026-10-13": 0.0013087739764272577,
     "2026-10-14": -0.003123087921019785,
     "2026-10-15": -0.0013364253791114944,
@@ -115,7 +114,8 @@
     "2026-11-07": -0.008268528103921868,
     "2026-11-08": -0.006245677710237096,
     "2026-11-09": -0.013890607903643826,
-    "2026-11-10": -0.009103509790464592
+    "2026-11-10": -0.009103509790464592,
+    "2026-11-11": -0.0018332317076208415
    }
   }
  },
@@ -125,15 +125,6 @@
    "source": "Coinbase BTC-USD (OHLC) + Bitstamp BTC-USD (volume added)",
    "scope": "USD spot venues",
    "rows": [
-    {
-     "d": "2025-09-17",
-     "o": 116832.56,
-     "h": 117327.24,
-     "l": 114724.57,
-     "c": 116484.4,
-     "v_cb": 7151.30033814,
-     "v_bs": 2153.84805045
-    },
     {
      "d": "2025-09-18",
      "o": 116484.4,
@@ -3904,15 +3895,20 @@
      "c": 73697.87,
      "v_cb": 10577.16077662,
      "v_bs": 2246.39905563
+    },
+    {
+     "d": "2026-11-11",
+     "o": 73697.88,
+     "h": 74737.15,
+     "l": 73110,
+     "c": 73927.63,
+     "v_cb": 8133.45787114,
+     "v_bs": 1864.8963694
     }
    ]
   },
   "fear_greed": {
    "rows": [
-    {
-     "d": "2025-09-18",
-     "v": 52
-    },
     {
      "d": "2025-09-19",
      "v": 53
@@ -5588,16 +5584,16 @@
     {
      "d": "2026-11-11",
      "v": 29
+    },
+    {
+     "d": "2026-11-12",
+     "v": 28
     }
    ]
   },
   "mvrv": {
    "source": "CoinMetrics community CapMVRVCur (CC BY-NC 4.0)",
    "rows": [
-    {
-     "d": "2025-09-17",
-     "v": 2.181807024519591
-    },
     {
      "d": "2025-09-18",
      "v": 2.1884252555947312
@@ -7273,15 +7269,15 @@
     {
      "d": "2026-11-10",
      "v": 1.3666465515175559
+    },
+    {
+     "d": "2026-11-11",
+     "v": 1.3697140832346657
     }
    ]
   },
   "stablecoin_supply": {
    "rows": [
-    {
-     "d": "2025-09-18",
-     "v": 244376390486
-    },
     {
      "d": "2025-09-19",
      "v": 245378207724
@@ -8956,16 +8952,16 @@
     },
     {
      "d": "2026-11-11",
-     "v": 245881816756.24
+     "v": 245880726031
+    },
+    {
+     "d": "2026-11-12",
+     "v": 245507877798.76
     }
    ]
   },
   "lth_supply": {
    "rows": [
-    {
-     "d": "2025-11-08",
-     "v": 15033828
-    },
     {
      "d": "2025-11-09",
      "v": 15039731
@@ -10401,6 +10397,10 @@
     {
      "d": "2026-11-10",
      "v": 16239185
+    },
+    {
+     "d": "2026-11-11",
+     "v": 16237449
     }
    ]
   },
@@ -10408,10 +10408,6 @@
    "unit": "fraction",
    "window": "8 h mean of hourly closes ending at 00:00 UTC",
    "rows": [
-    {
-     "d": "2026-10-03",
-     "v": -0.00045234375
-    },
     {
      "d": "2026-10-04",
      "v": -0.0005128425000000001

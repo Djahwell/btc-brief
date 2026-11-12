@@ -1,12 +1,12 @@
 {
  "schema": "brief-v2-events/1",
- "generatedAt": "2026-11-11T14:19:29.824Z",
+ "generatedAt": "2026-11-12T07:00:50.990Z",
  "sources": {
   "fomc": {
    "ok": true,
    "url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
    "count": 57,
-   "fetchedAt": "2026-11-11T14:19:29.537Z"
+   "fetchedAt": "2026-11-12T07:00:50.170Z"
   },
   "cpi": {
    "ok": true,
@@ -14,7 +14,7 @@
    "url": "https://www.bls.gov/schedule/news_release/cpi.htm",
    "readAt": "2026-11-05",
    "coversTo": "2027-12-10",
-   "liveError": "browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1217/chrome-he",
+   "liveError": "HTTP 403 (browser)",
    "stale": false
   },
   "payrolls": {
@@ -23,13 +23,13 @@
    "url": "https://www.bls.gov/ces/publications/news-release-schedule.htm",
    "readAt": "2026-11-05",
    "coversTo": "2026-12-04",
-   "liveError": "browserType.launch: Executable doesn't exist at /home/runner/.cache/ms-playwright/chromium_headless_shell-1217/chrome-he",
+   "liveError": "HTTP 403 (browser)",
    "stale": true
   },
   "options": {
    "ok": true,
    "rule": "last Friday 08:00 UTC (Deribit)",
-   "computedAt": "2026-11-11T14:19:29.824Z"
+   "computedAt": "2026-11-12T07:00:50.989Z"
   }
  },
  "events": [
