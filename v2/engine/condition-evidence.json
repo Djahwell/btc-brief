@@ -1,0 +1,413 @@
+{
+ "generated": "2026-11-06",
+ "horizonDays": 90,
+ "period": "2019-01-01 .. 2026-08-02",
+ "noHistory": {
+  "leverage.crowdedLong": "needs open-interest history (not recorded before Nov 2026)",
+  "leverage.shortCrowded": "needs open-interest history (not recorded before Nov 2026)"
+ },
+ "notes": "Bar-based percentiles include the day itself (mid-rank); the 200-week measure starts about 2020-05. Episodes are shown only when there are at least 2.",
+ "label": "Not a tested link to later price (2019-26). Medians and 10-90% ranges of the next 90 days for days in this state; windows = days / 90; episodes = separate runs (a gap of more than 30 days starts a new one).",
+ "historySha": "02cd9f62481d91fcb9072fff5fc04b037741516347c18063795f582c996165a4",
+ "allDays": {
+  "days": 2771,
+  "medianRet": 0.07918092998087656,
+  "upShare": 0.5824612053410321,
+  "medianDip": -0.14963053324995845
+ },
+ "rows": {
+  "value": {
+   "cheap": {
+    "days": 469,
+    "windows": 5.2,
+    "episodes": 5,
+    "medianRet": 0.2460704346441367,
+    "p10": -0.18110742931377782,
+    "p90": 0.9848340033607212,
+    "upShare": 0.6695095948827292,
+    "medianDip": -0.09362279879977742,
+    "p90Dip": -0.26900067328282806
+   },
+   "belowAvg": {
+    "days": 596,
+    "windows": 6.6,
+    "episodes": 8,
+    "medianRet": 0.08719209954465168,
+    "p10": -0.19863737378935314,
+    "p90": 0.6103695871875892,
+    "upShare": 0.6174496644295302,
+    "medianDip": -0.1226333006565779,
+    "p90Dip": -0.32346829523289733
+   },
+   "fair": {
+    "days": 603,
+    "windows": 6.7,
+    "episodes": 11,
+    "medianRet": 0.059392783364515145,
+    "p10": -0.31225228924084225,
+    "p90": 0.7561701983705151,
+    "upShare": 0.5422885572139303,
+    "medianDip": -0.2125747207289964,
+    "p90Dip": -0.5662620291127244
+   },
+   "rich": {
+    "days": 570,
+    "windows": 6.3,
+    "episodes": 10,
+    "medianRet": 0.13300733324289993,
+    "p10": -0.23299543629640151,
+    "p90": 0.5690449975154844,
+    "upShare": 0.6631578947368421,
+    "medianDip": -0.16057055701986206,
+    "p90Dip": -0.32246607842099473
+   },
+   "stretched": {
+    "days": 531,
+    "windows": 5.9,
+    "episodes": 6,
+    "medianRet": -0.06167864547339319,
+    "p10": -0.35829228670773905,
+    "p90": 0.830236601542051,
+    "upShare": 0.423728813559322,
+    "medianDip": -0.19981208262082817,
+    "p90Dip": -0.47816249185063764
+   }
+  },
+  "trend200": {
+   "up": {
+    "days": 1424,
+    "windows": 15.8,
+    "episodes": 8,
+    "medianRet": 0.05737421465238368,
+    "p10": -0.2704242370764789,
+    "p90": 0.6707820199378267,
+    "upShare": 0.5828651685393258,
+    "medianDip": -0.15302535642752513,
+    "p90Dip": -0.3697151402580622
+   },
+   "down": {
+    "days": 788,
+    "windows": 8.8,
+    "episodes": 6,
+    "medianRet": -0.06116329222055561,
+    "p10": -0.29382312784267783,
+    "p90": 0.6512787750348129,
+    "upShare": 0.46954314720812185,
+    "medianDip": -0.18886691037268927,
+    "p90Dip": -0.5073407182994896
+   },
+   "transition": {
+    "days": 558,
+    "windows": 6.2,
+    "episodes": 12,
+    "medianRet": 0.2680264800631422,
+    "p10": -0.19398379075737185,
+    "p90": 0.7568549798819182,
+    "upShare": 0.7401433691756273,
+    "medianDip": -0.11965742912401295,
+    "p90Dip": -0.36434861514963207
+   }
+  },
+  "structure": {
+   "up": {
+    "days": 936,
+    "windows": 10.4,
+    "episodes": 25,
+    "medianRet": 0.15501272269966482,
+    "p10": -0.26904057087662353,
+    "p90": 1.2213563078617224,
+    "upShare": 0.6282051282051282,
+    "medianDip": -0.12689061775720822,
+    "p90Dip": -0.4633955275229974
+   },
+   "down": {
+    "days": 674,
+    "windows": 7.5,
+    "episodes": 25,
+    "medianRet": 0.06950243152713631,
+    "p10": -0.23837415249554428,
+    "p90": 0.5571330606934574,
+    "upShare": 0.5905044510385756,
+    "medianDip": -0.153724781129144,
+    "p90Dip": -0.39548537642084813
+   },
+   "mixed": {
+    "days": 1160,
+    "windows": 12.9,
+    "episodes": 10,
+    "medianRet": 0.035817637108522704,
+    "p10": -0.2772455860891904,
+    "p90": 0.6362619060067766,
+    "upShare": 0.5405172413793103,
+    "medianDip": -0.16084204277696978,
+    "p90Dip": -0.4149520162545974
+   }
+  },
+  "leverage": {
+   "crowdedLong": {
+    "days": 0,
+    "windows": 0,
+    "episodes": 0,
+    "suppressed": true
+   },
+   "highPremium": {
+    "days": 154,
+    "windows": 1.7,
+    "episodes": 8,
+    "suppressed": true
+   },
+   "shortCrowded": {
+    "days": 0,
+    "windows": 0,
+    "episodes": 0,
+    "suppressed": true
+   },
+   "lowPremium": {
+    "days": 534,
+    "windows": 5.9,
+    "episodes": 8,
+    "medianRet": 0.01235735040985364,
+    "p10": -0.25564715066964083,
+    "p90": 0.5551371264355585,
+    "upShare": 0.5243445692883895,
+    "medianDip": -0.1548251974322895,
+    "p90Dip": -0.3572868347638513
+   },
+   "normal": {
+    "days": 1239,
+    "windows": 13.8,
+    "episodes": 1,
+    "medianRet": 0.017126196165191176,
+    "p10": -0.2664314737785304,
+    "p90": 0.501573334440518,
+    "upShare": 0.5254237288135594,
+    "medianDip": -0.16468545039724414,
+    "p90Dip": -0.38503228890980773
+   }
+  },
+  "spot": {
+   "payingUp": {
+    "days": 301,
+    "windows": 3.3,
+    "episodes": 9,
+    "suppressed": true
+   },
+   "normal": {
+    "days": 1277,
+    "windows": 14.2,
+    "episodes": 1,
+    "medianRet": 0.024596127688228497,
+    "p10": -0.24319480748761815,
+    "p90": 0.5221288516779573,
+    "upShare": 0.5403288958496476,
+    "medianDip": -0.15815023401063544,
+    "p90Dip": -0.348096529382539
+   },
+   "discount": {
+    "days": 312,
+    "windows": 3.5,
+    "episodes": 12,
+    "suppressed": true
+   }
+  },
+  "liquidity": {
+   "growing": {
+    "days": 877,
+    "windows": 9.7,
+    "episodes": 12,
+    "medianRet": 0.0945254651429479,
+    "p10": -0.22203089234612555,
+    "p90": 0.6502219406929756,
+    "upShare": 0.629418472063854,
+    "medianDip": -0.1369320669300781,
+    "p90Dip": -0.4315324055223552
+   },
+   "flat": {
+    "days": 415,
+    "windows": 4.6,
+    "episodes": 18,
+    "medianRet": 0.12559631212813205,
+    "p10": -0.16166438685047613,
+    "p90": 0.6916221059242583,
+    "upShare": 0.6650602409638554,
+    "medianDip": -0.11596974796224713,
+    "p90Dip": -0.26865057847019047
+   },
+   "shrinking": {
+    "days": 1180,
+    "windows": 13.1,
+    "episodes": 14,
+    "medianRet": 0.013307787954533579,
+    "p10": -0.31724306928799384,
+    "p90": 0.5158516060487963,
+    "upShare": 0.5110169491525424,
+    "medianDip": -0.20053385095054527,
+    "p90Dip": -0.46409758147104263
+   }
+  },
+  "holders": {
+   "adding": {
+    "days": 1299,
+    "windows": 14.4,
+    "episodes": 17,
+    "medianRet": 0.1600052073786391,
+    "p10": -0.19885933734141598,
+    "p90": 0.6884392633866644,
+    "upShare": 0.6836027713625866,
+    "medianDip": -0.12158698773426468,
+    "p90Dip": -0.36950368595042843
+   },
+   "flat": {
+    "days": 426,
+    "windows": 4.7,
+    "episodes": 25,
+    "medianRet": 0.019425519176879735,
+    "p10": -0.32113804756534775,
+    "p90": 0.845523705104036,
+    "upShare": 0.5234741784037559,
+    "medianDip": -0.19080564785579202,
+    "p90Dip": -0.4481005211423092
+   },
+   "distributing": {
+    "days": 1040,
+    "windows": 11.6,
+    "episodes": 19,
+    "medianRet": -0.0261748210533857,
+    "p10": -0.2724201764338842,
+    "p90": 0.609652525632498,
+    "upShare": 0.4778846153846154,
+    "medianDip": -0.16777919808601577,
+    "p90Dip": -0.40985086424234396
+   }
+  },
+  "sentiment": {
+   "extremeFear": {
+    "days": 599,
+    "windows": 6.7,
+    "episodes": 11,
+    "medianRet": -0.004089333778372062,
+    "p10": -0.25921647911550366,
+    "p90": 0.4393489213227534,
+    "upShare": 0.4941569282136895,
+    "medianDip": -0.1780459738622976,
+    "p90Dip": -0.39866938204659363
+   },
+   "fear": {
+    "days": 695,
+    "windows": 7.7,
+    "episodes": 22,
+    "medianRet": 0.11624774365168777,
+    "p10": -0.2760995378196609,
+    "p90": 0.6763930032338166,
+    "upShare": 0.5942446043165468,
+    "medianDip": -0.17084716938812006,
+    "p90Dip": -0.4234279383758512
+   },
+   "neutral": {
+    "days": 465,
+    "windows": 5.2,
+    "episodes": 23,
+    "medianRet": 0.09546233384321656,
+    "p10": -0.23545916097852565,
+    "p90": 0.7051052240803598,
+    "upShare": 0.6430107526881721,
+    "medianDip": -0.12639956867897473,
+    "p90Dip": -0.41864754148057054
+   },
+   "greed": {
+    "days": 682,
+    "windows": 7.6,
+    "episodes": 16,
+    "medianRet": 0.06259264432333345,
+    "p10": -0.26970937901992453,
+    "p90": 0.6823129493704531,
+    "upShare": 0.6041055718475073,
+    "medianDip": -0.12906253779126525,
+    "p90Dip": -0.4601136303254006
+   },
+   "extremeGreed": {
+    "days": 330,
+    "windows": 3.7,
+    "episodes": 11,
+    "suppressed": true
+   }
+  },
+  "volatility": {
+   "calm": {
+    "days": 964,
+    "windows": 10.7,
+    "episodes": 22,
+    "medianRet": 0.1133780122642647,
+    "p10": -0.21335024642825737,
+    "p90": 0.692212686814305,
+    "upShare": 0.6607883817427386,
+    "medianDip": -0.10627597904588859,
+    "p90Dip": -0.3266373784887113
+   },
+   "normal": {
+    "days": 1600,
+    "windows": 17.8,
+    "episodes": 16,
+    "medianRet": 0.021562411014581895,
+    "p10": -0.2988026786621121,
+    "p90": 0.7060477388849007,
+    "upShare": 0.529375,
+    "medianDip": -0.17542280428899182,
+    "p90Dip": -0.46343458487979594
+   },
+   "elevated": {
+    "days": 206,
+    "windows": 2.3,
+    "episodes": 7,
+    "suppressed": true
+   }
+  },
+  "liquidations": {}
+ },
+ "score": {
+  "Strong bull": {
+   "days": 211,
+   "windows": 2.3,
+   "episodes": 9,
+   "suppressed": true
+  },
+  "Bull": {
+   "days": 626,
+   "windows": 7,
+   "episodes": 16,
+   "medianRet": 0.20872836214305945,
+   "p10": -0.2004748251801498,
+   "p90": 1.0021996165761577,
+   "upShare": 0.6517571884984026,
+   "medianDip": -0.08909507174217984
+  },
+  "Neutral": {
+   "days": 1385,
+   "windows": 15.4,
+   "episodes": 10,
+   "medianRet": 0.014764881076437586,
+   "p10": -0.2849687442500091,
+   "p90": 0.5417415652389014,
+   "upShare": 0.5191335740072203,
+   "medianDip": -0.19240789481303244
+  },
+  "Bear": {
+   "days": 448,
+   "windows": 5,
+   "episodes": 14,
+   "medianRet": 0.03754576535428422,
+   "p10": -0.32075337981493157,
+   "p90": 0.6840926571050209,
+   "upShare": 0.5424107142857143,
+   "medianDip": -0.19342289994036843
+  },
+  "Strong bear": {
+   "days": 99,
+   "windows": 1.1,
+   "episodes": 12,
+   "suppressed": true
+  },
+  "withheldDays": 2,
+  "groups": "Value, Trend, Flows, Sentiment (leverage not scored)"
+ }
+}
