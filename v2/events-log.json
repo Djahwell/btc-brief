@@ -85,6 +85,13 @@
    "events": [],
    "recordedAt": "2026-11-15T06:15:04.704Z",
    "sourcesOk": true
+  },
+  {
+   "date": "2026-11-16",
+   "within48h": false,
+   "events": [],
+   "recordedAt": "2026-11-16T06:12:13.668Z",
+   "sourcesOk": true
   }
  ]
 }
