@@ -1,14 +1,14 @@
 {
  "schema": "brief-v2-daily/1",
  "codeVersion": "v2-daily/1.0.0",
- "generatedAt": "2026-11-19T07:12:49.492Z",
+ "generatedAt": "2026-11-19T15:47:05.532Z",
  "inputs": {
   "btc_daily_close": {
    "value": 62981.71,
    "unit": "USD",
    "window": "1d",
    "asOf": "2026-11-18",
-   "fetchedAt": "2026-11-19T07:12:51.806Z",
+   "fetchedAt": "2026-11-19T15:47:07.103Z",
    "source": "Coinbase BTC-USD daily candles",
    "scope": "Coinbase spot (USD)",
    "quality": "OK",
@@ -25,7 +25,7 @@
    "unit": "index 0-100",
    "window": "1d",
    "asOf": "2026-11-19",
-   "fetchedAt": "2026-11-19T07:12:52.002Z",
+   "fetchedAt": "2026-11-19T15:47:07.163Z",
    "source": "alternative.me Fear & Greed",
    "scope": "third-party composite (includes momentum and volatility)",
    "quality": "OK",
@@ -36,7 +36,7 @@
    "unit": "ratio",
    "window": "1d",
    "asOf": "2026-11-18",
-   "fetchedAt": "2026-11-19T07:12:52.771Z",
+   "fetchedAt": "2026-11-19T15:47:07.672Z",
    "source": "CoinMetrics community CapMVRVCur",
    "scope": "network-wide; Coin Metrics data (CC BY-NC 4.0)",
    "quality": "OK",
@@ -51,40 +51,40 @@
    "attribution": "Data: Coin Metrics Community (CC BY-NC 4.0)"
   },
   "stablecoin_supply": {
-   "value": 243599024808.8,
+   "value": 243601997669.87,
    "unit": "USD",
    "window": "1d",
    "asOf": "2026-11-19",
-   "fetchedAt": "2026-11-19T07:12:52.924Z",
+   "fetchedAt": "2026-11-19T15:47:07.728Z",
    "source": "DefiLlama stablecoins (USDT + USDC circulating)",
    "scope": "USDT + USDC, all chains",
    "quality": "OK",
    "staleAfterSec": 172800
   },
   "lth_net_30d": {
-   "value": -7520,
+   "value": -7511,
    "unit": "BTC/day",
    "window": "30-day calendar change ÷ days",
    "asOf": "2026-11-17",
-   "fetchedAt": "2026-11-19T07:13:04.082Z",
+   "fetchedAt": "2026-11-19T15:47:20.693Z",
    "source": "Bitcoin Magazine Pro LTH supply (full trace; dated by price alignment to Bitstamp)",
    "scope": "network-wide, single provider",
    "quality": "OK",
    "staleAfterSec": 259200,
-   "lth_supply_btc": 16180839,
+   "lth_supply_btc": 16181094,
    "align_err_pct": 0.021
   },
   "coinbase_premium_adj_repro": {
-   "value": -0.00310445537873294,
+   "value": -0.0013372015890578126,
    "unit": "%",
    "window": "24h median (reproducibility copy; the VPS value is the live one)",
-   "asOf": "2026-11-19T07:00:00.000Z",
-   "fetchedAt": "2026-11-19T07:13:08.049Z",
+   "asOf": "2026-11-19T15:00:00.000Z",
+   "fetchedAt": "2026-11-19T15:47:23.986Z",
    "source": "Coinbase BTC-USD, Coinbase USDT-USD, Binance BTCUSDT (vision), hourly",
    "scope": "reproducibility check only",
    "quality": "OK",
    "staleAfterSec": 86400,
-   "z30": 0.4993735323688488,
+   "z30": 0.5866001241843373,
    "dayMedians": {
     "2026-10-20": -0.00329165870960324,
     "2026-10-21": 0.00026311204098794505,
@@ -8956,16 +8956,12 @@
     },
     {
      "d": "2026-11-19",
-     "v": 243599024808.8
+     "v": 243601997669.87
     }
    ]
   },
   "lth_supply": {
    "rows": [
-    {
-     "d": "2025-11-14",
-     "v": 14957989
-    },
     {
      "d": "2025-11-15",
      "v": 14967806
@@ -10399,8 +10395,12 @@
      "v": 16198921
     },
     {
-     "d": "2026-11-17",
+     "d": "2026-11-16",
      "v": 16180839
+    },
+    {
+     "d": "2026-11-17",
+     "v": 16181094
     }
    ]
   },
@@ -10563,6 +10563,10 @@
     {
      "d": "2026-11-18",
      "v": -0.00048233624999999996
+    },
+    {
+     "d": "2026-11-19",
+     "v": -0.00032988625
     }
    ]
   }
