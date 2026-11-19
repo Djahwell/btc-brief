@@ -1,61 +1,61 @@
 {
  "schema": "brief-v2-daily/1",
  "codeVersion": "v2-daily/1.0.0",
- "generatedAt": "2026-11-18T15:33:03.114Z",
+ "generatedAt": "2026-11-19T07:12:49.492Z",
  "inputs": {
   "btc_daily_close": {
-   "value": 64873.18,
+   "value": 62981.71,
    "unit": "USD",
    "window": "1d",
-   "asOf": "2026-11-17",
-   "fetchedAt": "2026-11-18T15:33:05.080Z",
+   "asOf": "2026-11-18",
+   "fetchedAt": "2026-11-19T07:12:51.806Z",
    "source": "Coinbase BTC-USD daily candles",
    "scope": "Coinbase spot (USD)",
    "quality": "OK",
    "staleAfterSec": 172800,
    "crosscheck": {
-    "bitstamp_close": 64877.24,
-    "diff_bp": 0.6,
+    "bitstamp_close": 62976.18,
+    "diff_bp": -0.9,
     "tolerance_bp": 25,
     "status": "OK"
    }
   },
   "fear_greed": {
-   "value": 11,
+   "value": 10,
    "unit": "index 0-100",
    "window": "1d",
-   "asOf": "2026-11-18",
-   "fetchedAt": "2026-11-18T15:33:05.217Z",
+   "asOf": "2026-11-19",
+   "fetchedAt": "2026-11-19T07:12:52.002Z",
    "source": "alternative.me Fear & Greed",
    "scope": "third-party composite (includes momentum and volatility)",
    "quality": "OK",
    "staleAfterSec": 172800
   },
   "mvrv": {
-   "value": 1.211898741449905,
+   "value": 1.176184053390178,
    "unit": "ratio",
    "window": "1d",
-   "asOf": "2026-11-17",
-   "fetchedAt": "2026-11-18T15:33:05.925Z",
+   "asOf": "2026-11-18",
+   "fetchedAt": "2026-11-19T07:12:52.771Z",
    "source": "CoinMetrics community CapMVRVCur",
    "scope": "network-wide; Coin Metrics data (CC BY-NC 4.0)",
    "quality": "OK",
    "staleAfterSec": 259200,
    "crosscheck": {
-    "bgeometrics_date": "2026-11-11",
-    "bgeometrics_realized": 53850.71,
-    "diff_pct": -0.23,
+    "bgeometrics_date": "2026-11-12",
+    "bgeometrics_realized": 53800.36,
+    "diff_pct": -0.19,
     "tolerance_pct": 2,
     "status": "OK"
    },
    "attribution": "Data: Coin Metrics Community (CC BY-NC 4.0)"
   },
   "stablecoin_supply": {
-   "value": 244535538781.87,
+   "value": 243599024808.8,
    "unit": "USD",
    "window": "1d",
-   "asOf": "2026-11-18",
-   "fetchedAt": "2026-11-18T15:33:06.893Z",
+   "asOf": "2026-11-19",
+   "fetchedAt": "2026-11-19T07:12:52.924Z",
    "source": "DefiLlama stablecoins (USDT + USDC circulating)",
    "scope": "USDT + USDC, all chains",
    "quality": "OK",
@@ -66,7 +66,7 @@
    "unit": "BTC/day",
    "window": "30-day calendar change ÷ days",
    "asOf": "2026-11-17",
-   "fetchedAt": "2026-11-18T15:33:21.119Z",
+   "fetchedAt": "2026-11-19T07:13:04.082Z",
    "source": "Bitcoin Magazine Pro LTH supply (full trace; dated by price alignment to Bitstamp)",
    "scope": "network-wide, single provider",
    "quality": "OK",
@@ -75,18 +75,17 @@
    "align_err_pct": 0.021
   },
   "coinbase_premium_adj_repro": {
-   "value": -0.00521178151553503,
+   "value": -0.00310445537873294,
    "unit": "%",
    "window": "24h median (reproducibility copy; the VPS value is the live one)",
-   "asOf": "2026-11-18T15:00:00.000Z",
-   "fetchedAt": "2026-11-18T15:33:24.705Z",
+   "asOf": "2026-11-19T07:00:00.000Z",
+   "fetchedAt": "2026-11-19T07:13:08.049Z",
    "source": "Coinbase BTC-USD, Coinbase USDT-USD, Binance BTCUSDT (vision), hourly",
    "scope": "reproducibility check only",
    "quality": "OK",
    "staleAfterSec": 86400,
-   "z30": 0.3938169216537673,
+   "z30": 0.4993735323688488,
    "dayMedians": {
-    "2026-10-19": -0.0029074237974879846,
     "2026-10-20": -0.00329165870960324,
     "2026-10-21": 0.00026311204098794505,
     "2026-10-22": -0.003490933469740831,
@@ -115,7 +114,8 @@
     "2026-11-14": 0.0024208109160595015,
     "2026-11-15": -0.0007619663231428486,
     "2026-11-16": -0.001951172290037828,
-    "2026-11-17": -0.006329646997210725
+    "2026-11-17": -0.006329646997210725,
+    "2026-11-18": -0.0036949030327748655
    }
   }
  },
@@ -125,15 +125,6 @@
    "source": "Coinbase BTC-USD (OHLC) + Bitstamp BTC-USD (volume added)",
    "scope": "USD spot venues",
    "rows": [
-    {
-     "d": "2025-09-24",
-     "o": 112017.21,
-     "h": 113999.98,
-     "l": 111066.07,
-     "c": 113348.17,
-     "v_cb": 4932.88303511,
-     "v_bs": 1320.90667792
-    },
     {
      "d": "2025-09-25",
      "o": 113348.16,
@@ -3904,15 +3895,20 @@
      "c": 64873.18,
      "v_cb": 11768.55318977,
      "v_bs": 1125.8454623
+    },
+    {
+     "d": "2026-11-18",
+     "o": 64873.18,
+     "h": 64933.39,
+     "l": 62000,
+     "c": 62981.71,
+     "v_cb": 12482.67554433,
+     "v_bs": 1216.27767294
     }
    ]
   },
   "fear_greed": {
    "rows": [
-    {
-     "d": "2025-09-25",
-     "v": 44
-    },
     {
      "d": "2025-09-26",
      "v": 28
@@ -5588,16 +5584,16 @@
     {
      "d": "2026-11-18",
      "v": 11
+    },
+    {
+     "d": "2026-11-19",
+     "v": 10
     }
    ]
   },
   "mvrv": {
    "source": "CoinMetrics community CapMVRVCur (CC BY-NC 4.0)",
    "rows": [
-    {
-     "d": "2025-09-24",
-     "v": 2.1098438050041244
-    },
     {
      "d": "2025-09-25",
      "v": 2.0312424703115273
@@ -7273,15 +7269,15 @@
     {
      "d": "2026-11-17",
      "v": 1.211898741449905
+    },
+    {
+     "d": "2026-11-18",
+     "v": 1.176184053390178
     }
    ]
   },
   "stablecoin_supply": {
    "rows": [
-    {
-     "d": "2025-09-25",
-     "v": 247059641061
-    },
     {
      "d": "2025-09-26",
      "v": 247278387942
@@ -8956,7 +8952,11 @@
     },
     {
      "d": "2026-11-18",
-     "v": 244535538781.87
+     "v": 244493346412
+    },
+    {
+     "d": "2026-11-19",
+     "v": 243599024808.8
     }
    ]
   },
@@ -10408,10 +10408,6 @@
    "unit": "fraction",
    "window": "8 h mean of hourly closes ending at 00:00 UTC",
    "rows": [
-    {
-     "d": "2026-10-10",
-     "v": -0.0004624225
-    },
     {
      "d": "2026-10-11",
      "v": -0.0005390812499999999
