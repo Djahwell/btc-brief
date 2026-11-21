@@ -120,6 +120,13 @@
    "events": [],
    "recordedAt": "2026-11-20T07:00:54.289Z",
    "sourcesOk": true
+  },
+  {
+   "date": "2026-11-21",
+   "within48h": false,
+   "events": [],
+   "recordedAt": "2026-11-21T06:56:43.919Z",
+   "sourcesOk": true
   }
  ]
 }
