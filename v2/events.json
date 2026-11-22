@@ -1,12 +1,12 @@
 {
  "schema": "brief-v2-events/1",
- "generatedAt": "2026-11-22T06:34:23.477Z",
+ "generatedAt": "2026-11-22T14:29:50.886Z",
  "sources": {
   "fomc": {
    "ok": true,
    "url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
    "count": 57,
-   "fetchedAt": "2026-11-22T06:34:22.578Z"
+   "fetchedAt": "2026-11-22T14:29:49.995Z"
   },
   "cpi": {
    "ok": true,
@@ -29,7 +29,7 @@
   "options": {
    "ok": true,
    "rule": "last Friday 08:00 UTC (Deribit)",
-   "computedAt": "2026-11-22T06:34:23.476Z"
+   "computedAt": "2026-11-22T14:29:50.886Z"
   }
  },
  "events": [
