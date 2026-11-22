@@ -1,0 +1,53 @@
+name: V2 cycle-bottom band (monthly)
+# Rebuilds engine-v2/cycle-bottoms.json from fresh CoinMetrics + ETF-flow data (research/cycle_bottoms.py),
+# copies it to the V2 page, runs the engine tests, commits to main and republishes the page.
+# The page hides the line if the band is ever older than 62 days, so a failed run can never show stale figures for long.
+on:
+  schedule:
+    - cron: '40 4 2 * *'   # 04:40 UTC on the 2nd of each month (after sync-accuracy's 03:00 commit)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: v2-cycle-bottoms
+  cancel-in-progress: false
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: main }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+
+      - name: Rebuild the band
+        run: python3 research/cycle_bottoms.py --write
+
+      - name: Copy to the V2 page
+        run: cp engine-v2/cycle-bottoms.json engine-v2/cyclebottom.js public/v2/engine/
+
+      - name: Tests
+        run: cd engine-v2 && node --test test/cyclebottom.test.js
+
+      - name: Commit and push
+        id: push
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add engine-v2/cycle-bottoms.json public/v2/engine/cycle-bottoms.json
+          if git diff --cached --quiet; then echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          git commit -m "chore: monthly rebuild of the V2 cycle-bottom band"
+          for i in 1 2 3; do git pull --rebase origin main && git push origin main && break; sleep 10; done
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Republish the page
+        if: steps.push.outputs.changed == 'true'
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: gh workflow run data-refresh.yml --ref main

@@ -6,10 +6,19 @@
 (function (root) {
   const fin = x => typeof x === 'number' && Number.isFinite(x) && x > 0;
 
-  // close: last completed daily close (USD); mvrv: CoinMetrics MVRV for that day; ref: cycle-bottoms.json.
-  // Returns null when any input is missing, so the page shows nothing rather than a guess.
-  function reference(close, mvrv, ref) {
+  const MAX_BAND_AGE_DAYS = 62; // rebuilt monthly (v2-cycle-bottoms.yml); older than this → not shown
+
+  // close: last completed daily close (USD); mvrv: CoinMetrics MVRV for that day; ref: cycle-bottoms.json;
+  // today: 'YYYY-MM-DD'. Returns null when any input is missing or the band is stale, so the page shows
+  // nothing rather than a guess.
+  function bandFresh(ref, today) {
+    if (!ref || typeof ref.built !== 'string' || typeof today !== 'string') return false;
+    const age = (Date.parse(today + 'T00:00:00Z') - Date.parse(ref.built + 'T00:00:00Z')) / 864e5;
+    return Number.isFinite(age) && age >= -1 && age <= MAX_BAND_AGE_DAYS;
+  }
+  function reference(close, mvrv, ref, today) {
     if (!fin(close) || !fin(mvrv) || !ref || !ref.band || !fin(ref.band.low) || !fin(ref.band.high)) return null;
+    if (!bandFresh(ref, today)) return null;
     const realized = close / mvrv;
     const r = x => Math.round(x / 100) * 100;
     return {
@@ -20,16 +29,16 @@
     };
   }
 
-  function text(close, mvrv, ref) {
-    const o = reference(close, mvrv, ref);
+  function text(close, mvrv, ref, today) {
+    const o = reference(close, mvrv, ref, today);
     if (!o) return null;
     const usd = x => '$' + x.toLocaleString('en-US');
     const past = o.pastBottoms.map(b => `${b.mvrv.toFixed(2)} (${b.year})`).join(', ');
     return `Past cycle bottoms, MVRV: ${past}. Size-adjusted reference for this cycle ${ref.band.low.toFixed(2)}–${ref.band.high.toFixed(2)}, ` +
       `about ${usd(o.low)}–${usd(o.high)} at today's realized price ${usd(o.realized)} (now ${o.mvrv.toFixed(2)}). ` +
-      `${ref.label}`;
+      `${ref.label} Band rebuilt ${ref.built}.`;
   }
 
-  const api = { reference, text };
+  const api = { reference, text, bandFresh, MAX_BAND_AGE_DAYS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.BriefCycleBottom = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
