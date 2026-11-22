@@ -322,11 +322,11 @@
   }
   function cycleRef() {
     const CBM = globalThis.BriefCycleBottom; const i = cycleInputs();
-    return CBM && cbref && i ? CBM.reference(i.close, i.mvrv, cbref) : null;
+    return CBM && cbref && i ? CBM.reference(i.close, i.mvrv, cbref, today()) : null;
   }
   function cycleBottomLine() {
     const CBM = globalThis.BriefCycleBottom; const i = cycleInputs();
-    const t = CBM && cbref && i ? CBM.text(i.close, i.mvrv, cbref) : null;
+    const t = CBM && cbref && i ? CBM.text(i.close, i.mvrv, cbref, today()) : null;
     return t ? `<p class="cev">${esc(t)} MVRV and close dated ${esc(i.asOf)}.</p>` : '';
   }
   function readingText(k, o, R, snap, fam) {
