@@ -39,6 +39,7 @@
 
   let decl = null, declHash = null, fw1Hash = null, lastFetchError = null;
   let cdecl = null, cdeclHash = null, cev = null, cbase = null;
+  let cbref = null; // cycle-bottoms.json: display-only reference line on the valuation row
   const KNOWN_SCHEMAS = ['brief-v2/1', 'brief-v2/2'];
   // Stage 4 (5 Nov 2026, STAGE4.md): no entry or tendency candidate passed → descriptive mode (§F).
   // The page shows family readings, states and levels only; never a scorecard number or band.
@@ -59,6 +60,7 @@
       const t = await (await fetch('engine/condition-declaration.json', { cache: 'no-store' })).text(); cdecl = JSON.parse(t); cdeclHash = await sha256Hex(t);
       cev = await (await fetch('engine/condition-evidence.json', { cache: 'no-store' })).json();
     } catch (_) { cdecl = null; }
+    try { cbref = await (await fetch('engine/cycle-bottoms.json', { cache: 'no-store' })).json(); } catch (_) { cbref = null; }
   }
 
   // FW1 forward candidate (FORWARD-FW1.md): shown labelled UNTESTED, only for a fresh, live snapshot
@@ -306,11 +308,32 @@
       liq: ok(lq) && lq.value ? { ...lq.value, pct: lq.pct_of_oi } : null,
     });
   }
+  // Cycle-bottom reference (CYCLE-BOTTOMS-1). Realized price = close / CoinMetrics MVRV for the SAME day,
+  // both from v2/daily.json (the snapshot's T1 can lag the latest bar by a day). Missing, stale or unmatched → nothing shown.
+  const DAILY_URL = 'https://raw.githubusercontent.com/Djahwell/btc-brief/v2-data/v2/daily.json';
+  let cbdaily = null;
+  async function loadCycleDaily() { try { cbdaily = await getJSON(DAILY_URL + '?t=' + Math.floor(Date.now() / 6e5)); } catch (_) { cbdaily = null; } }
+  function cycleInputs() {
+    const m = cbdaily && cbdaily.inputs && cbdaily.inputs.mvrv;
+    if (!m || m.quality !== 'OK' || !Number.isFinite(m.value) || !m.asOf || m.asOf < addDays(today(), -4)) return null;
+    const rows = cbdaily.series && cbdaily.series.daily_candles && cbdaily.series.daily_candles.rows;
+    const bar = Array.isArray(rows) ? rows.find(r => r.d === m.asOf) : null;
+    return bar && Number.isFinite(bar.c) ? { close: bar.c, mvrv: m.value, asOf: m.asOf } : null;
+  }
+  function cycleRef() {
+    const CBM = globalThis.BriefCycleBottom; const i = cycleInputs();
+    return CBM && cbref && i ? CBM.reference(i.close, i.mvrv, cbref) : null;
+  }
+  function cycleBottomLine() {
+    const CBM = globalThis.BriefCycleBottom; const i = cycleInputs();
+    const t = CBM && cbref && i ? CBM.text(i.close, i.mvrv, cbref) : null;
+    return t ? `<p class="cev">${esc(t)} MVRV and close dated ${esc(i.asOf)}.</p>` : '';
+  }
   function readingText(k, o, R, snap, fam) {
     const mark = markPrice(snap);
     switch (k) {
       case 'value': {
-        const b = condBaseFresh(); const rp = b && b.realized && b.realized.v;
+        const b = condBaseFresh(); const cb = cycleRef(); const rp = cb ? cb.realized : (b && b.realized && b.realized.v);
         return `MVRV ${pctTxt(R.mvrvPct)}${fam.T1 && Number.isFinite(fam.T1.raw) ? ` (${fam.T1.raw.toFixed(2)})` : ''} · vs 200-week average ${pctTxt(R.pctW200)}${b ? ` (${pp(b.w200)})` : ''} · nearness to high ${pctTxt(R.pctNearATH)}${b ? ` (${pp(b.nearATH)} from the all-time high)` : ''}${rp ? ` · realized price ${usd(rp)}` : ''}${b ? '' : ' · daily bar readings unavailable'}`;
       }
       case 'trend200': {
@@ -350,7 +373,7 @@
       html += `<div class="crow"><div class="chead"><span class="clabel">${esc(def.label)}</span>${chip}</div>` +
         (has ? `<div class="cread">${esc(readingText(k, o, R, snap, v.families))}</div>` : '') +
         (o.meaning ? `<p class="cmean">${esc(o.meaning)}</p>` : '') + (def.note ? `<p class="cnote">${esc(def.note)}</p>` : '') +
-        (o.state != null ? evidenceLine(k, o.state) : '') + '</div>';
+        (o.state != null ? evidenceLine(k, o.state) : '') + (k === 'value' ? cycleBottomLine() : '') + '</div>';
     }
     $('#cond-rows').innerHTML = html;
     const b = condBaseFresh();
@@ -418,14 +441,14 @@
     if (state.snap) renderCommentary(state.snap);
     renderTrack();
     renderEvents();
-    loadCondBase().then(() => { if (state.snap) render(); });
+    Promise.all([loadCondBase(), loadCycleDaily()]).then(() => { if (state.snap) render(); });
   }
 
   async function start() {
     $('#refresh').addEventListener('click', refresh);
     $('#claude-btn').addEventListener('click', askClaude);
     try { await loadDecl(); } catch (e) { lastFetchError = 'declaration file missing'; }
-    await loadCondBase();
+    await Promise.all([loadCondBase(), loadCycleDaily()]);
     await refresh();
     setInterval(refresh, REFRESH_MS);
     setInterval(render, 60 * 1000);                      // ages and view-time withholding move with the clock
