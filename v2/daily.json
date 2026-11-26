@@ -1,14 +1,14 @@
 {
  "schema": "brief-v2-daily/1",
  "codeVersion": "v2-daily/1.0.0",
- "generatedAt": "2026-11-26T08:04:38.438Z",
+ "generatedAt": "2026-11-26T16:47:46.421Z",
  "inputs": {
   "btc_daily_close": {
    "value": 60383.51,
    "unit": "USD",
    "window": "1d",
    "asOf": "2026-11-25",
-   "fetchedAt": "2026-11-26T08:04:39.987Z",
+   "fetchedAt": "2026-11-26T16:47:47.885Z",
    "source": "Coinbase BTC-USD daily candles",
    "scope": "Coinbase spot (USD)",
    "quality": "OK",
@@ -25,7 +25,7 @@
    "unit": "index 0-100",
    "window": "1d",
    "asOf": "2026-11-26",
-   "fetchedAt": "2026-11-26T08:04:40.046Z",
+   "fetchedAt": "2026-11-26T16:47:47.945Z",
    "source": "alternative.me Fear & Greed",
    "scope": "third-party composite (includes momentum and volatility)",
    "quality": "OK",
@@ -36,7 +36,7 @@
    "unit": "ratio",
    "window": "1d",
    "asOf": "2026-11-25",
-   "fetchedAt": "2026-11-26T08:04:40.503Z",
+   "fetchedAt": "2026-11-26T16:47:48.393Z",
    "source": "CoinMetrics community CapMVRVCur",
    "scope": "network-wide; Coin Metrics data (CC BY-NC 4.0)",
    "quality": "OK",
@@ -51,11 +51,11 @@
    "attribution": "Data: Coin Metrics Community (CC BY-NC 4.0)"
   },
   "stablecoin_supply": {
-   "value": 243084247962.59003,
+   "value": 243087771808.78998,
    "unit": "USD",
    "window": "1d",
    "asOf": "2026-11-26",
-   "fetchedAt": "2026-11-26T08:04:40.555Z",
+   "fetchedAt": "2026-11-26T16:47:48.453Z",
    "source": "DefiLlama stablecoins (USDT + USDC circulating)",
    "scope": "USDT + USDC, all chains",
    "quality": "OK",
@@ -66,7 +66,7 @@
    "unit": "BTC/day",
    "window": "30-day calendar change ÷ days",
    "asOf": "2026-11-25",
-   "fetchedAt": "2026-11-26T08:04:59.523Z",
+   "fetchedAt": "2026-11-26T16:48:05.176Z",
    "source": "Bitcoin Magazine Pro LTH supply (full trace; dated by price alignment to Bitstamp)",
    "scope": "network-wide, single provider",
    "quality": "OK",
@@ -75,16 +75,16 @@
    "align_err_pct": 0.021
   },
   "coinbase_premium_adj_repro": {
-   "value": -0.0058268622709301,
+   "value": -0.004790053621733792,
    "unit": "%",
    "window": "24h median (reproducibility copy; the VPS value is the live one)",
-   "asOf": "2026-11-26T08:00:00.000Z",
-   "fetchedAt": "2026-11-26T08:05:03.284Z",
+   "asOf": "2026-11-26T16:00:00.000Z",
+   "fetchedAt": "2026-11-26T16:48:08.518Z",
    "source": "Coinbase BTC-USD, Coinbase USDT-USD, Binance BTCUSDT (vision), hourly",
    "scope": "reproducibility check only",
    "quality": "OK",
    "staleAfterSec": 86400,
-   "z30": 0.3479210244018131,
+   "z30": 0.4016873776077506,
    "dayMedians": {
     "2026-10-27": -0.013308979534965015,
     "2026-10-28": -0.00911398392372531,
@@ -98,23 +98,23 @@
     "2026-11-05": -0.002274779571642682,
     "2026-11-06": -0.0162525321466378,
     "2026-11-07": -0.008268528103921868,
-    "2026-11-08": -0.006245677710237096,
+    "2026-11-08": -0.006746318811134966,
     "2026-11-09": -0.013890607903643826,
-    "2026-11-10": -0.009103509790464592,
-    "2026-11-11": -0.0018400357527204037,
+    "2026-11-10": -0.009477768472382353,
+    "2026-11-11": -0.0023338255022875565,
     "2026-11-12": -0.006062409076307285,
     "2026-11-13": -0.001390110192495131,
-    "2026-11-14": 0.002413197443651427,
+    "2026-11-14": 0.0024208109160595015,
     "2026-11-15": -0.0007619663231428486,
-    "2026-11-16": -0.0015449775698284096,
-    "2026-11-17": -0.006151982658963995,
+    "2026-11-16": -0.001951172290037828,
+    "2026-11-17": -0.006329646997210725,
     "2026-11-18": -0.0036949030327748655,
     "2026-11-19": -0.002850693963279971,
     "2026-11-20": -0.0012233207124956458,
-    "2026-11-21": 0.0009915916497016397,
-    "2026-11-22": -0.006340059179987811,
+    "2026-11-21": 0.000629545656083419,
+    "2026-11-22": -0.0059355529083482406,
     "2026-11-23": -0.00372081357807863,
-    "2026-11-24": -0.006868890511929626,
+    "2026-11-24": -0.006418189630130744,
     "2026-11-25": -0.006734136093505816
    }
   }
@@ -8956,7 +8956,7 @@
     },
     {
      "d": "2026-11-26",
-     "v": 243084247962.59003
+     "v": 243087771808.78998
     }
    ]
   },
