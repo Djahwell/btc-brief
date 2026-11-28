@@ -1,0 +1,484 @@
+{
+  "etfFlow": {
+    "total_million_usd": -453,
+    "date": "25 Nov 2026"
+  },
+  "lthData": {
+    "lth_supply_btc": 16048796,
+    "lth_net_btc": -15500,
+    "lth_net_7d_avg": -15500,
+    "lth_net_30d_avg": -9598,
+    "lth_net_1d": -22326,
+    "lth_daily_noise_sd": 27448,
+    "lth_days_gap": 1,
+    "date": "2026-11-25",
+    "align_err_pct": 0.03,
+    "method": "7-day average of daily LTH supply change; dated by BMP price trace vs Kraken closes",
+    "source_url": "https://www.bitcoinmagazinepro.com/charts/long-term-holder-supply/"
+  },
+  "stablecoinSupply": {
+    "usdt_supply_usd": 173535708564.95596,
+    "usdc_supply_usd": 69283463714.75009,
+    "total_usd": 242819172279.70605,
+    "delta_7d_usd": -749423353.8041992,
+    "delta_7d_pct": -0.308,
+    "regime": "STABLE",
+    "date": "2026-11-26",
+    "source": "DefiLlama"
+  },
+  "mvrv_error": null,
+  "mvrv_query_id": "6985599",
+  "exflow_query_id": "6985606",
+  "cachedAt": "2026-11-26T07:21:14.114Z",
+  "market": {
+    "price": 60490.1,
+    "change24h": 3.13,
+    "volume24hUSD": 39207104239.829865,
+    "volumeScope": "CoinGecko aggregate",
+    "marketCap": 1215560260264.3606,
+    "priceSource": "Kraken",
+    "fearGreedValue": 11,
+    "fearGreedLabel": "Extreme Fear",
+    "fearGreed7d": [
+      11,
+      13,
+      11,
+      11,
+      11,
+      12,
+      12
+    ],
+    "fundingRate": 0.0000591027313813,
+    "fundingSource": "OKX",
+    "openInterest": 31334.81460000012,
+    "openInterestUSD": 1895446068.6354673,
+    "goldPrice": 3561.45,
+    "goldChange24h": 1.4026969806933327,
+    "btcGoldRatio": 16.98,
+    "btcDominance": 57.9
+  },
+  "tech": {
+    "sma200": 71920,
+    "sma50": 74682,
+    "sma20": 65944,
+    "candleCount": 210,
+    "cycleHigh": 86594,
+    "avgVol5d": 4269,
+    "avgVol20d": 4185,
+    "volTrendRatio": 1.02,
+    "volTrend": "STABLE",
+    "btcQqqCorr": null,
+    "corrWindow": 0
+  },
+  "options": {
+    "optionsSkew": -18.2,
+    "optionsPCRatio": 1.33,
+    "optionsPutIV": 63,
+    "optionsCallIV": 81
+  },
+  "macros": {
+    "dxy": 102.27,
+    "dxyChange": null,
+    "vix": 28.3,
+    "vixChange": null,
+    "tnxYield": 4.85,
+    "tnxChange": null,
+    "dxyApprox": true
+  },
+  "cme": {
+    "cmeBasisPct": 3.56,
+    "cmeDaysToExpiry": 1,
+    "cmeNearExpiry": true,
+    "cmeBasisSource": "OKX BTC-USD-261127 futures basis (annualized, proxy for CME)"
+  },
+  "coinMetrics": {
+    "date": "2026-11-25",
+    "activeAddresses": 708873,
+    "txCount": 695156,
+    "hashRate": 1072340687.8622526,
+    "totalFeesBTC": 2.79722489,
+    "refPrice": 60267.6252996026,
+    "txVolumeUSD": null,
+    "txVolumeArr90d": [],
+    "mvrv": null,
+    "realizedPrice": null,
+    "source": "CoinMetrics Community API"
+  },
+  "briefCachedAt": "2026-11-25T23:07:30.854Z",
+  "brief": {
+    "date": "Thursday, November 26, 2026",
+    "compositeScore": -2,
+    "scoreDecomposition": {
+      "onChain": {
+        "score": -1,
+        "signal": "MVRV 1.125 sits in fair-value band (1-2), not distressed — neutral read. LTH distributing -15,710 BTC/day (7d avg, -0.374% liquid supply) is a confirmed headwind; partial exchange netflow shows +918 BTC inflow (proxy only, low weight). Net: LTH distribution pressure dominates, capping upside — score -1."
+      },
+      "etfInstitutional": {
+        "score": -1,
+        "signal": "Live ETF net -$231M / -3,847 BTC / -0.092% liquid supply on Nov 24. Below the $264M/day baseline inflow — net outflow. Trend: deteriorating. Score -1."
+      },
+      "derivatives": {
+        "score": 0,
+        "signal": "Funding +0.0100% per 8h (11.0% annualized) — slightly elevated but not extreme; mild long bias in perps. Fear & Greed 13/100 (Extreme Fear) is CORRELATED with funding — scored here jointly. Fear at this depth is historically contrarian bullish BUT funding staying positive during Extreme Fear means shorts are not loading; mixed read. Net: 0."
+      },
+      "cmeBasis": {
+        "score": 1,
+        "signal": "CME annualized basis +38.79% — STRONG CONTANGO. Near expiry (1 day), so roll-adjusted signal is noisy, but institutional basis premium this elevated indicates real demand from sophisticated capital. Scored independently from perp funding. Score +1."
+      },
+      "macro": {
+        "score": -1,
+        "signal": "10Y yield 4.85% (BEARISH for risk assets — real yield headwind). VIX 26.4 (ELEVATED — risk-off posture). DXY 102.27 (NEUTRAL, not a catalyst either way). Gold at $3,565 is surging — flight to safety, not risk-on rotation. Net macro: -1."
+      },
+      "sentiment": {
+        "score": 0,
+        "signal": "Fear & Greed 13 (Extreme Fear) already incorporated in derivatives axis (correlated). Options skew -24.5 (put IV 63% vs call IV 87%) signals near-term hedge demand dominant; contrarian read at these extremes can be bullish, but not actionable until price stabilizes. Scored 0 here to avoid double-count."
+      },
+      "stablecoin": {
+        "score": -1,
+        "signal": "USDT+USDC $242.9B, 7d delta -$1.6B — CONTRACTING. Regime: STABLE per instruction threshold, but marginal outflow of $1.6B in 7 days is a mild negative signal. Dry powder being removed, not added. Score -1."
+      },
+      "marketBalance": {
+        "score": 1,
+        "signal": "FAILED_AUCTION_LOW — price probed below $57,443 VAL in last 5 days and was rejected back into 30d value area. Sellers structurally exhausted at these levels; AMT rotation toward POC ($63,972) and VAH ($76,191) favored. Spot at $60,151 is at lower edge of value (14% through VA). Score +1 as instructed."
+      },
+      "scaleNote": "Range -10 to +10. Composite: onChain(-1) + etf(-1) + derivatives(0) + cme(+1) + macro(-1) + sentiment(0) + stablecoin(-1) + marketBalance(+1) = -2."
+    },
+    "overallBias": "CAUTION",
+    "biasReason": "LTH distribution, ETF outflows, and macro headwinds offset AMT auction rejection and CME contango.",
+    "headline": "BTC at Accumulation floor — sellers rejected, but distribution headwinds persist",
+    "marketStatus": "ACCUMULATION PHASE",
+    "auctionState": {
+      "state": "FAILED_AUCTION_LOW",
+      "location": "Spot $60,151 — lower edge of 30d value area, 14% through VA ($57,443–$76,191); inside 7d value ($59,154–$63,700)",
+      "poc": "$63,972 (30d) | $61,304 (7d)",
+      "vah": "$76,191 (30d) | $63,700 (7d)",
+      "val": "$57,443 (30d) | $59,154 (7d)",
+      "migration": "LOWER — 7d POC -4.2% vs 30d POC; value coiling and compressed (7d nested inside 30d)",
+      "implication": "Sellers were rejected below $57,443 VAL — structural support confirmed; responsive buyers should defend this zone, with rotation target toward $63,972 POC and $76,191 VAH, but compressed 7d value warns against chasing — wait for 7d VAH ($63,700) acceptance first."
+    },
+    "correlationRegime": {
+      "btcQqqCorrelation": "unavailable",
+      "regime": "MODERATE",
+      "implication": "BTC-QQQ correlation unavailable; default MODERATE assumed — VIX 26.4 and elevated 10Y yield suggest macro risk-off is influencing BTC alongside idiosyncratic crypto flows."
+    },
+    "priceAnalysis": {
+      "trend": "Downtrend from $124,767 ATH; price $60,151 sits 16.5% below 200d SMA ($72,027) and 20.1% below 50d SMA ($75,133). 20d SMA ($66,695) is closest resistance. Phase A accumulation band $53,448–$72,027 is active; price is 36% through the range.",
+      "keyLevel": "Support: $57,443 (30d VAL, failed auction low) and $53,448 (realized price / Phase A floor / hard stop at $51,844). Resistance: $63,700 (7d VAH), $63,972 (30d POC), $66,695 (20d SMA), $72,027 (200d SMA / Phase A→B gate).",
+      "realizedPriceContext": "Realized price $53,448 (BGeometrics, Nov 18). Spot at $60,151 = 12.5% premium to realized price. MVRV 1.125 — market is in fair value, not capitulation territory. LTH cost basis $48,462 (LTH MVRV 1.24) — long-term holders still in profit, explaining distribution pressure.",
+      "signal": "MIXED"
+    },
+    "whaleSignal": {
+      "status": "MIXED",
+      "netflowBTC": "+918 BTC (inflow to exchanges — partial proxy, low weight)",
+      "netflowUSD": "+$55.2M",
+      "netflowPctLiquid": "+0.022%",
+      "netflowPctVolume": "+0.151%",
+      "netflowPctMcap": "+0.0046%",
+      "historicalContext": "918 BTC inflow is negligible at 0.022% of liquid supply and 0.151% of daily volume. Data is flagged PARTIAL (16 legacy cold wallet addresses only) — directional read is low confidence. Not confirming strong distribution at this magnitude.",
+      "detail": "Exchange netflow +918 BTC suggests mild sell pressure bias, but partial data quality severely limits signal strength. Contradicts the FAILED_AUCTION_LOW AMT signal slightly. LTH distribution at -15,710 BTC/day (7d avg) is the more reliable whale signal and points to sustained supply pressure.",
+      "actionable": "Do not weight the +918 BTC exchange inflow heavily given PARTIAL data quality. Monitor for sustained multi-day inflow acceleration above 5,000 BTC/day on full-node data as a true bearish signal.",
+      "dataQuality": "ESTIMATED"
+    },
+    "binancePressure": {
+      "netTakerBTC": "unavailable",
+      "buyVolumeBTC": "unavailable",
+      "sellVolumeBTC": "unavailable",
+      "buyRatioPct": "unavailable",
+      "totalVolumeBTC": "unavailable",
+      "pressure": "NEUTRAL",
+      "span": "24h",
+      "confluence": "Binance 24h taker pressure data not provided — cannot confirm or contradict partial exchange netflow direction; default NEUTRAL applied.",
+      "dataQuality": "UNAVAILABLE"
+    },
+    "fundingRates": {
+      "rate8h": "+0.0100%",
+      "annualized": "+11.0%",
+      "regime": "ELEVATED",
+      "signal": "Longs paying shorts at 11% annualized — above neutral (~5-6% annualized baseline) but well below extreme long territory (>50% annualized). Positive funding during Extreme Fear (F&G 13) is an unusual divergence — market participants are net long in derivatives despite pessimistic sentiment.",
+      "detail": "Funding staying positive into fear-driven spot weakness may reflect forced hodlers rather than aggressive speculative longs. No imminent squeeze from funding alone, but watch for any funding spike above 0.03% per 8h.",
+      "squeeze_risk": "LOW"
+    },
+    "openInterest": {
+      "trend": "STABLE",
+      "regime": "31,866 BTC (~$1.9B) — OI is relatively contained at $1.9B total, suggesting leverage is not dangerously extended at current price.",
+      "detail": "Low absolute OI versus historical peaks reduces systemic liquidation risk. At $60,151 price, $1.9B OI implies a modest leverage multiple. A ±5% price move would generate ~$95-190M in liquidations — manageable.",
+      "leverageRisk": "LOW"
+    },
+    "mvrvSignal": {
+      "estimatedZone": "FAIR VALUE — MVRV 1.125 (live BGeometrics). LTH MVRV 1.24.",
+      "implication": "MVRV below 1.5 historically represents a favorable accumulation zone for 1-2 year horizons. Market is not in capitulation (MVRV <1.0) but also not overheated (MVRV >3.5). LTH holders at 1.24x their cost basis ($48,462) have incentive to distribute into any rally, limiting near-term upside velocity.",
+      "cycleContext": "Post-ATH ($124,767 Oct 2025) bear phase — price has corrected ~52% from peak. MVRV 1.125 is consistent with mid-bear recovery zones historically associated with Phase A accumulation. Prior cycles: MVRV <1.2 often precedes 6-12 month base-building before next impulse."
+    },
+    "etfFlows": {
+      "status": "OUTFLOW",
+      "totalNetUSD": "-$231M",
+      "totalNetBTC": "-3,847 BTC",
+      "totalNetPctLiquid": "-0.092%",
+      "ibitFlow": "not disaggregated in live data",
+      "streakDays": "not available from single-day snapshot",
+      "vsBaseline": "-$495M vs $264M/day baseline (swing from positive to negative: -$495M delta)",
+      "detail": "Nov 24 ETF net outflow of -$231M is a meaningful negative signal — below the institutional baseline of +$264M/day by nearly $500M. At 0.092% of liquid supply and 0.633% of daily volume, this is a material institutional retreat. Not catastrophic (IBIT AUM ~$115B+ can absorb), but directionally bearish for near-term price support.",
+      "trend": "DETERIORATING"
+    },
+    "stablecoinSignal": {
+      "status": "OUTFLOW",
+      "detail": "USDT+USDC combined $242.9B, 7d delta -$1.6B. Marginal contraction — dry powder being reduced, not added. Regime flagged STABLE by instruction threshold but directional drift is mild negative. Not consistent with aggressive accumulation setup.",
+      "signal": "Mild bearish — stablecoin supply contraction removes marginal bid from crypto markets; watch for reversal to EXPANDING as a re-entry confirmation."
+    },
+    "macroContext": {
+      "riskLevel": "HIGH",
+      "dxy": "102.27",
+      "dxySignal": "NEUTRAL — DXY below 104 reduces one headwind but provides no tailwind; not a catalyst.",
+      "realYield": "10Y nominal 4.85% — with breakeven ~2.3%, real yield ~2.55% — ELEVATED and BEARISH for non-yielding assets like BTC.",
+      "realYieldSignal": "BEARISH — real yields above 2% historically compress BTC multiples.",
+      "gold": "$3,565.41 (+0.64% 24h) — gold at all-time highs signals macro uncertainty and flight to safety. BTC/Gold ratio 16.87 — BTC underperforming gold, suggesting risk-off rotation favoring hard money over crypto risk.",
+      "fedWatch": "No Fed meeting imminent; 10Y at 4.85% implies market pricing higher-for-longer. No rate cut catalyst visible in near term.",
+      "detail": "Macro environment is unambiguously headwind-heavy: elevated real yields, VIX 26.4 risk-off, gold surging (flight to safety rather than inflation hedge), and DXY neutral. Thanksgiving holiday (US) today reduces liquidity and volume — thin markets amplify volatility in both directions. Institutional desks largely offline."
+    },
+    "todayAction": {
+      "recommendation": "ACCUMULATE",
+      "size": "Deploy 25-33% of remaining 20% cash/stables DCA reserve. Smaller tranche given CAUTION bias and macro headwinds — not max conviction.",
+      "trigger": "Price holding above $57,443 (30d VAL / failed auction low support). Add on close above $63,700 (7d VAH) for confirmation of POC rotation toward $63,972. Full Phase A sizing only on confirmed daily close hold above 7d VA low ($59,154). Do NOT chase above $66,695 (20d SMA) without ETF flow reversal to >+$300M/day.",
+      "stopAlert": "MONITORING",
+      "dynamicStop": "Hard stop: daily close below $51,844. Tactical stop: daily close below $57,443 (30d VAL) on two consecutive closes — signals failed auction low invalidation and revisit of $53,448 realized price. Phase A remains valid down to $53,448.",
+      "scoreJustification": "Composite -2 warrants CAUTION posture, not avoidance. FAILED_AUCTION_LOW AMT structure (+1) and CME strong contango (+1) support measured accumulation at lower edge of value area. MVRV 1.125 and realized price $53,448 anchor the fundamental floor. Offset: LTH distributing -15,710 BTC/day, ETF outflow -$231M, macro risk-off, stablecoin contraction — all argue for reduced size. Thanksgiving illiquidity today cuts both ways; limit orders preferred over market orders."
+    },
+    "cmeBasis": {
+      "basisPct": "+38.79% annualized",
+      "regime": "STRONG CONTANGO",
+      "signal": "BULLISH (institutional demand premium) — CME basis at +38.79% annualized is elevated, implying institutional participants see significant value in owning BTC vs selling futures. Near-expiry caveat (1 day) adds noise but the structural premium is real.",
+      "detail": "With only 1 day to CME December expiry, basis will reset with the roll. Watch January 2027 CME basis post-roll for sustained signal. If new contract opens at >25% annualized contango, confirm institutional demand; compression below 15% would be a regime warning.",
+      "cmeOIvsPerp": "Perp OI at 31,866 BTC ($1.9B total) — CME institutional basis premium diverging positively from perp funding (11% annualized) confirms two separate demand pools. Not double-counted in scoring."
+    },
+    "catalystWatch": [
+      {
+        "event": "CFTC Prediction Markets 'Gaming' Rule — White House OIRA Review",
+        "timing": "Active review as of Nov 20, 2026; decision expected within 90 days (by ~Feb 2027)",
+        "impact": "BINARY",
+        "note": "NewsAPI [2026-11-24, Dcforecasts.com]: Rule received 4,933 comments and reached White House Office of Information and Regulatory Affairs review Nov 20. If 'gaming' definition is narrow, it expands legitimate crypto derivatives markets. If broad, it restricts prediction market volume (CFTC, Kalshi). Crypto derivative platforms watch closely."
+      },
+      {
+        "event": "CFTC Crypto Reserves Guidance — Swap Venue and Clearinghouse Implementation",
+        "timing": "Staff guidance already issued as of Nov 24, 2026; institutional adoption rolling through Q4 2026–Q1 2027",
+        "impact": "BULLISH",
+        "note": "NewsAPI [2026-11-24, Decrypt]: New CFTC staff guidance permits swap venues and clearinghouses to count Bitcoin, Ethereum, and stablecoins toward 12-month operational reserves. This is a structural legitimization of BTC as institutional collateral — reduces regulatory friction for prime brokers and custodians. Medium-term bullish for institutional adoption."
+      },
+      {
+        "event": "Anchorage Digital 61st Parallel — Bitcoin Yield Product Launch",
+        "timing": "Launched Nov 24, 2026; AUM ramp expected Q1 2027",
+        "impact": "BULLISH",
+        "note": "NewsAPI [2026-11-24, Crypto Briefing]: Anchorage Digital launched 61st Parallel Asset Management to pursue Bitcoin yield strategies. Signals institutional appetite for yield-generating BTC products beyond simple custody. Regulatory compliance emphasis suggests this targets pension funds and endowments — a new institutional demand vector if successful."
+      },
+      {
+        "event": "ARK Crypto Index Fund Registration Withdrawal — Market Signal",
+        "timing": "Withdrawn Nov 20, 2026",
+        "impact": "BEARISH",
+        "note": "NewsAPI [2026-11-24, Dcforecasts.com]: ARK pulled two never-launched crypto index fund registrations, including an ex-Bitcoin version. While procedural, withdrawal of diversified crypto products may signal ARK sees insufficient retail demand for altcoin exposure at current prices — reinforces BTC dominance narrative (57.8%) but reduces near-term product expansion tailwinds."
+      }
+    ],
+    "analystNote": "BTC at $60,151 is structurally inside Phase A accumulation ($53,448–$72,027) with the most important technical signal being the FAILED_AUCTION_LOW — price probed below $57,443 and was rejected, confirming responsive buyers defending the lower value area edge, with AMT rotation targets at $63,972 (POC) and $76,191 (VAH) over the medium term. However, the composite score of -2 reflects a genuine headwind stack: LTH holders are distributing at -15,710 BTC/day (7d avg, 0.374% of liquid supply), ETF flows turned negative at -$231M vs a +$264M/day baseline, stablecoin supply contracted $1.6B in 7 days, and macro conditions (10Y at 4.85%, VIX 26.4, gold surging in risk-off mode) are not supportive of imminent price acceleration. The CME basis at +38.79% annualized (near expiry, so monitor the January roll) and MVRV 1.125 at fair value anchor the fundamental case that this is not a sell zone — it is a measured accumulation window for a 1-2 year mandate, but sizing should remain conservative (25-33% of DCA reserve) until ETF flows turn consistently positive and LTH distribution moderates below -5,000 BTC/day on the 7d average. Thanksgiving US holiday today reduces market liquidity — prefer limit orders and expect wider spreads. Note: market regime flagged 'insufficient history (57 cycles)' — phase anchors are directionally sound but statistically provisional, adding one layer of caution to mechanical triggers.",
+    "riskWarning": "LTH distribution at -15,710 BTC/day (7d avg) accelerating further — if 30d average crosses -15,000 BTC/day, it signals structural top-of-range selling that could overwhelm AMT auction support and push price below the $57,443 VAL, invalidating the FAILED_AUCTION_LOW thesis and targeting the $53,448 realized price hard floor.",
+    "normalization": {
+      "currentPrice": "$60,151.90",
+      "marketCap": "$1.21T",
+      "dailyVolumeBTC": "608,225 BTC ($36.6B)",
+      "volumeTrend": "STABLE (5d/20d ratio 1.19)",
+      "lthSellingBTC": "-15,710 BTC/day (7d avg) | 30d avg: -9,143 BTC/day",
+      "lthSellingPctLiquid": "-0.374% of liquid supply (7d avg)",
+      "whaleNetflowBTC": "+918 BTC (inflow to exchanges = mild sell pressure; PARTIAL DATA — low weight)",
+      "whaleNetflowPctLiquid": "+0.022%",
+      "whaleNetflowPctVolume": "+0.151%",
+      "whaleNetflowPctMcap": "+0.0046%",
+      "etfFlowUSD": "-$231M",
+      "etfFlowBTC": "-3,847 BTC",
+      "etfFlowPctLiquid": "-0.092%"
+    },
+    "dataFreshness": {
+      "cachedAt": "2026-11-25T21:17:23.495Z",
+      "ageHours": 1.8,
+      "status": "FRESH",
+      "liveRefreshed": [],
+      "staleFields": [],
+      "staleSnapshotPrice": 60151.9
+    }
+  },
+  "phaseAnchors": {
+    "hardStop": 51793,
+    "phaseA_low": 53395,
+    "phaseA_high": 71920,
+    "phaseB_high": 82708,
+    "phaseC_high": 122272,
+    "derivedFrom": {
+      "realized": 53394.59,
+      "sma200": 71920,
+      "cycleHigh": 86594,
+      "ath": 124767,
+      "realizedSource": "realizedPrice"
+    },
+    "derivationStatus": "NORMAL",
+    "computedAt": "2026-11-26T07:21:14.114Z",
+    "regime": "NORMAL",
+    "regimeReason": "insufficient history — bear-realized rule needs 120 cycles, have 58; bear-sma rule needs 240 cycles, have 58; ath-cycle rule needs 112 cycles, have 58",
+    "rawRegime": "NORMAL",
+    "regimeState": {
+      "promoted": "NORMAL",
+      "pending": null,
+      "pendingCount": 0,
+      "normalCount": 1612
+    },
+    "historyCycles": 58
+  },
+  "catalystNews": [
+    {
+      "title": "Justice Department Moves to Forfeit $11 Billion in Crypto Stolen From Binance, Officials Say",
+      "source": "Naturalnews.com",
+      "date": "2026-11-25",
+      "url": "https://www.naturalnews.com/2026-11-25-justice-department-forfeit-crypto-stolen-from-binance.html",
+      "description": "The U.S. Department of Justice has filed a civil forfeiture complaint seeking to take control of cryptocurrency tied to assets stolen from the global exchange Binance, according to court records and department statements released this week. The action, filed …",
+      "content": "The U.S. Department of Justice has filed a civil forfeiture complaint seeking to take control of cryptocurrency tied to assets stolen from the global exchange Binance, according to court records and …"
+    },
+    {
+      "title": "Taiwan Central Bank Treats Big Stablecoins Like Deposits With a 10.775% Reserve Rule",
+      "source": "Dcforecasts.com",
+      "date": "2026-11-25",
+      "url": "https://www.dcforecasts.com/regulation/taiwan-central-bank-stablecoin-reserve-rule/",
+      "description": "A Nov. 24 draft from Taiwan's central bank would make large stablecoin issuers deposit 10.775% of balances above NT$10 billion or US$350 million in an interest-free account.",
+      "content": "Taiwan central bank officials have drawn up the rule that decides how much of a large stablecoin’s backing must sit with them, interest-free. A draft published on November 24 by the Central Bank of t…"
+    },
+    {
+      "title": "The CFTC opens the door to Bitcoin reserves at US exchanges with a 20% catch",
+      "source": "CryptoSlate",
+      "date": "2026-11-25",
+      "url": "https://cryptoslate.com/the-cftc-opens-the-door-to-bitcoin-reserves-at-us-exchanges-with-a-20-catch/",
+      "description": "CFTC staff says exchanges and clearinghouses can count qualifying crypto at a discount, and a worked example shows how the annual buffer can fall short.\nRead the full story on CryptoSlateUnderstand the crypto stories that matter and what to watch next. Get Th…",
+      "content": "On Nov. 23, Commodity Futures Trading Commission (CFTC) staff said US futures exchanges and derivatives clearinghouses may count Bitcoin, Ethereum, and qualifying payment stablecoins toward a rolling…"
+    },
+    {
+      "title": "CFTC Prediction Markets Rule Defining ‘Gaming’ Reaches the White House",
+      "source": "Dcforecasts.com",
+      "date": "2026-11-24",
+      "url": "https://www.dcforecasts.com/regulation/cftc-prediction-markets-rule-white-house-review/",
+      "description": "The CFTC prediction markets rule defining gaming reached White House review on Nov. 20 after 4,933 comments. Here is what the final text could change.",
+      "content": "The CFTC prediction markets rule that decides which event contracts can be blocked as contrary to the public interest is now at the White House. The federal regulatory review list at reginfo.gov show…"
+    },
+    {
+      "title": "Anchorage Digital launches 61st Parallel Asset Management to pursue Bitcoin yield",
+      "source": "Crypto Briefing",
+      "date": "2026-11-24",
+      "url": "https://cryptobriefing.com/anchorage-digital-61st-parallel-bitcoin-yield/",
+      "description": "Anchorage's move into Bitcoin yield management could reshape institutional crypto strategies, emphasizing regulatory compliance and fiduciary duty.\nThe post Anchorage Digital launches 61st Parallel Asset Management to pursue Bitcoin yield appeared first on Cr…",
+      "content": "The federally chartered crypto bank is moving beyond custody into investment advice, with institutional Bitcoin yield as the opening pitchAnchorage Digital has spent years being the place institution…"
+    },
+    {
+      "title": "ARK Pulls Two Crypto Index Fund Filings, One Built to Strip Out Bitcoin",
+      "source": "Dcforecasts.com",
+      "date": "2026-11-24",
+      "url": "https://www.dcforecasts.com/bitcoin-news/ark-crypto-index-fund-filings-withdrawn-ex-bitcoin/",
+      "description": "ARK withdrew two never-launched crypto index fund registrations on November 20, including an ex-Bitcoin version that planned to short CME Bitcoin futures.",
+      "content": "ARK Investment Management has withdrawn two crypto index fund registrations with the SEC, including one designed to strip Bitcoin out of a 20-coin basket.\r\nBoth requests were filed on November 20, 20…"
+    },
+    {
+      "title": "CFTC Says FIs Can Count Stablecoins as Financial Resources, Not Cash",
+      "source": "pymnts.com",
+      "date": "2026-11-24",
+      "url": "https://www.pymnts.com/cryptocurrency/2026/cftc-says-financial-institutions-can-count-stablecoins-financial-resources-not-cash/",
+      "description": "Financial institutions are finding that digital dollars can be useful for moving money without necessarily being an acceptable substitute for the money they need in an emergency. In a Tuesday (Nov. 23) advisory, Commodity Futures Trading Commission staff said…",
+      "content": "Financial institutions are finding that digital dollars can be useful for moving money without necessarily being an acceptable substitute for the money they need in an emergency.In a Tuesday (Nov. 23…"
+    },
+    {
+      "title": "What the CFTC’s New Crypto Reserves Guidance Actually Allows—And What It Doesn’t",
+      "source": "Decrypt",
+      "date": "2026-11-24",
+      "url": "https://decrypt.co/383906/cftc-new-crypto-reserves-guidance-actually-allows-what-it-doesnt",
+      "description": "Staff guidance lets swap venues and clearinghouses count Bitcoin, Ethereum, and stablecoins toward their 12-month operating-cost buffer. Here's the catch.",
+      "content": "In brief\r\n<ul><li>A CFTC staff advisory explains how swap execution facilities, exchanges and clearinghouses can use Bitcoin, Ethereum, and payment stablecoins to help meet their requirement to hold …"
+    },
+    {
+      "title": "Kalshi daily volume of ‘perps’ trading begins to top its prediction markets",
+      "source": "CNBC",
+      "date": "2026-11-24",
+      "url": "https://www.cnbc.com/2026/11/24/kalshi-perps-volume-prediction-markets.html",
+      "description": "The product, the first one beyond event contracts, was introduced in May.",
+      "content": "Kalshi is known for its prediction marketsacross sports, politics and culture. \r\nBut now, for the first time, perpetual futures, Kalshi's second financial product, has surpassed the notional trading …"
+    },
+    {
+      "title": "CFTC sets new prediction market rules as more firms seek US entry",
+      "source": "Cointelegraph",
+      "date": "2026-11-24",
+      "url": "https://cointelegraph.com/news/cftc-new-prediction-market-rules-firms-seek-us-entry",
+      "description": "The CFTC has introduced new rules for prediction markets, changing how exchanges report trades and collect information about their users.",
+      "content": "The US Commodity Futures Trading Commission (CFTC) has approved new reporting rules for prediction markets as more companies look to enter the industry.\r\nUnder the new rules, announced on Monday, exc…"
+    }
+  ],
+  "mvrv": {
+    "mvrv": 1.132888182117327,
+    "realizedPrice": 53394.59,
+    "lthRealizedPrice": 48427.43,
+    "lthMvrv": 1.249087552240538,
+    "realizedDate": "2026-11-19",
+    "date": "2026-11-26",
+    "method": "spot / realizedPrice",
+    "source": "BGeometrics (bitcoin-data.com)",
+    "stale": false
+  },
+  "exchangeFlow": {
+    "netflow_btc": 3974.683,
+    "inflow_btc": 3974.683,
+    "outflow_btc": 0,
+    "total_exchange_btc": 449635.24,
+    "exchange_addr_count": 6,
+    "elapsed_hours": 0,
+    "source": "blockchain.info balance delta (16 legacy exchange addresses)",
+    "date": "2026-11-26"
+  },
+  "_exchangeAddressBalances": {
+    "34xp4vRoCGJym3xR7yCVPFHoCNxv4Twseo": 248597.59296803,
+    "1P5ZEDWTKTFGxQjZphgWPQUpe554WKDfHQ": 0.03557311,
+    "3M219KR5vEneNb47ewrPfWyb5jQ2DjxRP6": 163110.36044777,
+    "3D2oetdNuZUqQHPJmcMDDHYoqkyNVsFk9r": 0.15395293,
+    "1HQ3Go3ggs8pFnXuHVHRytPCq5fGG8Hbhx": 0.01550213,
+    "3LQUu4v9z6KNch71j7kbj8GPeAGUo1FW6a": 37927.07838102
+  },
+  "binanceLargeTrades": {
+    "threshold_btc": 2,
+    "whale_buy_btc": 0,
+    "whale_sell_btc": 0,
+    "net_whale_btc": 0,
+    "whale_buy_count": 0,
+    "whale_sell_count": 0,
+    "whale_buy_ratio": null,
+    "span_minutes": 3,
+    "pressure": "NEUTRAL",
+    "source": "Binance aggTrades (BTCUSDT, last 1000 trades)",
+    "date": "2026-11-11"
+  },
+  "amt": {
+    "state": "FAILED_AUCTION_LOW",
+    "reason": "probe below VAL in last 5d rejected back into value — sellers exhausted; rotation toward POC/VAH favoured",
+    "suggestedScore": 1,
+    "location": "LOWER_EDGE",
+    "price": 60490,
+    "poc": 63972,
+    "vah": 75187,
+    "val": 57109,
+    "vaWidthPct": 28.3,
+    "posInValuePct": 19,
+    "short": {
+      "poc": 60222,
+      "vah": 61930,
+      "val": 57573,
+      "location": "INSIDE_7D_VALUE"
+    },
+    "migration": "LOWER",
+    "pocShiftPct": -5.9,
+    "coiling": true,
+    "closesAboveVAH": 0,
+    "closesBelowVAL": 0,
+    "lookbackDays": 30,
+    "shortLookbackDays": 7,
+    "asOf": "2026-11-25"
+  },
+  "liveRefreshAt": "2026-11-23T17:09:32.504Z",
+  "snapshotAt": "2026-11-26T07:21:16.524Z",
+  "snapshotKey": "2026-11-26-07"
+}

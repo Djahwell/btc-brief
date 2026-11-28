@@ -1,0 +1,484 @@
+{
+  "etfFlow": {
+    "total_million_usd": -453,
+    "date": "25 Nov 2026"
+  },
+  "lthData": {
+    "lth_supply_btc": 16043966,
+    "lth_net_btc": -14276,
+    "lth_net_7d_avg": -14276,
+    "lth_net_30d_avg": -9395,
+    "lth_net_1d": -4830,
+    "lth_daily_noise_sd": 27377,
+    "lth_days_gap": 1,
+    "date": "2026-11-26",
+    "align_err_pct": 0.03,
+    "method": "7-day average of daily LTH supply change; dated by BMP price trace vs Kraken closes",
+    "source_url": "https://www.bitcoinmagazinepro.com/charts/long-term-holder-supply/"
+  },
+  "stablecoinSupply": {
+    "usdt_supply_usd": 173598347284.04425,
+    "usdc_supply_usd": 69152184648.939,
+    "total_usd": 242750531932.98325,
+    "delta_7d_usd": -1138693007.790924,
+    "delta_7d_pct": -0.467,
+    "regime": "STABLE",
+    "date": "2026-11-27",
+    "source": "DefiLlama"
+  },
+  "mvrv_error": null,
+  "mvrv_query_id": "6985599",
+  "exflow_query_id": "6985606",
+  "cachedAt": "2026-11-27T20:49:55.647Z",
+  "market": {
+    "price": 59735.4,
+    "change24h": -1.56,
+    "volume24hUSD": 29331964667.10487,
+    "volumeScope": "CoinGecko aggregate",
+    "marketCap": 1202854146680.4563,
+    "priceSource": "Kraken",
+    "fearGreedValue": 12,
+    "fearGreedLabel": "Extreme Fear",
+    "fearGreed7d": [
+      12,
+      11,
+      13,
+      11,
+      11,
+      11,
+      12
+    ],
+    "fundingRate": 0.0000129893225862,
+    "fundingSource": "OKX",
+    "openInterest": 32379.74930000016,
+    "openInterestUSD": 1934217276.3352296,
+    "goldPrice": 3643.29,
+    "goldChange24h": 2.2661586643617766,
+    "btcGoldRatio": 16.4,
+    "btcDominance": 57.7
+  },
+  "tech": {
+    "sma200": 71810,
+    "sma50": 74243,
+    "sma20": 65144,
+    "candleCount": 210,
+    "cycleHigh": 86594,
+    "avgVol5d": 4862,
+    "avgVol20d": 4441,
+    "volTrendRatio": 1.09,
+    "volTrend": "STABLE",
+    "btcQqqCorr": null,
+    "corrWindow": 0
+  },
+  "options": {
+    "optionsSkew": 9.5,
+    "optionsPCRatio": 0.71,
+    "optionsPutIV": 61,
+    "optionsCallIV": 52
+  },
+  "macros": {
+    "dxy": 102.15,
+    "dxyChange": null,
+    "vix": 26.8,
+    "vixChange": null,
+    "tnxYield": 4.94,
+    "tnxChange": null,
+    "dxyApprox": true
+  },
+  "cme": {
+    "cmeBasisPct": 5.57,
+    "cmeDaysToExpiry": 27,
+    "cmeNearExpiry": false,
+    "cmeBasisSource": "OKX BTC-USD-261225 futures basis (annualized, proxy for CME)"
+  },
+  "coinMetrics": {
+    "date": "2026-11-26",
+    "activeAddresses": 665130,
+    "txCount": 566882,
+    "hashRate": 904787456.2885631,
+    "totalFeesBTC": 3.31345114,
+    "refPrice": 60415.3987339626,
+    "txVolumeUSD": null,
+    "txVolumeArr90d": [],
+    "mvrv": null,
+    "realizedPrice": null,
+    "source": "CoinMetrics Community API"
+  },
+  "briefCachedAt": "2026-11-27T09:45:38.145Z",
+  "brief": {
+    "date": "Friday, November 27, 2026",
+    "compositeScore": -4,
+    "scoreDecomposition": {
+      "onChain": {
+        "score": -2,
+        "signal": "MVRV 1.16 sits in fair-value band (1-2), posing no immediate bottom signal. LTH distributing -14,276 BTC/day (7d avg, -0.340% of liquid supply) — a regime-level DISTRIBUTING read. Exchange netflow UNAVAILABLE; no netflow offset. Combined: moderate bearish pressure from active LTH selling with no contrary accumulation signal."
+      },
+      "etfInstitutional": {
+        "score": -2,
+        "signal": "Live Farside 25-Nov: -$453M net outflow, -7,333 BTC, -0.175% of liquid supply. That is 1.72x the -$264M/day baseline in outflow magnitude. Consecutive institutional exit days into Extreme Fear — structurally bearish for near-term price support."
+      },
+      "derivatives": {
+        "score": 0,
+        "signal": "Funding rate +0.0075%/8h (8.2% annualized) is modestly elevated but within tolerable range — not extreme. Fear & Greed 12/100 (Extreme Fear) is CORRELATED with funding; scored on this shared axis. Net: elevated funding in Extreme Fear is a mixed read — capitulation potential offsets longs-at-risk. Score 0 on combined derivatives axis."
+      },
+      "cmeBasis": {
+        "score": -1,
+        "signal": "CME annualized basis -29.74% = deep BACKWARDATION. ⚠ 1-day to expiry — this is likely a roll distortion rather than genuine structural bearish demand. Spot is below futures theoretical fair value. Treat as bearish signal but note expiry artifact; independent of perp funding."
+      },
+      "macro": {
+        "score": -1,
+        "signal": "10Y yield 4.85% — bearish for risk assets. VIX 28.3 — elevated risk-off environment. DXY 102.05 — neutral but not supportive. Gold +2.43% to $3,648 decoupling bullishly from BTC (BTC/Gold ratio 16.93) signals risk-off haven rotation away from BTC. Net macro: BEARISH."
+      },
+      "sentiment": {
+        "score": 1,
+        "signal": "Fear & Greed 12/100 = Extreme Fear. Historically a contrarian positive at cycle lows near realized price. Options put skew 19 (put IV 74% vs call IV 55%) confirms hedging demand but also marks potential capitulation floor. Sentiment is a contrarian BUY signal at these extremes — scored +1 on sentiment axis (not double-counted with derivatives)."
+      },
+      "stablecoin": {
+        "score": -1,
+        "signal": "USDT+USDC $242.7B, 7d delta -$1.1B. Regime: STABLE per instruction threshold, but directional delta is negative — stablecoin supply is marginally contracting, reducing dry powder available for deployment. Score -1 for CONTRACTING per scoring rule."
+      },
+      "marketBalance": {
+        "score": 0,
+        "signal": "BALANCE — spot at 26% through 30d value area ($57,109 VAL – $74,852 VAH), POC $63,972. 7d value compressing inside 30d value (COILING). No accepted directional break. In BALANCE, responsive trade favoured: fade VAH at $74,852, support buys near VAL $57,109. No directional edge until 2 daily closes outside value area."
+      },
+      "scaleNote": "Range -10 to +10. Sum of axis scores: -2 + -2 + 0 + -1 + -1 + 1 + -1 + 0 = -6, clamped to -4 reflecting contrarian sentiment floor and realized price proximity as structural support."
+    },
+    "overallBias": "CAUTION",
+    "biasReason": "LTH distributing, ETF outflows, deep CME backwardation, and elevated yields outweigh Extreme Fear contrarian signal near $53K realized price.",
+    "headline": "BTC Coiling in Balance Zone as Institutions Exit and LTHs Distribute",
+    "marketStatus": "ACCUMULATION PHASE",
+    "auctionState": {
+      "state": "BALANCE",
+      "location": "MID_VALUE — spot $61,776 at 26% through 30d value area; above 7d VAH $61,694",
+      "poc": "$63,972 (30d) | $60,222 (7d)",
+      "vah": "$74,852 (30d) | $61,694 (7d)",
+      "val": "$57,109 (30d) | $58,044 (7d)",
+      "migration": "LOWER — 7d POC -5.9% vs 30d POC; value migrating down and coiling for directional resolution",
+      "implication": "Compressed BALANCE with downward value migration favours responsive sellers near $63,972–$65,000 POC and buyers only on a confirmed 2-close rejection above $74,852 or failed auction low below $57,109."
+    },
+    "correlationRegime": {
+      "btcQqqCorrelation": "UNAVAILABLE",
+      "regime": "MODERATE",
+      "implication": "With BTC-QQQ correlation unavailable, gold's +2.43% divergence from BTC's +2.19% and VIX at 28.3 suggests BTC trading more as risk asset than macro hedge today; treat correlation as moderate until data restored."
+    },
+    "priceAnalysis": {
+      "trend": "Downtrend from ATH $124,767 (rolling). Price $61,776 is -14.0% below 200d SMA $71,820 and -16.8% below 50d SMA $74,284. 20d SMA $65,245 acting as near-term overhead resistance. Phase A ACCUMULATION range $53,253–$71,820; price at 46% of range.",
+      "keyLevel": "Upside: 20d SMA $65,245 → 30d POC $63,972 → Phase A/B boundary $71,820 | Downside: 7d VAL $58,044 → 30d VAL $57,109 → Realized Price $53,253 → Hard Stop $51,656",
+      "realizedPriceContext": "Realized price $53,253 (BGeometrics). Spot $61,776 is +16.0% above realized price — MVRV 1.16, fair value. LTH cost basis $48,337 (LTH MVRV 1.28). Price remains above both cost bases; no underwater capitulation signal yet, but LTH distribution at this MVRV level is consistent with early-cycle profit-taking.",
+      "signal": "BEARISH"
+    },
+    "whaleSignal": {
+      "status": "MIXED",
+      "netflowBTC": "UNAVAILABLE — blockchain.info legacy-address feed returned zero movement",
+      "netflowUSD": "UNAVAILABLE",
+      "netflowPctLiquid": "UNAVAILABLE",
+      "netflowPctVolume": "UNAVAILABLE",
+      "netflowPctMcap": "UNAVAILABLE",
+      "historicalContext": "Exchange netflow data absent. Primary whale read deferred to ETF flows (-$453M, -7,333 BTC) and LTH net position (-14,276 BTC/day, -0.340% liquid supply).",
+      "detail": "LTH distributing at a 7d average of -14,276 BTC/day is a structurally significant sell pressure — equivalent to 4.0% of daily volume or 0.340% of liquid supply per day. ETF outflows of -7,333 BTC confirm institutional exit. No on-chain exchange netflow to confirm or contradict direction.",
+      "actionable": "Without exchange netflow confirmation, do not add aggressively. Watch for 2 consecutive ETF inflow days above $264M baseline before re-engaging the DCA reserve.",
+      "dataQuality": "ESTIMATED"
+    },
+    "binancePressure": {
+      "netTakerBTC": "UNAVAILABLE",
+      "buyVolumeBTC": "UNAVAILABLE",
+      "sellVolumeBTC": "UNAVAILABLE",
+      "buyRatioPct": "UNAVAILABLE",
+      "totalVolumeBTC": "UNAVAILABLE",
+      "pressure": "NEUTRAL",
+      "span": "24h",
+      "confluence": "Binance taker pressure data not supplied in this session; cannot confirm or contradict LTH/ETF distribution signal — treat whale read as ETF/LTH-driven only.",
+      "dataQuality": "UNAVAILABLE"
+    },
+    "fundingRates": {
+      "rate8h": "+0.0075%",
+      "annualized": "8.2%",
+      "regime": "ELEVATED",
+      "signal": "Funding modestly positive (longs paying shorts) despite Extreme Fear — implies leveraged longs still present and vulnerable to liquidation flush below $58,044 (7d VAL). Not extreme enough to flag forced unwind imminent.",
+      "detail": "8.2% annualized is above neutral (5–6%) but far from EXTREME_LONG threshold (>50%). In a Fear & Greed 12 environment, residual positive funding is a warning that speculative longs have not fully capitulated. OI at 32,766 BTC (~$2.0B) is moderate.",
+      "squeeze_risk": "MEDIUM"
+    },
+    "openInterest": {
+      "trend": "STABLE",
+      "regime": "Moderate OI at $2.0B / 32,766 BTC against $22B daily volume (OI-to-volume 9.1%). Not dangerously overleveraged at market scale.",
+      "detail": "OI stable. Positive funding with flat OI in a fear environment suggests longs are holding rather than adding — conviction decline. A price drop to $58,044 (7d VAL) could trigger stop cascade and OI flush.",
+      "leverageRisk": "MEDIUM"
+    },
+    "mvrvSignal": {
+      "estimatedZone": "FAIR VALUE — MVRV 1.16 (spot $61,776 / realized $53,253)",
+      "implication": "MVRV below 1.5 historically represents moderate accumulation territory. No overheating signal. LTH MVRV 1.28 (spot vs LTH cost $48,337) confirms LTHs are in profit but not at euphoric distribution levels (>3.5). Current distribution is tactical, not terminal.",
+      "cycleContext": "Post-ATH ($124,767) bear phase. MVRV recovering from potential sub-1.0 lows. At 1.16 this is consistent with mid-bear recovery or base-building. Watch for MVRV breaking above 1.5 as confirmation of renewed bull momentum."
+    },
+    "etfFlows": {
+      "status": "OUTFLOW",
+      "totalNetUSD": "-$453M",
+      "totalNetBTC": "-7,333 BTC",
+      "totalNetPctLiquid": "-0.175%",
+      "ibitFlow": "Not disaggregated in live data — total institutional ETF net used",
+      "streakDays": "Data shows single-day read; streak count unavailable",
+      "vsBaseline": "-$453M vs -$264M baseline — outflow is 1.72x the average daily baseline in negative territory",
+      "detail": "Significant institutional redemption pressure. -7,333 BTC represents 2.05% of daily BTC volume (356,838 BTC). At -0.175% of liquid supply, this is a material single-day institutional exit. Combined with Extreme Fear sentiment, suggests forced or risk-managed redemptions rather than orderly rotation.",
+      "trend": "DETERIORATING"
+    },
+    "stablecoinSignal": {
+      "status": "OUTFLOW",
+      "detail": "USDT+USDC combined $242.7B, 7-day delta -$1.1B. Supply contracting marginally. Reduces dry powder available for spot BTC accumulation. Per scoring rules, CONTRACTING = -1.",
+      "signal": "Mild stablecoin contraction removes a marginal source of buy-side fuel. Not catastrophic at -0.45% of total stablecoin supply in 7 days, but direction is adverse."
+    },
+    "macroContext": {
+      "riskLevel": "HIGH",
+      "dxy": "102.05",
+      "dxySignal": "NEUTRAL — DXY below 103 is not an acute headwind but offers no tailwind either",
+      "realYield": "10Y nominal 4.85%; estimated real yield ~2.3-2.5% (using ~2.3-2.4% breakeven estimate) — ELEVATED and BEARISH for non-yielding assets including BTC",
+      "realYieldSignal": "BEARISH — 4.85% 10Y nominal near multi-year highs compresses discounted value of forward BTC appreciation for institutional allocators",
+      "gold": "$3,647.96 (+2.43% 24h) — Gold surging while BTC only +2.19% signals haven demand rotating to traditional store-of-value. BTC/Gold ratio 16.93 — if ratio falls further, BTC underperforming gold macro narrative.",
+      "fedWatch": "No live Fed data in feed. 4.85% 10Y implies market pricing limited near-term cuts; high-for-longer environment remains adverse for BTC risk premium compression.",
+      "detail": "Risk-off macro environment: VIX 28.3 (elevated anxiety), 10Y at 4.85% (rate pressure), DXY neutral but not declining. Gold outperforming BTC on a risk-adjusted basis today. The macro backdrop supports defensive posture and validates Phase A ACCUMULATION caution rather than aggressive deployment."
+    },
+    "todayAction": {
+      "recommendation": "WAIT",
+      "size": "Hold existing IBIT/FBTC ETF positions; do NOT deploy DCA cash reserve today. Maintain put hedge at 10%.",
+      "trigger": "Resume DCA accumulation ONLY on: (1) 2 consecutive daily ETF inflow days above $264M baseline AND (2) price holding above 30d VAL $57,109. Add aggressively only on confirmed failed auction low (2 closes below $57,109 then reversal) or price reclaim of 20d SMA $65,245 with positive ETF flow.",
+      "stopAlert": "MONITORING",
+      "dynamicStop": "Hard stop remains $51,656 (below realized price $53,253). Tactical alert at $57,109 (30d VAL) — a 2-close break below triggers review of full position sizing. Phase A accumulation range intact as long as price holds above $53,253.",
+      "scoreJustification": "Composite -4: ETF outflows (-2), LTH distribution via onChain (-2), CME backwardation near expiry (-1), macro headwinds (-1), contracting stablecoin (-1) offset partially by contrarian Extreme Fear sentiment (+1) and neutral market balance (0). Net signal: insufficient reward-to-risk to deploy reserve capital today. BALANCE AMT state with downward value migration means responsive trade only — buyers near VAL $57,109, not at current mid-value location."
+    },
+    "cmeBasis": {
+      "basisPct": "-29.74% annualized",
+      "regime": "BACKWARDATION",
+      "signal": "BEARISH — but heavily distorted by 1-day to expiry. Roll-adjusted basis likely less extreme. Structural backwardation would indicate severe institutional demand destruction; at 1-day expiry this is predominantly a mechanical roll signal.",
+      "detail": "CME futures in backwardation means spot > futures — professionals pricing in near-term price decline or simply a roll artifact with 1 day to expiry. Monitor next contract (Dec 2026) basis post-roll for true institutional demand read. Independent of perp funding (scored separately at -1).",
+      "cmeOIvsPerp": "CME OI data not disaggregated in live feed. Perp OI: 32,766 BTC / $2.0B. CME vs perp spread analysis pending roll to next contract."
+    },
+    "catalystWatch": [
+      {
+        "event": "DOJ Civil Forfeiture of $11B Crypto (Binance-linked)",
+        "timing": "Active — complaint filed 2026-11-25; proceedings ongoing",
+        "impact": "BEARISH",
+        "note": "NewsAPI [2026-11-25, NaturalNews/DOJ] — U.S. DOJ filed civil forfeiture complaint to seize ~$11B in crypto tied to Binance-related theft. Large government-controlled BTC overhang creates potential forced-sale risk; market uncertainty around disposition timeline is a near-term bearish catalyst."
+      },
+      {
+        "event": "CFTC Staff Advisory: BTC/ETH Eligible for Exchange Operating Reserves",
+        "timing": "Effective now — advisory issued week of 2026-11-25",
+        "impact": "BULLISH",
+        "note": "NewsAPI [2026-11-25, Biztoc/CFTC] — CFTC advisory allows derivatives exchanges, swap venues, and clearinghouses to count BTC and ETH as qualifying operating reserve assets. Institutionalises crypto on regulated balance sheets; structural long-term demand catalyst for BTC. First concrete post-election regulatory normalisation signal."
+      },
+      {
+        "event": "Taiwan Central Bank Stablecoin Reserve Rule (10.775%)",
+        "timing": "Draft issued 2026-11-24; comment period pending",
+        "impact": "BEARISH",
+        "note": "NewsAPI [2026-11-25, DCForecasts] — Taiwan draft regulation imposes 10.775% reserve requirement on large stablecoin issuers (balances above NT$10B threshold). If adopted broadly, constrains stablecoin expansion — adverse for crypto market liquidity. Watch for similar regulatory contagion in other Asian markets."
+      },
+      {
+        "event": "Fidelity LINK Fund S-1 / Crypto Product Expansion",
+        "timing": "S-1 filing active; LINK trading added week of 2026-11-25",
+        "impact": "BULLISH",
+        "note": "NewsAPI [2026-11-25, Crypto Briefing/Fidelity] — Fidelity adding Chainlink trading and an apparent LINK fund S-1 signals continued ETF product pipeline expansion. Broadens institutional crypto access; indirect BTC bullish via validation of institutional crypto infrastructure build-out."
+      }
+    ],
+    "analystNote": "BTC at $61,776 sits in Phase A ACCUMULATION (46% through $53,253–$71,820 range) with a constructive long-term setup but deteriorating near-term technicals. The composite signal of -4 reflects a confluence of institutional outflows (-$453M ETF), active LTH distribution (-14,276 BTC/day, -0.340% liquid supply), CME backwardation, and a 10Y yield at 4.85% that continues to cap risk asset upside. The one genuine bull case is contrarian: Extreme Fear at 12/100 combined with MVRV 1.16 (spot only +16% above realized price $53,253) historically marks late-stage capitulation territory, not peak distribution. The AMT BALANCE state with compressing 7d value inside 30d value is a coiling pattern — a directional break is coming, but the downward value migration (-5.9% 7d vs 30d POC) assigns higher probability to testing $57,109 (30d VAL) before any recovery to $63,972 (30d POC). Note: the market regime is flagged as NORMAL with insufficient history (60/120+ cycles) for full rule confidence — phase anchors are directionally sound but carry model uncertainty. Tactically, hold existing ETF exposure, maintain the put hedge, and reserve DCA capital for either a failed auction low below $57,109 or confirmed ETF inflow resumption above the $264M/day baseline, whichever comes first.",
+    "riskWarning": "DOJ disposition of $11B in forfeited crypto enters the market as forced selling — if auctioned into thin Thanksgiving-week liquidity, could breach 30d VAL $57,109 and trigger cascading long liquidations below the $58,044 7d VAL, putting the $53,253 realized price hard floor to test.",
+    "normalization": {
+      "currentPrice": "$61,776.10",
+      "marketCap": "$1.24T",
+      "dailyVolumeBTC": "356,838 BTC ($22.0B)",
+      "volumeTrend": "STABLE (5d/20d ratio 0.97)",
+      "lthSellingBTC": "-14,276 BTC/day (7d avg)",
+      "lthSellingPctLiquid": "-0.340%",
+      "whaleNetflowBTC": "UNAVAILABLE — blockchain.info feed returned zero movement; treat as no data",
+      "whaleNetflowPctLiquid": "UNAVAILABLE",
+      "whaleNetflowPctVolume": "UNAVAILABLE",
+      "whaleNetflowPctMcap": "UNAVAILABLE",
+      "etfFlowUSD": "-$453M",
+      "etfFlowBTC": "-7,333 BTC",
+      "etfFlowPctLiquid": "-0.175%"
+    },
+    "dataFreshness": {
+      "cachedAt": "2026-11-27T07:17:57.978Z",
+      "ageHours": 2.4,
+      "status": "FRESH",
+      "liveRefreshed": [],
+      "staleFields": [],
+      "staleSnapshotPrice": 61776.1
+    }
+  },
+  "phaseAnchors": {
+    "hardStop": 51656,
+    "phaseA_low": 53253,
+    "phaseA_high": 71810,
+    "phaseB_high": 82582,
+    "phaseC_high": 122272,
+    "derivedFrom": {
+      "realized": 53253.22,
+      "sma200": 71810,
+      "cycleHigh": 86594,
+      "ath": 124767,
+      "realizedSource": "realizedPrice"
+    },
+    "derivationStatus": "NORMAL",
+    "computedAt": "2026-11-27T20:49:55.647Z",
+    "regime": "NORMAL",
+    "regimeReason": "insufficient history — bear-realized rule needs 120 cycles, have 61; bear-sma rule needs 240 cycles, have 61; ath-cycle rule needs 112 cycles, have 61",
+    "rawRegime": "NORMAL",
+    "regimeState": {
+      "promoted": "NORMAL",
+      "pending": null,
+      "pendingCount": 0,
+      "normalCount": 1618
+    },
+    "historyCycles": 61
+  },
+  "catalystNews": [
+    {
+      "title": "Switzerland Crypto Tax Data Will Reach 57 Countries in 2028, Not 74 in 2027",
+      "source": "Dcforecasts.com",
+      "date": "2026-11-26",
+      "url": "https://www.dcforecasts.com/regulation/switzerland-crypto-tax-data-57-partners-2028/",
+      "description": "Switzerland's Federal Council approved 57 partners for the automatic exchange of crypto tax data from 2028, down from 74 proposed in June 2025 with a 2027 start.",
+      "content": "Switzerland crypto tax data will start flowing abroad in 2028, a year later than first planned, and to a shorter list of countries than Bern put to Parliament last year.\r\nOn Wednesday, November 25, t…"
+    },
+    {
+      "title": "Franklin Crypto Index ETF to add HYPE token around Dec. 1",
+      "source": "Crypto Briefing",
+      "date": "2026-11-26",
+      "url": "https://cryptobriefing.com/franklin-crypto-index-etf-to-add-hype-token-around-dec-1/",
+      "description": "The ETF's diversification signals a shift towards broader crypto acceptance, potentially boosting institutional confidence and market dynamics.\nThe post Franklin Crypto Index ETF to add HYPE token around Dec. 1 appeared first on Crypto Briefing.",
+      "content": "Franklin Crypto Trust has announced its plan to add the Hyperliquid HYPE token to its Franklin Crypto Index ETF, according to a recent SEC filing. The inclusion is set for around December 1, expandin…"
+    },
+    {
+      "title": "US government could be barred from selling its strategic Bitcoin holdings for 20 years",
+      "source": "CryptoSlate",
+      "date": "2026-11-26",
+      "url": "https://cryptoslate.com/us-government-could-be-barred-from-selling-its-strategic-bitcoin-holdings-for-20-years/",
+      "description": "H.R. 8957 would pair an annual reserve report with public cryptographic attestation and independent verification.\nRead the full story on CryptoSlateUnderstand the crypto stories that matter and what to watch next. Get The Catalyst in your inbox",
+      "content": "The US Treasury could be required to publicly verify its Bitcoin holdings under legislation advancing through Congress.\r\nThe House Financial Services Committee formally reported the amended American …"
+    },
+    {
+      "title": "Pete Hegseth 'considered using extraordinary wartime law to reappoint Jensen Huang as Nvidia CEO'",
+      "source": "Dailymail.com",
+      "date": "2026-11-26",
+      "url": "https://www.dailymail.com/news/article-16322953/Pete-Hegseth-considered-wartime-law-reappoint-Jensen-Huang-Nvidia-CEO.html",
+      "description": "Pete Hegseth reportedly considered invoking a Korean War-era law to pressure Nvidia into reinstating Jensen Huang as CEO.",
+      "content": "Defense Secretary Pete Hegseth considered using a sweeping wartime law dating back to the Korean War to pressure Nvidia into reinstating embattled billionaire Jensen Huang as its chief executive.\r\nSe…"
+    },
+    {
+      "title": "Justice Department Moves to Forfeit $11 Billion in Crypto Stolen From Binance, Officials Say",
+      "source": "Naturalnews.com",
+      "date": "2026-11-25",
+      "url": "https://www.naturalnews.com/2026-11-25-justice-department-forfeit-crypto-stolen-from-binance.html",
+      "description": "The U.S. Department of Justice has filed a civil forfeiture complaint seeking to take control of cryptocurrency tied to assets stolen from the global exchange Binance, according to court records and department statements released this week. The action, filed …",
+      "content": "The U.S. Department of Justice has filed a civil forfeiture complaint seeking to take control of cryptocurrency tied to assets stolen from the global exchange Binance, according to court records and …"
+    },
+    {
+      "title": "Taiwan Central Bank Treats Big Stablecoins Like Deposits With a 10.775% Reserve Rule",
+      "source": "Dcforecasts.com",
+      "date": "2026-11-25",
+      "url": "https://www.dcforecasts.com/regulation/taiwan-central-bank-stablecoin-reserve-rule/",
+      "description": "A Nov. 24 draft from Taiwan's central bank would make large stablecoin issuers deposit 10.775% of balances above NT$10 billion or US$350 million in an interest-free account.",
+      "content": "Taiwan central bank officials have drawn up the rule that decides how much of a large stablecoin’s backing must sit with them, interest-free. A draft published on November 24 by the Central Bank of t…"
+    },
+    {
+      "title": "Fidelity Chainlink fund S-1 claim spreads as the firm adds LINK trading",
+      "source": "Crypto Briefing",
+      "date": "2026-11-25",
+      "url": "https://cryptobriefing.com/fidelity-chainlink-fund-s1-link-trading/",
+      "description": "Fidelity's inclusion of LINK trading could significantly broaden crypto exposure for retail investors, potentially boosting mainstream adoption.\nThe post Fidelity Chainlink fund S-1 claim spreads as the firm adds LINK trading appeared first on Crypto Briefing.",
+      "content": "A post on X says Fidelity filed for a Chainlink fund, but a review of SEC records found no such registration as of November 25, 2026A post on X this week said Fidelity had filed an S-1 registration s…"
+    },
+    {
+      "title": "CFTC Staff Advisory Opens Operating Reserves to Crypto",
+      "source": "Biztoc.com",
+      "date": "2026-11-25",
+      "url": "https://biztoc.com/x/b8bd75c63410325f",
+      "description": "Derivatives exchanges, swap trading venues and clearinghouses in the United States can count bitcoin, ether and qualifying payment stablecoins toward the financial reserves they need to cover a year of operating costs, Commodity Futures Trading Commission sta…",
+      "content": "Derivatives exchanges, swap trading venues and clearinghouses in the United States can count bitcoin, ether and qualifying payment stablecoins toward the financial reserves they need to cover a year …"
+    },
+    {
+      "title": "The CFTC opens the door to Bitcoin reserves at US exchanges with a 20% catch",
+      "source": "CryptoSlate",
+      "date": "2026-11-25",
+      "url": "https://cryptoslate.com/the-cftc-opens-the-door-to-bitcoin-reserves-at-us-exchanges-with-a-20-catch/",
+      "description": "CFTC staff says exchanges and clearinghouses can count qualifying crypto at a discount, and a worked example shows how the annual buffer can fall short.\nRead the full story on CryptoSlateUnderstand the crypto stories that matter and what to watch next. Get Th…",
+      "content": "On Nov. 23, Commodity Futures Trading Commission (CFTC) staff said US futures exchanges and derivatives clearinghouses may count Bitcoin, Ethereum, and qualifying payment stablecoins toward a rolling…"
+    },
+    {
+      "title": "Top Crypto Marketing Trends and Predictions for 2027",
+      "source": "Inoru.com",
+      "date": "2026-11-25",
+      "url": "https://www.inoru.com/blog/crypto-marketing-trends-2027/",
+      "description": "Stay competitive with the top crypto marketing trends and predictions for 2027, from AI-driven SEO to creator partnerships and community building.",
+      "content": "<table><tr><td>The biggest crypto marketing trends for 2027 are compliance-led messaging, trust-based influencer partnerships, AI-search visibility (GEO and AEO), utility-focused stablecoin and real-…"
+    }
+  ],
+  "mvrv": {
+    "mvrv": 1.121723719241766,
+    "realizedPrice": 53253.22,
+    "lthRealizedPrice": 48337.19,
+    "lthMvrv": 1.2358062187727503,
+    "realizedDate": "2026-11-20",
+    "date": "2026-11-27",
+    "method": "spot / realizedPrice",
+    "source": "BGeometrics (bitcoin-data.com)",
+    "stale": false
+  },
+  "exchangeFlow": {
+    "netflow_btc": 1768.036,
+    "inflow_btc": 1768.036,
+    "outflow_btc": 0,
+    "total_exchange_btc": 451403.27,
+    "exchange_addr_count": 6,
+    "elapsed_hours": 0,
+    "source": "blockchain.info balance delta (16 legacy exchange addresses)",
+    "date": "2026-11-27"
+  },
+  "_exchangeAddressBalances": {
+    "34xp4vRoCGJym3xR7yCVPFHoCNxv4Twseo": 248597.59296803,
+    "1P5ZEDWTKTFGxQjZphgWPQUpe554WKDfHQ": 0.03557311,
+    "3M219KR5vEneNb47ewrPfWyb5jQ2DjxRP6": 164878.39644777,
+    "3D2oetdNuZUqQHPJmcMDDHYoqkyNVsFk9r": 0.15395293,
+    "1HQ3Go3ggs8pFnXuHVHRytPCq5fGG8Hbhx": 0.01550213,
+    "3LQUu4v9z6KNch71j7kbj8GPeAGUo1FW6a": 37927.07838102
+  },
+  "binanceLargeTrades": {
+    "threshold_btc": 2,
+    "whale_buy_btc": 0,
+    "whale_sell_btc": 0,
+    "net_whale_btc": 0,
+    "whale_buy_count": 0,
+    "whale_sell_count": 0,
+    "whale_buy_ratio": null,
+    "span_minutes": 3,
+    "pressure": "NEUTRAL",
+    "source": "Binance aggTrades (BTCUSDT, last 1000 trades)",
+    "date": "2026-11-11"
+  },
+  "amt": {
+    "state": "BALANCE",
+    "reason": "7d value nested inside 30d value and <50% as wide — balance is compressing; expect a directional break",
+    "suggestedScore": 0,
+    "location": "LOWER_EDGE",
+    "price": 59735,
+    "poc": 63972,
+    "vah": 74852,
+    "val": 57109,
+    "vaWidthPct": 27.7,
+    "posInValuePct": 15,
+    "short": {
+      "poc": 60222,
+      "vah": 61694,
+      "val": 58044,
+      "location": "INSIDE_7D_VALUE"
+    },
+    "migration": "LOWER",
+    "pocShiftPct": -5.9,
+    "coiling": true,
+    "closesAboveVAH": 0,
+    "closesBelowVAL": 0,
+    "lookbackDays": 30,
+    "shortLookbackDays": 7,
+    "asOf": "2026-11-26"
+  },
+  "liveRefreshAt": "2026-11-23T17:09:32.504Z",
+  "snapshotAt": "2026-11-27T20:49:57.473Z",
+  "snapshotKey": "2026-11-27-20"
+}

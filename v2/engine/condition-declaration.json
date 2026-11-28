@@ -1,0 +1,297 @@
+{
+  "id": "COND-1",
+  "date": "2026-11-06",
+  "plan": "docs/v2/STAGE-C-PLAN.md v1.1 (Board APPROVE WITH CHANGES, all applied)",
+  "principle": "Describes conditions, not the next move. Supportive / headwind is a stated financial convention, never fitted to outcomes and never tested as a forecast. No row has a tested link to later price (2019-26).",
+  "pctBands": {
+    "low": 20,
+    "belowAvg": 40,
+    "aboveAvg": 60,
+    "high": 80
+  },
+  "flatBands": {
+    "lth30": 1506,
+    "stableX": 0.0071,
+    "why": "0.25 x the median absolute value of each series over 2019-01..2026-10 (indicator only)"
+  },
+  "fngBands": {
+    "extremeFear": 25,
+    "fear": 45,
+    "greed": 55,
+    "extremeGreed": 75
+  },
+  "cbZBands": {
+    "up": 1,
+    "down": -1
+  },
+  "leverage": {
+    "crowdedPct": 80,
+    "shortPct": 20,
+    "oiRule": "OI change over 7 days > 0 (all 6 perps, BTC)"
+  },
+  "rows": {
+    "value": {
+      "label": "Valuation",
+      "group": "Value",
+      "reading": "Median of 3 percentiles vs own history (expanding, point-in-time): MVRV (CoinMetrics, series from 2010, percentile from 2018); price vs 200-week average (Coinbase, from 2019-05); nearness to the all-time high (Coinbase, from 2015). High percentile = expensive for all three.",
+      "states": {
+        "cheap": {
+          "label": "Cheap",
+          "convention": "supportive",
+          "meaning": "BTC trades low against its own history on all three measures: holders on average sit near their cost and price is far below its highs."
+        },
+        "belowAvg": {
+          "label": "Below average",
+          "convention": "supportive",
+          "meaning": "Valuation is below its historical middle: holders' average profit is modest."
+        },
+        "fair": {
+          "label": "Fair",
+          "convention": "neutral",
+          "meaning": "Valuation sits around the middle of its history."
+        },
+        "rich": {
+          "label": "Rich",
+          "convention": "headwind",
+          "meaning": "Valuation is above its historical middle: holders on average sit on clear unrealised gains."
+        },
+        "stretched": {
+          "label": "Stretched",
+          "convention": "headwind",
+          "meaning": "Valuation is in the top fifth of its history: price is far above holders' average cost and near its highs."
+        }
+      }
+    },
+    "trend200": {
+      "label": "Long-term trend",
+      "group": "Trend",
+      "reading": "Close vs the 200-day average and the 200-day average's slope over 20 days (engine T3 parts).",
+      "states": {
+        "up": {
+          "label": "Uptrend",
+          "convention": "supportive",
+          "meaning": "Price is above a rising 200-day average: the long-term trend is up."
+        },
+        "down": {
+          "label": "Downtrend",
+          "convention": "headwind",
+          "meaning": "Price is below a falling 200-day average: the long-term trend is down."
+        },
+        "transition": {
+          "label": "Transition",
+          "convention": "neutral",
+          "meaning": "Price and the 200-day slope disagree: the long-term trend is changing or flat."
+        }
+      }
+    },
+    "structure": {
+      "label": "Medium-term structure",
+      "group": "Trend",
+      "reading": "Close > 20-day > 50-day average with the 20-day rising over 5 days (FW1 base rule), plus the 30-day value-area state (engine E2).",
+      "states": {
+        "up": {
+          "label": "Uptrend",
+          "convention": "supportive",
+          "meaning": "Price sits above rising short and medium averages."
+        },
+        "down": {
+          "label": "Downtrend",
+          "convention": "headwind",
+          "meaning": "Price sits below falling short and medium averages."
+        },
+        "mixed": {
+          "label": "Mixed",
+          "convention": "neutral",
+          "meaning": "Short and medium averages do not line up: no clear medium-term direction."
+        }
+      },
+      "auction": {
+        "IMBALANCE_UP": "accepted above the 30-day value area",
+        "IMBALANCE_DOWN": "accepted below the 30-day value area",
+        "BALANCE": "inside the 30-day value area",
+        "TESTING_VAH": "testing the top of the 30-day value area",
+        "TESTING_VAL": "testing the bottom of the 30-day value area",
+        "FAILED_AUCTION_HIGH": "failed auction above value (rejected back inside)",
+        "FAILED_AUCTION_LOW": "failed auction below value (rejected back inside)"
+      }
+    },
+    "leverage": {
+      "label": "Leverage",
+      "group": "Positioning",
+      "reading": "Binance perp premium (8 h), percentile vs history (engine E3a) \u2014 a basis measure \u2014 with open interest change over 7 days and funding shown alongside.",
+      "states": {
+        "crowdedLong": {
+          "label": "Crowded long",
+          "convention": "headwind",
+          "meaning": "Perp buyers pay a high premium while open interest is rising: leveraged longs are building, which is liquidation fuel on a drop."
+        },
+        "highPremium": {
+          "label": "High premium",
+          "convention": null,
+          "meaning": "Perp buyers pay a high premium; open interest is not rising or its 7-day change is unavailable, so crowding is not confirmed."
+        },
+        "shortCrowded": {
+          "label": "Short-crowded",
+          "convention": null,
+          "meaning": "Perps trade at a low premium while open interest rises: shorts are building, which is squeeze fuel on a rise."
+        },
+        "lowPremium": {
+          "label": "Low premium",
+          "convention": null,
+          "meaning": "Perps trade at a low premium without rising open interest."
+        },
+        "normal": {
+          "label": "Normal",
+          "convention": "neutral",
+          "meaning": "The perp premium is within its usual range."
+        }
+      }
+    },
+    "spot": {
+      "label": "US spot demand",
+      "group": "Flows",
+      "reading": "Coinbase premium vs Binance, z-score against its last 30 days (engine E5a).",
+      "states": {
+        "payingUp": {
+          "label": "Paying up",
+          "convention": "supportive",
+          "meaning": "US spot buyers pay more than usual versus their recent norm."
+        },
+        "normal": {
+          "label": "Normal",
+          "convention": "neutral",
+          "meaning": "The US spot premium is within its recent norm."
+        },
+        "discount": {
+          "label": "Discount",
+          "convention": "headwind",
+          "meaning": "US spot trades at a discount versus its recent norm: US buyers are less eager than usual."
+        }
+      }
+    },
+    "liquidity": {
+      "label": "Stablecoin liquidity",
+      "group": "Flows",
+      "reading": "USDT + USDC supply growth over 30 days minus its own 365-day median growth (engine T4 raw).",
+      "states": {
+        "growing": {
+          "label": "Growing faster than usual",
+          "convention": "supportive",
+          "meaning": "Stablecoin supply grows faster than its usual pace: more dollar liquidity is entering crypto."
+        },
+        "flat": {
+          "label": "Usual pace",
+          "convention": "neutral",
+          "meaning": "Stablecoin supply grows at about its usual pace."
+        },
+        "shrinking": {
+          "label": "Slower than usual",
+          "convention": "headwind",
+          "meaning": "Stablecoin supply grows slower than its usual pace, or shrinks: less new dollar liquidity."
+        }
+      }
+    },
+    "holders": {
+      "label": "Long-term holders",
+      "group": "Flows",
+      "reading": "Long-term-holder supply, net change over 30 days (bitcoinmagazinepro; about a quarter of dates are ambiguous and the series can be revised).",
+      "note": "Not coloured: long-term holders distribute into every bull market, so selling is not on its own a negative.",
+      "states": {
+        "adding": {
+          "label": "Adding",
+          "convention": null,
+          "meaning": "Long-term holders' supply grew over 30 days: coins are ageing into strong hands."
+        },
+        "flat": {
+          "label": "Flat",
+          "convention": null,
+          "meaning": "Long-term holders' supply barely changed over 30 days."
+        },
+        "distributing": {
+          "label": "Distributing",
+          "convention": null,
+          "meaning": "Long-term holders' supply fell over 30 days: older coins are being sold or moved."
+        }
+      }
+    },
+    "sentiment": {
+      "label": "Sentiment",
+      "group": "Sentiment",
+      "reading": "Crypto Fear & Greed index (alternative.me). It already includes momentum and volatility, so part of it repeats the trend and volatility rows.",
+      "states": {
+        "extremeFear": {
+          "label": "Extreme fear",
+          "convention": "supportive",
+          "meaning": "The crowd is very fearful (contrarian convention: fear is where sellers are exhausted)."
+        },
+        "fear": {
+          "label": "Fear",
+          "convention": "neutral",
+          "meaning": "The crowd leans fearful."
+        },
+        "neutral": {
+          "label": "Neutral",
+          "convention": "neutral",
+          "meaning": "The crowd is neither fearful nor greedy."
+        },
+        "greed": {
+          "label": "Greed",
+          "convention": "neutral",
+          "meaning": "The crowd leans greedy."
+        },
+        "extremeGreed": {
+          "label": "Extreme greed",
+          "convention": "headwind",
+          "meaning": "The crowd is very greedy (contrarian convention: greed is where buyers are exhausted)."
+        }
+      }
+    },
+    "volatility": {
+      "label": "Volatility",
+      "group": "Risk",
+      "reading": "30-day realized volatility percentile vs history (engine E6) and ATR as % of price.",
+      "note": "Not coloured: this is the size of the swings, not their direction.",
+      "states": {
+        "calm": {
+          "label": "Calm",
+          "convention": null,
+          "meaning": "Swings are small against BTC's history; calm phases end, often abruptly."
+        },
+        "normal": {
+          "label": "Normal",
+          "convention": null,
+          "meaning": "Swings are in their usual range."
+        },
+        "elevated": {
+          "label": "Elevated",
+          "convention": null,
+          "meaning": "Swings are large against BTC's history: wider stops and smaller size are the usual response."
+        }
+      }
+    },
+    "liquidations": {
+      "label": "Liquidations (24 h)",
+      "group": "Risk",
+      "reading": "Long and short liquidations over 24 hours on Binance, Bybit and OKX perps (lower bound), as % of open interest.",
+      "note": "Context only: no state, no colour, no history (recorded from Nov 2026).",
+      "states": {}
+    }
+  },
+  "score": {
+    "name": "Financial condition score",
+    "requestedBy": "Djahwell 2026-11-06: 'I'd still like a score and a bull or bear signal for the financial reading at that moment.'",
+    "rule": "One vote per group, each -1..+1, from the rows' stated conventions (supportive +1, headwind -1, neutral / not coloured 0). Value = valuation row. Trend = mean of long-term trend and medium-term structure (trend counts once). Flows = mean of US spot demand and stablecoin liquidity (holders not coloured). Sentiment = sentiment row. Positioning (leverage) is shown as a row but NOT in the score: its only headwind state needs open-interest history, which does not exist before Nov 2026, so the score could not be described on history. Score = sum of available group votes x 2.5, range -10..+10, rounded to 1 decimal.",
+    "quorum": "at least 3 of 4 groups available, otherwise withheld",
+    "bands": {
+      "Strong bull": ">= 5",
+      "Bull": ">= 2",
+      "Neutral": "> -2",
+      "Bear": "> -5",
+      "Strong bear": "<= -5"
+    },
+    "label": "Financial condition, by convention: describes how supportive today's figures are, not where price goes next. Not a tested forecast.",
+    "bandNames": "always 'Bull condition' / 'Bear condition', never 'Bull' alone",
+    "notTested": "The score is not a tested forecast and has no forward test. Any later claim about it needs a new forward declaration written before the data."
+  },
+  "percentileNote": "Bar-based percentiles (200-week stretch, nearness to ATH) include the day's own value in its history (mid-rank); engine percentiles exclude it. The 200-week measure needs 1,400 + 365 days, so it starts about 2020-05; before that the valuation row uses 2 of 3 measures."
+}

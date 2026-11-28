@@ -1,0 +1,55 @@
+{
+  "id": "CYCLE-BOTTOMS-1",
+  "built": "2026-11-22",
+  "dataAsOf": "2026-11-21",
+  "label": "Descriptive reference, fitted on 3 completed cycles (2015-2022); not a tested rating and not a forecast.",
+  "source": "CoinMetrics community CapMVRVCur and CapMrktCurUSD (daily close basis); ETF flows from bitbo.io daily BTC totals. Rebuilt monthly by research/cycle_bottoms.py (.github/workflows/v2-cycle-bottoms.yml).",
+  "bottoms": [
+    {
+      "cycle": "2011",
+      "date": "2011-10-19",
+      "mvrv": 0.39
+    },
+    {
+      "cycle": "2015",
+      "date": "2015-01-14",
+      "mvrv": 0.56
+    },
+    {
+      "cycle": "2018",
+      "date": "2018-12-15",
+      "mvrv": 0.69
+    },
+    {
+      "cycle": "2022",
+      "date": "2022-11-09",
+      "mvrv": 0.75
+    }
+  ],
+  "currentCycle": {
+    "peak_mvrv": 2.78,
+    "compression_used": true,
+    "lowest_mvrv_so_far": 1.103,
+    "lowest_date": "2026-06-30",
+    "confirm_rule": "joins the fit after 365 days with no lower MVRV"
+  },
+  "band": {
+    "low": 0.8,
+    "high": 0.89,
+    "mid": 0.87,
+    "size_fit": 0.8,
+    "size_fit_why": "bottom MVRV vs log10(realized cap), 2015-2022 cycles: -0.369 + 0.097 x log10(realized cap USD), at $1.07T",
+    "scaled": 0.87,
+    "scaled_why": "size fit scaled by this cycle's compression: peak MVRV 2.78 vs 3.69 predicted by the same size fit (0.66 of the expected excess)",
+    "exponential": 0.89,
+    "exponential_why": "exponential through the confirmed cycle bottoms (0.56, 0.69, 0.75)"
+  },
+  "etf": {
+    "asOf": "2026-11-21",
+    "coins_btc": 579614,
+    "share_of_supply": 0.029,
+    "avg_cost_usd": 85645,
+    "lift_on_realized_usd": 962,
+    "note": "New ETF coins since Jan 2024 hold about 2.9% of supply at about $85.6k average cost; they lift the realized price by about $962 (1.8%)."
+  }
+}

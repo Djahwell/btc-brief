@@ -1,0 +1,160 @@
+{
+  "schema": "brief-v2-declaration/1",
+  "status": "STAGE 4 DECLARATION v1 \u2014 frozen 2026-11-05 (STAGE4-DECLARATION.md records this file's hash). Any change = a new declaration and a new trial.",
+  "referenceStart": "2018-01-01",
+  "warmupDays": 365,
+  "percentileMap": {
+    "zeroLow": 25,
+    "zeroHigh": 75,
+    "fullLow": 1,
+    "fullHigh": 99,
+    "max": 10
+  },
+  "lagsDays": {
+    "daily_bars": 1,
+    "fear_greed": 1,
+    "mvrv": 2,
+    "lth": 2,
+    "stablecoins": 2
+  },
+  "staleGraceDays": 1,
+  "staleGraceNote": "A daily input is active when its latest usable value is dated at most staleGraceDays before D \u2212 lag (one missed publication tolerated). Daily bars: last bar \u2265 D \u2212 1 \u2212 staleGraceDays.",
+  "barsContiguousDays": 400,
+  "barsNote": "Bar families (E1, E2, E6, T3) and the E3a trigger use row windows on Coinbase daily bars; the last 400 bars must be consecutive days, else these families are withheld. Daily-input staleness is date-based (lag + grace), not staleAfterSec.",
+  "e1": {
+    "sma": [
+      20,
+      50
+    ],
+    "atr": 14,
+    "slopeLookback": 5,
+    "note": "Each part mapped by percentile separately, then E1 = round(mean of the 3 mapped scores). Slope = (SMA20 today \u2212 SMA20 5 bars earlier) / ATR14 today. ATR = Wilder."
+  },
+  "e2": {
+    "profileDays": 30,
+    "bins": 80,
+    "valueAreaPct": 0.7,
+    "acceptCloses": 2,
+    "acceptWindow": 3,
+    "probeWindow": 5,
+    "scores": {
+      "IMBALANCE_UP": 6,
+      "TESTING_VAH": 0,
+      "FAILED_AUCTION_LOW": 4,
+      "BALANCE": 0,
+      "FAILED_AUCTION_HIGH": -4,
+      "TESTING_VAL": 0,
+      "IMBALANCE_DOWN": -6
+    },
+    "extraClosePoint": 1,
+    "cap": 8,
+    "note": "V1 scripts/amt.js method verbatim: 80 equal bins over the 30-bar high-low range (STAGE4-PLAN \u00a73 text said 0.25% bins \u2014 corrected to V1's actual method), VAH/VAL rounded to whole dollars, price = close of bar D\u22121 (V1 used live spot). TESTING_VAH/VAL score 0 as in V1 ('no accepted directional edge yet'). Flagged for the Board check."
+  },
+  "e3a": {
+    "windowHours": 8,
+    "triggerRecentDays": 3,
+    "triggerPriorDays": 7,
+    "note": "Reading = mean of the 8 completed hourly closes of the Binance BTCUSDT premium index, ending at the evaluation hour (D 00:00 for the backtest and the frozen daily record; the last completed hour for intraday display). References = one per day, the same mean ending at that day's 00:00. Below p25: positive only if min(last 3 closes) > min(the 7 closes before); if daily bars are stale the family is withheld."
+  },
+  "e5a": {
+    "zFull": 3,
+    "note": "z = (median of the 24 completed hourly USDT-adjusted premiums ending at the evaluation hour \u2212 mean of the 30 prior UTC-day medians) / population sd; a day counts with \u2265 20 hours; \u2265 25 days needed. Score = clamp(round(z \u00d7 10/3), \u00b110)."
+  },
+  "e6": {
+    "rvDays": 30,
+    "topDecilePct": 90,
+    "note": "30-day realised volatility = sample standard deviation (n \u2212 1) of daily log returns \u00d7 \u221a365, percentile against all prior days; not a vote."
+  },
+  "e7": {
+    "fearAt": 25,
+    "fearFull": 5,
+    "greedAt": 75,
+    "greedFull": 95
+  },
+  "t1": {
+    "contrarian": true
+  },
+  "t3": {
+    "sma": 200,
+    "atr": 14,
+    "slopeLookback": 20,
+    "note": "Parts: (close \u2212 SMA200)/ATR14 and (SMA200 today \u2212 SMA200 20 bars earlier)/ATR14, each mapped by percentile, then round(mean)."
+  },
+  "t4": {
+    "growthDays": 30,
+    "medianDays": 365,
+    "minMedianDays": 300,
+    "note": "Calendar-based: g(d) = v(d)/v(d\u221230) \u2212 1 and x(d) = g(d) \u2212 median g over (d\u2212365, d\u22121] (\u2265 300 values); x mapped by percentile."
+  },
+  "scorecards": {
+    "entry": {
+      "families": [
+        "E1",
+        "E2",
+        "E3a",
+        "E5a",
+        "E7"
+      ],
+      "quorum": 4
+    },
+    "tendency": {
+      "families": [
+        "T1",
+        "T2",
+        "T3",
+        "T4"
+      ],
+      "quorum": 3
+    },
+    "bands": [
+      {
+        "min": 6,
+        "name": "Strong bull"
+      },
+      {
+        "min": 3,
+        "name": "Bull"
+      },
+      {
+        "min": -2,
+        "name": "Neutral"
+      },
+      {
+        "min": -5,
+        "name": "Bear"
+      },
+      {
+        "min": -10,
+        "name": "Strong bear"
+      }
+    ],
+    "e2CapWhenTrendNegative": 2,
+    "modifierOrder": "mean of active families \u2192 round half away from zero \u2192 [V-E2: if E1 < 0, min(score, +2); V-E2 needs E1 active, else withheld] \u2192 round \u2192 [E6b: if E6 top decile, score / 2] \u2192 round \u2192 clamp \u00b110 \u2192 band",
+    "robustness": {
+      "families": [
+        "E1",
+        "E2",
+        "E7"
+      ],
+      "quorum": 3,
+      "note": "Robustness window 2019-01-01 \u2192 2021-05-31, sign check only (STAGE4-PLAN \u00a75)."
+    }
+  },
+  "candidates": {
+    "entry": [
+      "V-E1/E6a",
+      "V-E1/E6b",
+      "V-E2/E6a",
+      "V-E2/E6b"
+    ],
+    "tendency": [
+      "V-T1/T2+",
+      "V-T1/T2-"
+    ],
+    "primary": {
+      "entry": "V-E1/E6a",
+      "tendency": "V-T1/T2+"
+    }
+  },
+  "hashNote": "declarationHash = sha256 of JSON.stringify(JSON.parse(file)) (not of the file bytes)."
+}
